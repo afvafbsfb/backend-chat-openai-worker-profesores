@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Flujo de la prueba: prueba-20250825-221430-267</title>
+<style>body{font-family:sans-serif;} table{border-collapse:collapse;width:100%;margin-top:1em;} th,td{border:1px solid #ccc;padding:8px;text-align:left;} th{background:#f0f0f0;} tr:nth-child(even){background:#fafafa;} .step{margin-bottom:1em;} .timestamp{color:#888;font-size:0.9em;}</style>
+</head><body>
+<h2>Flujo de la prueba: prueba-20250825-221430-267</h2>
+<table>
+<thead><tr><th>Paso</th><th>Descripción</th><th>Timestamp</th></tr></thead>
+<tbody>
+<tr class='step'><td>1. ChatController</td><td>Recibida petición POST /chat&lt;br&gt;Mensaje recibido: [user] quiero saber el numero de alumnos que tengo inscritos en cada turno y que me lo devuelvas ordenado para ver en que turnos tengo mas alumnos y en que turnos tengo menos</td><td class='timestamp'>2025-08-25 22:14:30.278</td></tr>
+<tr class='step'><td>2. ChatService</td><td>Inicio de runChat</td><td class='timestamp'>2025-08-25 22:14:30.283</td></tr>
+<tr class='step'><td>3. ChatService</td><td>System prompt construido y whitelist añadida</td><td class='timestamp'>2025-08-25 22:14:30.283</td></tr>
+<tr class='step'><td>4. ChatService</td><td>Mensajes de usuario preparados para OpenAI</td><td class='timestamp'>2025-08-25 22:14:30.283</td></tr>
+<tr class='step'><td>5. OpenAIClient</td><td>Primera llamada a OpenAI (callChatWithTools)</td><td class='timestamp'>2025-08-25 22:14:30.283</td></tr>
+<tr class='step'><td>6. OpenAIClient</td><td>No hay tool_calls, respuesta directa de OpenAI</td><td class='timestamp'>2025-08-25 22:14:41.422</td></tr>
+<tr class='step'><td>7. ChatController</td><td>Respuesta generada por ChatService&lt;br&gt;Mensaje de salida: Aquí tienes el número de alumnos inscritos en cada turno, ordenados de mayor a menor:
+
+| Turno ID | Día       | Hora Inicio | Hora Fin | Tipo   | Alumnos Inscritos |
+|----------|-----------|-------------|----------|--------|-------------------|
+| 1        | lunes     | 19:30       | 21:30    | adulto | 2                 |
+| 2        | martes    | 19:30       | 21:30    | adulto | 0                 |
+| 3        | miércoles | 11:30       | 13:30    | adulto | 0                 |
+| 4        | miércoles | 19:30       | 21:30    | adulto | 0                 |
+| 5        | jueves    | 19:30       | 21:30    | adulto | 0                 |
+| 6        | lunes     | 16:30       | 18:00    | niño   | 0                 |
+| 7        | lunes     | 18:00       | 19:30    | niño   | 0                 |
+| 8        | martes    | 17:30       | 19:00    | niño   | 0                 |
+| 9        | miércoles | 17:30       | 19:00    | niño   | 0                 |
+| 10       | jueves    | 17:30       | 19:00    | niño   | 0                 |
+| 11       | viernes   | 16:30       | 18:00    | niño   | 0                 |
+| 12       | viernes   | 18:00       | 20:00    | niño   | 0                 |
+| 13       | sábado    | 11:30       | 13:30    | niño   | 0                 |
+
+
+El turno del lunes para adultos de 19:30 a 21:30 es el único con alumnos inscritos, con un total de 2 alumnos. Los demás turnos actualmente no tienen alumnos inscritos.</td><td class='timestamp'>2025-08-25 22:14:41.428</td></tr>
+</tbody></table>
+</body></html>

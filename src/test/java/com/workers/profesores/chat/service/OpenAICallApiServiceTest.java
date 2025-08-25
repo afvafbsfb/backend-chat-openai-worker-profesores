@@ -14,21 +14,28 @@ class OpenAICallApiServiceTest {
 
     @Test
     void testCallChatWithTools_mocksRestTemplate() throws Exception {
-        RestTemplate mockRestTemplate = Mockito.mock(RestTemplate.class);
-        String fakeResponse = "{\"id\":\"chatcmpl-123\",\"object\":\"chat.completion\"}";
-        Mockito.when(mockRestTemplate.postForEntity(
-                Mockito.anyString(),
-                Mockito.any(HttpEntity.class),
-                Mockito.eq(String.class)
-        )).thenReturn(ResponseEntity.ok(fakeResponse));
-        OpenAICallApiService spyService = Mockito.spy(service);
-        Mockito.doReturn(mockRestTemplate).when(spyService).createRestTemplate();
-        List<Map<String, Object>> messages = List.of(
-            Map.of("role", "user", "content", "Hola")
-        );
-        ReflectionTestUtils.setField(spyService, "openaiApiKey", "test-key");
-        String result = spyService.callChatWithTools(messages);
-        assertTrue(result.contains("chatcmpl-123"));
+    RestTemplate mockRestTemplate = Mockito.mock(RestTemplate.class);
+    // Simula una respuesta realista de OpenAI con choices/message/content
+    String fakeResponse = "{" +
+        "\"id\":\"chatcmpl-123\"," +
+        "\"object\":\"chat.completion\"," +
+        "\"choices\":[{" +
+        "  \"message\": {\"role\": \"assistant\", \"content\": \"Hola, soy la IA\"} " +
+        "}]" +
+        "}";
+    Mockito.when(mockRestTemplate.postForEntity(
+        Mockito.anyString(),
+        Mockito.any(HttpEntity.class),
+        Mockito.eq(String.class)
+    )).thenReturn(ResponseEntity.ok(fakeResponse));
+    OpenAICallApiService spyService = Mockito.spy(service);
+    Mockito.doReturn(mockRestTemplate).when(spyService).createRestTemplate();
+    List<Map<String, Object>> messages = List.of(
+        Map.of("role", "user", "content", "Hola")
+    );
+    ReflectionTestUtils.setField(spyService, "openaiApiKey", "test-key");
+    String result = spyService.callChatWithTools(messages);
+    assertTrue(result.contains("Hola, soy la IA"));
     }
 
     @Test
@@ -153,14 +160,15 @@ class OpenAICallApiServiceTest {
     @Test
     void testConstructor_handlesYamlNotFoundAndMalformed() {
         // --- Caso 1: Archivo inexistente (simulado con InputStream nulo que lanza FileNotFoundException) ---
-        OpenAICallApiService serviceNotFound = new OpenAICallApiService(new java.io.InputStream() {
+        ApiProxyService dummyProxy = org.mockito.Mockito.mock(ApiProxyService.class);
+        OpenAICallApiService serviceNotFound = new OpenAICallApiService(dummyProxy, new java.io.InputStream() {
             @Override public int read() throws java.io.IOException { throw new java.io.FileNotFoundException("not found"); }
         });
         assertEquals(List.of(), ReflectionTestUtils.getField(serviceNotFound, "whitelist"));
 
         // --- Caso 2: YAML mal formado ---
         byte[] invalidYaml = ":::::esto no es yaml::::".getBytes();
-        OpenAICallApiService serviceMalformed = new OpenAICallApiService(new java.io.ByteArrayInputStream(invalidYaml));
+        OpenAICallApiService serviceMalformed = new OpenAICallApiService(dummyProxy, new java.io.ByteArrayInputStream(invalidYaml));
         assertEquals(List.of(), ReflectionTestUtils.getField(serviceMalformed, "whitelist"));
     }
 }

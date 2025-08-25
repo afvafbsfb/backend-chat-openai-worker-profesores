@@ -13,6 +13,8 @@ import java.util.Map;
 
 @Component
 public class OpenAIClient {
+    @Value("${backend.debug:false}")
+    private boolean debug;
     @Value("${openai.api.key}")
     private String apiKey;
 
@@ -22,22 +24,34 @@ public class OpenAIClient {
     private final RestTemplate restTemplate = new RestTemplate();
 
     public JsonNode createResponse(List<?> messages, List<?> tools) {
-        // Construye el body según la API de OpenAI (debe usar 'messages')
+        if (debug) {
+            System.out.println("[OpenAIClient][DEBUG] createResponse llamado con messages: " + messages + ", tools: " + tools);
+        }
         Map<String, Object> body = Map.of(
                 "model", "gpt-4o-mini",
                 "messages", messages,
                 "tools", tools,
                 "stream", false
         );
+        if (debug) {
+            System.out.println("[OpenAIClient][DEBUG] Payload enviado a OpenAI: " + body);
+        }
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(apiKey);
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
-        return restTemplate.postForObject(apiUrl, entity, JsonNode.class);
+        JsonNode response = restTemplate.postForObject(apiUrl, entity, JsonNode.class);
+        if (debug) {
+            System.out.println("[OpenAIClient][DEBUG] Respuesta recibida de OpenAI: " + response);
+        }
+        return response;
     }
 
     // Adaptado a tools v2: reenviar mensajes + tool_outputs
     public JsonNode submitToolOutputsV2(JsonNode prevTurn, List<JsonNode> toolOutputs) {
+        if (debug) {
+            System.out.println("[OpenAIClient][DEBUG] submitToolOutputsV2 llamado con prevTurn: " + prevTurn + ", toolOutputs: " + toolOutputs);
+        }
         // Construir el nuevo historial de mensajes
         java.util.List<Object> messages = new java.util.ArrayList<>();
         // 1. Mensajes previos (usuario)
@@ -60,17 +74,23 @@ public class OpenAIClient {
             toolMsg.put("content", toolOutput.get("output").asText());
             messages.add(toolMsg);
         }
-        // Enviar a OpenAI
         Map<String, Object> body = Map.of(
                 "model", "gpt-4o-mini",
                 "messages", messages,
                 "tools", List.of(),
                 "stream", false
         );
+        if (debug) {
+            System.out.println("[OpenAIClient][DEBUG] Payload enviado a OpenAI: " + body);
+        }
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(apiKey);
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
-        return restTemplate.postForObject(apiUrl, entity, JsonNode.class);
+        JsonNode response = restTemplate.postForObject(apiUrl, entity, JsonNode.class);
+        if (debug) {
+            System.out.println("[OpenAIClient][DEBUG] Respuesta recibida de OpenAI: " + response);
+        }
+        return response;
     }
 }

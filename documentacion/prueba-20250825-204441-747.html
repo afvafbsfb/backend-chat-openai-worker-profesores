@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Flujo de la prueba: prueba-20250825-204441-747</title>
+<style>body{font-family:sans-serif;} table{border-collapse:collapse;width:100%;margin-top:1em;} th,td{border:1px solid #ccc;padding:8px;text-align:left;} th{background:#f0f0f0;} tr:nth-child(even){background:#fafafa;} .step{margin-bottom:1em;} .timestamp{color:#888;font-size:0.9em;}</style>
+</head><body>
+<h2>Flujo de la prueba: prueba-20250825-204441-747</h2>
+<table>
+<thead><tr><th>Paso</th><th>Descripción</th><th>Timestamp</th></tr></thead>
+<tbody>
+<tr class='step'><td>1. ChatController</td><td>Recibida petición POST /chat&lt;br&gt;Mensaje recibido: [user] Hola</td><td class='timestamp'>2025-08-25 20:44:41.751</td></tr>
+<tr class='step'><td>2. ChatService</td><td>Inicio de runChat</td><td class='timestamp'>2025-08-25 20:44:41.754</td></tr>
+<tr class='step'><td>3. ChatService</td><td>System prompt construido y whitelist añadida</td><td class='timestamp'>2025-08-25 20:44:41.754</td></tr>
+<tr class='step'><td>4. ChatService</td><td>Mensajes de usuario preparados para OpenAI</td><td class='timestamp'>2025-08-25 20:44:41.757</td></tr>
+<tr class='step'><td>5. OpenAIClient</td><td>Primera llamada a OpenAI (callChatWithTools)</td><td class='timestamp'>2025-08-25 20:44:41.759</td></tr>
+<tr class='step'><td>6. OpenAIClient</td><td>No hay tool_calls, respuesta directa de OpenAI</td><td class='timestamp'>2025-08-25 20:44:43.197</td></tr>
+<tr class='step'><td>7. ChatController</td><td>Respuesta generada por ChatService&lt;br&gt;Mensaje de salida: ¡Hola! ¿En qué puedo ayudarte hoy?</td><td class='timestamp'>2025-08-25 20:44:43.197</td></tr>
+</tbody></table>
+</body></html>

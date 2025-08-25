@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.workers.profesores.chat.dto.ChatRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 import java.util.*;
 
 @Service
@@ -16,14 +17,21 @@ public class ChatService {
     private final ApiProxyService apiProxy;
     private final ObjectMapper om = new ObjectMapper();
 
+    @Value("${backend.debug:false}")
+    private boolean debug;
+
     public ChatService(OpenAICallApiService openai, ApiProxyService apiProxy) {
         this.openai = openai;
         this.apiProxy = apiProxy;
     }
 
 
-    public String runChat(List<ChatRequest.Message> incoming) {
+    public String runChat(List<ChatRequest.Message> incoming, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger) {
         try {
+            if (debug) {
+                System.out.println("[ChatService][DEBUG] runChat called with incoming: " + incoming);
+            }
+            if (xmlLogger != null) xmlLogger.addStep("ChatService", "Inicio de runChat");
             // 0) System prompt base + whitelist dinámica
             String promptBase = """
                  Eres “secretaria”, asistente de una academia en España. Tu objetivo es ayudar a gestionar alumnos, matrículas, pagos y consultas sobre la API EXCLUSIVAMENTE usando la función `call_api` contra una lista blanca de endpoints.
@@ -71,6 +79,10 @@ public class ChatService {
             """;
             String whitelistTable = openai.renderWhitelistTable();
             String systemPrompt = promptBase + whitelistTable;
+            if (xmlLogger != null) xmlLogger.addStep("ChatService", "System prompt construido y whitelist añadida");
+            if (debug) {
+                System.out.println("[ChatService][DEBUG] System prompt constructed: " + systemPrompt);
+            }
 
             Map<String, Object> systemMsg = Map.of(
                 "role", "system",
@@ -88,18 +100,36 @@ public class ChatService {
                     "content", m.getContent()
                 ));
             }
+            if (xmlLogger != null) xmlLogger.addStep("ChatService", "Mensajes de usuario preparados para OpenAI");
+
+            if (debug) {
+                System.out.println("[ChatService][DEBUG] Seed messages for OpenAI: " + seed);
+            }
 
             // 2) Primer turno al modelo (puede devolver tool_calls)
-            JsonNode first = om.readTree(openai.callChatWithTools(seed));
+
+            if (debug) {
+                System.out.println("[ChatService][DEBUG] Calling OpenAI with seed messages...");
+            }
+            if (xmlLogger != null) xmlLogger.addStep("OpenAIClient", "Primera llamada a OpenAI (callChatWithTools)");
+            JsonNode first = om.readTree(openai.callChatWithTools(seed, xmlLogger));
+            if (debug) {
+                System.out.println("[ChatService][DEBUG] OpenAI first response: " + first);
+            }
             JsonNode choice = first.path("choices").get(0);
             JsonNode assistantMsg = choice.path("message");
 
             if (!assistantMsg.has("tool_calls")) {
                 String content = assistantMsg.path("content").asText("");
+                if (xmlLogger != null) xmlLogger.addStep("OpenAIClient", "No hay tool_calls, respuesta directa de OpenAI");
+                if (debug) {
+                    System.out.println("[ChatService][DEBUG] No tool_calls, returning post-processed response.");
+                }
                 return postProcessResponse(fixMarkdownTable(content));
             }
 
             // 3) Resolver tool_calls
+
             List<Map<String, Object>> toolOutputs = new ArrayList<>();
             boolean singleObjectResponse = false;
             String fichaContent = null;
@@ -108,16 +138,22 @@ public class ChatService {
                 String funcName = tc.path("function").path("name").asText();
                 String argsStr  = tc.path("function").path("arguments").asText("{}");
                 JsonNode args   = om.readTree(argsStr);
-
+                if (xmlLogger != null) xmlLogger.addStep("OpenAIClient", "Procesando tool_call: " + funcName);
+                if (debug) {
+                    System.out.println("[ChatService][DEBUG] Processing tool_call: callId=" + callId + ", funcName=" + funcName + ", args=" + args);
+                }
                 if (!"call_api".equals(funcName)) {
                     toolOutputs.add(Map.of(
                         "role", "tool",
                         "tool_call_id", callId,
                         "content", "{\"error\":\"Tool no permitida: " + funcName + "\"}"
                     ));
+                    if (xmlLogger != null) xmlLogger.addStep("ChatService", "Tool no permitida: " + funcName);
+                    if (debug) {
+                        System.out.println("[ChatService][DEBUG] Tool not allowed: " + funcName);
+                    }
                     continue;
                 }
-
                 String endpointName = args.path("name").asText();
                 Map<String, Object> ep = openai.getEndpointByName(endpointName);
                 if (ep == null) {
@@ -126,32 +162,50 @@ public class ChatService {
                         "tool_call_id", callId,
                         "content", "{\"error\":\"Endpoint no permitido: " + endpointName + "\"}"
                     ));
+                    if (xmlLogger != null) xmlLogger.addStep("ChatService", "Endpoint no permitido: " + endpointName);
+                    if (debug) {
+                        System.out.println("[ChatService][DEBUG] Endpoint not allowed: " + endpointName);
+                    }
                     continue;
                 }
-
                 String methodFromModel = args.path("method").asText("GET");
                 JsonNode pathParams    = args.path("pathParams");
                 JsonNode query         = args.path("query");
                 JsonNode body          = args.path("body");
-
+                if (xmlLogger != null) xmlLogger.addStep("ApiProxyService", "Llamada a API: " + endpointName + " (" + methodFromModel + ")");
+                if (debug) {
+                    System.out.println("[ChatService][DEBUG] Calling ApiProxyService: endpoint=" + endpointName + ", method=" + methodFromModel + ", pathParams=" + pathParams + ", query=" + query + ", body=" + body);
+                }
                 String apiResult;
                 try {
                     apiResult = apiProxy.executeWhitelistedCall(ep, methodFromModel, pathParams, query, body);
+                    if (xmlLogger != null) xmlLogger.addStep("ApiProxyService", "Respuesta recibida de API: " + endpointName);
+                    if (debug) {
+                        System.out.println("[ChatService][DEBUG] ApiProxyService result: " + apiResult);
+                    }
                 } catch (Exception ex) {
                     apiResult = "{\"error\":\"Fallo al llamar API: " + ex.getMessage() + "\"}";
+                    if (xmlLogger != null) xmlLogger.addStep("ApiProxyService", "Excepción al llamar API: " + ex.getMessage());
+                    if (debug) {
+                        System.out.println("[ChatService][DEBUG] ApiProxyService exception: " + ex.getMessage());
+                    }
                 }
-
                 // Detecta si la respuesta de la API es un solo objeto (no array, no error)
                 try {
                     JsonNode apiNode = om.readTree(apiResult);
                     if (apiNode != null && apiNode.isObject() && !apiNode.has("error")) {
                         singleObjectResponse = true;
                         fichaContent = renderDetailAsFicha(apiNode);
+                        if (xmlLogger != null) xmlLogger.addStep("ChatService", "API devolvió un solo objeto, se renderiza como ficha");
+                        if (debug) {
+                            System.out.println("[ChatService][DEBUG] API returned single object, will render as ficha.");
+                        }
                     }
                 } catch (Exception e) {
-                    // ignore
+                    if (debug) {
+                        System.out.println("[ChatService][DEBUG] Exception parsing API result as JSON: " + e.getMessage());
+                    }
                 }
-
                 toolOutputs.add(Map.of(
                     "role", "tool",
                     "tool_call_id", callId,
@@ -159,14 +213,19 @@ public class ChatService {
                 ));
             }
 
+
             // Si la respuesta es un solo objeto, devolvemos la ficha directamente (sin pasar por el modelo)
             if (singleObjectResponse && fichaContent != null) {
+                if (xmlLogger != null) xmlLogger.addStep("ChatService", "Respuesta directa: ficha de un solo objeto");
+                if (debug) {
+                    System.out.println("[ChatService][DEBUG] Returning fichaContent directly (single object response).");
+                }
                 return fichaContent;
             }
 
+
             // 4) Segundo turno: reinyectamos el assistant con sus tool_calls + los outputs
             List<Map<String, Object>> followup = new ArrayList<>(seed);
-
             Map<String, Object> assistantEcho = new HashMap<>();
             assistantEcho.put("role", "assistant");
             assistantEcho.put("content",
@@ -174,14 +233,29 @@ public class ChatService {
             );
             assistantEcho.put("tool_calls", om.convertValue(assistantMsg.path("tool_calls"), List.class));
             followup.add(assistantEcho);
-
             followup.addAll(toolOutputs);
-
-            JsonNode second = om.readTree(openai.callChatWithTools(followup));
+            if (xmlLogger != null) xmlLogger.addStep("OpenAIClient", "Segunda llamada a OpenAI (reinyectando resultados de tools)");
+            if (debug) {
+                System.out.println("[ChatService][DEBUG] Calling OpenAI with followup messages: " + followup);
+            }
+            JsonNode second = om.readTree(openai.callChatWithTools(followup, xmlLogger));
+            if (debug) {
+                System.out.println("[ChatService][DEBUG] OpenAI second response: " + second);
+            }
             JsonNode finalMsg = second.path("choices").get(0).path("message");
-            return postProcessResponse(fixMarkdownTable(finalMsg.path("content").asText("")));
+            String finalContent = finalMsg.path("content").asText("");
+            if (xmlLogger != null) xmlLogger.addStep("OpenAIClient", "Respuesta final generada por OpenAI");
+            if (debug) {
+                System.out.println("[ChatService][DEBUG] Final content before post-processing: " + finalContent);
+            }
+            return postProcessResponse(fixMarkdownTable(finalContent));
 
         } catch (Exception e) {
+            if (xmlLogger != null) xmlLogger.addStep("ChatService", "Excepción en runChat: " + e.getMessage());
+            if (debug) {
+                System.out.println("[ChatService][DEBUG] Exception in runChat: " + e.getMessage());
+                e.printStackTrace();
+            }
             return "Error en runChat: " + e.getMessage();
         }
     }

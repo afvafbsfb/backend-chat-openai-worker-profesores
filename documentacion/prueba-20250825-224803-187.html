@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Flujo de la prueba: prueba-20250825-224803-187</title>
+<style>body{font-family:sans-serif;} table{border-collapse:collapse;width:100%;margin-top:1em;} th,td{border:1px solid #ccc;padding:8px;text-align:left;} th{background:#f0f0f0;} tr:nth-child(even){background:#fafafa;} .step{margin-bottom:1em;} .timestamp{color:#888;font-size:0.9em;}</style>
+</head><body>
+<h2>Flujo de la prueba: prueba-20250825-224803-187</h2>
+<table>
+<thead><tr><th>Paso</th><th>Descripción</th><th>Timestamp</th></tr></thead>
+<tbody>
+<tr class='step'><td>1. ChatController</td><td>Recibida petición POST /chat&lt;br&gt;Mensaje recibido: [user] quiero saber el numero de alumnos que tengo inscritos en cada turno y que me lo devuelvas ordenado para ver en que turnos tengo mas alumnos y en que turnos tengo menos</td><td class='timestamp'>2025-08-25 22:48:03.187</td></tr>
+<tr class='step'><td>2. ChatService</td><td>Inicio de runChat</td><td class='timestamp'>2025-08-25 22:48:03.187</td></tr>
+<tr class='step'><td>3. ChatService</td><td>System prompt construido y whitelist añadida</td><td class='timestamp'>2025-08-25 22:48:03.187</td></tr>
+<tr class='step'><td>4. ChatService</td><td>Mensajes de usuario preparados para OpenAI</td><td class='timestamp'>2025-08-25 22:48:03.187</td></tr>
+<tr class='step'><td>5. OpenAIClient</td><td>Primera llamada a OpenAI (callChatWithTools)</td><td class='timestamp'>2025-08-25 22:48:03.203</td></tr>
+<tr class='step'><td>6. OpenAI</td><td>Llamada a OpenAI (iteración 0) - mensajes: [system]      Eres “secretaria”, asistente de una academia en España. Tu objetivo es ayudar a gestionar alumnos, matrículas, pago... | [user] quiero saber el numero de alumnos que tengo inscritos en cada turno y que me lo devuelvas ordenado para ver en que turno... | </td><td class='timestamp'>2025-08-25 22:48:03.203</td></tr>
+<tr class='step'><td>7. OpenAI</td><td>Respuesta de OpenAI: {
+  &quot;id&quot;: &quot;chatcmpl-C8YOiR4L4auiNfXhmAHAo28WBN9Um&quot;,
+  &quot;object&quot;: &quot;chat.completion&quot;,
+  &quot;created&quot;: 1756154884,
+  &quot;model&quot;: &quot;gpt-4o-2024-08-06&quot;,
+  &quot;choices&quot;: [
+    {
+      &quot;index&quot;: 0,
+      &quot;message&quot;: {
+        &quot;role&quot;: &quot;assistant&quot;,
+        &quot;content&quot;: null,
+        &quot;tool_calls&quot;: [
+          {
+            &quot;id&quot;: &quot;call_0M9mbPJrQwtRaGsRDriHTucs&quot;,
+            &quot;type&quot;: &quot;function&quot;,
+            &quot;function&quot;: {
+              &quot;name&quot;: &quot;call_api&quot;,
+              &quot;arguments&quot;: &quot;{\&quot;name\&quot;:\&quot;getTurnosActivos\&quot;,\&quot;method\&quot;:\&quot;GET\&quot;}&quot;
+            }
+          }
+        ],
+        &quot;refusal&quot;: null,
+        &quot;annotations&quot;: []
+      },
+      &quot;logprobs&quot;: null,
+      &quot;finish_reason&quot;: &quot;tool_calls&quot;
+    }
+  ],
+  &quot;usage&quot;: {
+    &quot;prompt_tokens&quot;: 1395,
+    &quot;completion_tokens&quot;: 22,
+    &quot;total_tokens&quot;: 1417,
+    &quot;prompt_tokens_details&quot;: {
+      &quot;cached_tokens&quot;: 0,
+      &quot;audio_tokens&quot;: 0
+    },
+    &quot;completion_tokens_details&quot;: {
+      &quot;reasoning_tokens&quot;: 0,
+      &quot;audio_tokens&quot;: 0,
+      &quot;accepted_prediction_tokens&quot;: 0,
+      &quot;rejected_prediction_tokens&quot;: 0
+    }
+  },
+  &quot;service_tier&quot;: &quot;default&quot;,
+  &quot;system_fingerprint&quot;: &quot;fp_46bff0e0c8&quot;
+}
+</td><td class='timestamp'>2025-08-25 22:48:05.004</td></tr>
+<tr class='step'><td>8. ApiProxyService</td><td>Llamada a API: getTurnosActivos (GET)</td><td class='timestamp'>2025-08-25 22:48:05.014</td></tr>
+<tr class='step'><td>9. ApiProxyService</td><td>Respuesta de API: 200 OK</td><td class='timestamp'>2025-08-25 22:48:05.243</td></tr>
+<tr class='step'><td>10. OpenAI</td><td>Llamada a OpenAI (iteración 1) - mensajes: [system]      Eres “secretaria”, asistente de una academia en España. Tu objetivo es ayudar a gestionar alumnos, matrículas, pago... | [user] quiero saber el numero de alumnos que tengo inscritos en cada turno y que me lo devuelvas ordenado para ver en que turno... | [assistant] null tool_calls: [{id=call_0M9mbPJrQwtRaGsRDriHTucs, type=function, function={name=call_api, arguments={&quot;name&quot;:&quot;getTurnosActivos&quot;,&quot;method&quot;:&quot;GET&quot;}}}] | [tool] [{&quot;capacidad&quot;:15,&quot;dia&quot;:&quot;lunes&quot;,&quot;duracion_min&quot;:120,&quot;hora_fin&quot;:&quot;21:30&quot;,&quot;hora_inicio&quot;:&quot;19:30&quot;,&quot;id&quot;:1,&quot;tipo&quot;:&quot;adulto&quot;},{&quot;cap... tool_call_id: call_0M9mbPJrQwtRaGsRDriHTucs | </td><td class='timestamp'>2025-08-25 22:48:05.243</td></tr>
+<tr class='step'><td>11. OpenAI</td><td>Respuesta de OpenAI: {
+  &quot;id&quot;: &quot;chatcmpl-C8YOjS8vjTHxiQ2sxILjSkyy5bH4q&quot;,
+  &quot;object&quot;: &quot;chat.completion&quot;,
+  &quot;created&quot;: 1756154885,
+  &quot;model&quot;: &quot;gpt-4o-2024-08-06&quot;,
+  &quot;choices&quot;: [
+    {
+      &quot;index&quot;: 0,
+      &quot;message&quot;: {
+        &quot;role&quot;: &quot;assistant&quot;,
+        &quot;content&quot;: null,
+        &quot;tool_calls&quot;: [
+          {
+            &quot;id&quot;: &quot;call_l3h4mxztNjnRD0RGFMdnUs1y&quot;,
+            &quot;type&quot;: &quot;function&quot;,
+            &quot;function&quot;: {
+              &quot;name&quot;: &quot;call_api&quot;,
+              &quot;arguments&quot;: &quot;{\&quot;name\&quot;: \&quot;getAlumnosTurno\&quot;, \&quot;method\&quot;: \&quot;GET\&quot;, \&quot;pathParams\&quot;: {\&quot;turno_id\&quot;: 1}}&quot;
+            }
+          },
+          {
+            &quot;id&quot;: &quot;call_PsfYwZnVqQiJVWnRvFKVmiwX&quot;,
+            &quot;type&quot;: &quot;function&quot;,
+            &quot;function&quot;: {
+              &quot;name&quot;: &quot;call_api&quot;,
+              &quot;arguments&quot;: &quot;{\&quot;name\&quot;: \&quot;getAlumnosTurno\&quot;, \&quot;method\&quot;: \&quot;GET\&quot;, \&quot;pathParams\&quot;: {\&quot;turno_id\&quot;: 2}}&quot;
+            }
+          },
+          {
+            &quot;id&quot;: &quot;call_JPiHLV2x7OGpzu9d89b94T5I&quot;,
+            &quot;type&quot;: &quot;function&quot;,
+            &quot;function&quot;: {
+              &quot;name&quot;: &quot;call_api&quot;,
+              &quot;arguments&quot;: &quot;{\&quot;name\&quot;: \&quot;getAlumnosTurno\&quot;, \&quot;method\&quot;: \&quot;GET\&quot;, \&quot;pathParams\&quot;: {\&quot;turno_id\&quot;: 3}}&quot;
+            }
+          },
+          {
+            &quot;id&quot;: &quot;call_B7u94m0WG80ELhYpLf6kFosq&quot;,
+            &quot;type&quot;: &quot;function&quot;,
+            &quot;function&quot;: {
+              &quot;name&quot;: &quot;call_api&quot;,
+              &quot;arguments&quot;: &quot;{\&quot;name\&quot;: \&quot;getAlumnosTurno\&quot;, \&quot;method\&quot;: \&quot;GET\&quot;, \&quot;pathParams\&quot;: {\&quot;turno_id\&quot;: 4}}&quot;
+            }
+          },
+          {
+            &quot;id&quot;: &quot;call_oeG6yrbzz4vKIccktMXLtPas&quot;,
+            &quot;type&quot;: &quot;function&quot;,
+            &quot;function&quot;: {
+              &quot;name&quot;: &quot;call_api&quot;,
+              &quot;arguments&quot;: &quot;{\&quot;name\&quot;: \&quot;getAlumnosTurno\&quot;, \&quot;method\&quot;: \&quot;GET\&quot;, \&quot;pathParams\&quot;: {\&quot;turno_id\&quot;: 5}}&quot;
+            }
+          },
+          {
+            &quot;id&quot;: &quot;call_9mF9fvjJWVcYTWPXoxzaQbHJ&quot;,
+            &quot;type&quot;: &quot;function&quot;,
+            &quot;function&quot;: {
+              &quot;name&quot;: &quot;call_api&quot;,
+              &quot;arguments&quot;: &quot;{\&quot;name\&quot;: \&quot;getAlumnosTurno\&quot;, \&quot;method\&quot;: \&quot;GET\&quot;, \&quot;pathParams\&quot;: {\&quot;turno_id\&quot;: 6}}&quot;
+            }
+          },
+          {
+            &quot;id&quot;: &quot;call_PzS2B0AZw2PKQPrjlrsC2S4O&quot;,
+            &quot;type&quot;: &quot;function&quot;,
+            &quot;function&quot;: {
+              &quot;name&quot;: &quot;call_api&quot;,
+              &quot;arguments&quot;: &quot;{\&quot;name\&quot;: \&quot;getAlumnosTurno\&quot;, \&quot;method\&quot;: \&quot;GET\&quot;, \&quot;pathParams\&quot;: {\&quot;turno_id\&quot;: 7}}&quot;
+            }
+          },
+          {
+            &quot;id&quot;: &quot;call_x0mlcVLdF0NWZD22wFUhk3eg&quot;,
+            &quot;type&quot;: &quot;function&quot;,
+            &quot;function&quot;: {
+              &quot;name&quot;: &quot;call_api&quot;,
+              &quot;arguments&quot;: &quot;{\&quot;name\&quot;: \&quot;getAlumnosTurno\&quot;, \&quot;method\&quot;: \&quot;GET\&quot;, \&quot;pathParams\&quot;: {\&quot;turno_id\&quot;: 8}}&quot;
+            }
+          },
+          {
+            &quot;id&quot;: &quot;call_6WlJakhzWetlkC5MQp8AkyKi&quot;,
+            &quot;type&quot;: &quot;function&quot;,
+            &quot;function&quot;: {
+              &quot;name&quot;: &quot;call_api&quot;,
+              &quot;arguments&quot;: &quot;{\&quot;name\&quot;: \&quot;getAlumnosTurno\&quot;, \&quot;method\&quot;: \&quot;GET\&quot;, \&quot;pathParams\&quot;: {\&quot;turno_id\&quot;: 9}}&quot;
+            }
+          },
+          {
+            &quot;id&quot;: &quot;call_vAh7fKJC7bAJdSXDUlazv4DT&quot;,
+            &quot;type&quot;: &quot;function&quot;,
+            &quot;function&quot;: {
+              &quot;name&quot;: &quot;call_api&quot;,
+              &quot;arguments&quot;: &quot;{\&quot;name\&quot;: \&quot;getAlumnosTurno\&quot;, \&quot;method\&quot;: \&quot;GET\&quot;, \&quot;pathParams\&quot;: {\&quot;turno_id\&quot;: 10}}&quot;
+            }
+          },
+          {
+            &quot;id&quot;: &quot;call_qXto2HqzCYejKUndUgmmowz9&quot;,
+            &quot;type&quot;: &quot;function&quot;,
+            &quot;function&quot;: {
+              &quot;name&quot;: &quot;call_api&quot;,
+              &quot;arguments&quot;: &quot;{\&quot;name\&quot;: \&quot;getAlumnosTurno\&quot;, \&quot;method\&quot;: \&quot;GET\&quot;, \&quot;pathParams\&quot;: {\&quot;turno_id\&quot;: 11}}&quot;
+            }
+          },
+          {
+            &quot;id&quot;: &quot;call_qLRfeaaaqGBr1qmHCKDZqRmi&quot;,
+            &quot;type&quot;: &quot;function&quot;,
+            &quot;function&quot;: {
+              &quot;name&quot;: &quot;call_api&quot;,
+              &quot;arguments&quot;: &quot;{\&quot;name\&quot;: \&quot;getAlumnosTurno\&quot;, \&quot;method\&quot;: \&quot;GET\&quot;, \&quot;pathParams\&quot;: {\&quot;turno_id\&quot;: 12}}&quot;
+            }
+          },
+          {
+            &quot;id&quot;: &quot;call_dROPF81Gka0PloAIfjxHFlpw&quot;,
+            &quot;type&quot;: &quot;function&quot;,
+            &quot;function&quot;: {
+              &quot;name&quot;: &quot;call_api&quot;,
+              &quot;arguments&quot;: &quot;{\&quot;name\&quot;: \&quot;getAlumnosTurno\&quot;, \&quot;method\&quot;: \&quot;GET\&quot;, \&quot;pathParams\&quot;: {\&quot;turno_id\&quot;: 13}}&quot;
+            }
+          }
+        ],
+        &quot;refusal&quot;: null,
+        &quot;annotations&quot;: []
+      },
+      &quot;logprobs&quot;: null,
+      &quot;finish_reason&quot;: &quot;tool_calls&quot;
+    }
+  ],
+  &quot;usage&quot;: {
+    &quot;prompt_tokens&quot;: 1978,
+    &quot;completion_tokens&quot;: 420,
+    &quot;total_tokens&quot;: 2398,
+    &quot;prompt_tokens_details&quot;: {
+      &quot;cached_tokens&quot;: 0,
+      &quot;audio_tokens&quot;: 0
+    },
+    &quot;completion_tokens_details&quot;: {
+      &quot;reasoning_tokens&quot;: 0,
+      &quot;audio_tokens&quot;: 0,
+      &quot;accepted_prediction_tokens&quot;: 0,
+      &quot;rejected_prediction_tokens&quot;: 0
+    }
+  },
+  &quot;service_tier&quot;: &quot;default&quot;,
+  &quot;system_fingerprint&quot;: &quot;fp_ff25b2783a&quot;
+}
+</td><td class='timestamp'>2025-08-25 22:48:21.330</td></tr>
+<tr class='step'><td>12. ApiProxyService</td><td>Llamada a API: getAlumnosTurno (GET)</td><td class='timestamp'>2025-08-25 22:48:21.340</td></tr>
+<tr class='step'><td>13. ApiProxyService</td><td>Respuesta de API: 200 OK</td><td class='timestamp'>2025-08-25 22:48:21.477</td></tr>
+<tr class='step'><td>14. ApiProxyService</td><td>Llamada a API: getAlumnosTurno (GET)</td><td class='timestamp'>2025-08-25 22:48:21.477</td></tr>
+<tr class='step'><td>15. ApiProxyService</td><td>Respuesta de API: 200 OK</td><td class='timestamp'>2025-08-25 22:48:21.527</td></tr>
+<tr class='step'><td>16. ApiProxyService</td><td>Llamada a API: getAlumnosTurno (GET)</td><td class='timestamp'>2025-08-25 22:48:21.527</td></tr>
+<tr class='step'><td>17. ApiProxyService</td><td>Respuesta de API: 200 OK</td><td class='timestamp'>2025-08-25 22:48:21.586</td></tr>
+<tr class='step'><td>18. ApiProxyService</td><td>Llamada a API: getAlumnosTurno (GET)</td><td class='timestamp'>2025-08-25 22:48:21.586</td></tr>
+<tr class='step'><td>19. ApiProxyService</td><td>Respuesta de API: 200 OK</td><td class='timestamp'>2025-08-25 22:48:21.636</td></tr>
+<tr class='step'><td>20. ApiProxyService</td><td>Llamada a API: getAlumnosTurno (GET)</td><td class='timestamp'>2025-08-25 22:48:21.636</td></tr>
+<tr class='step'><td>21. ApiProxyService</td><td>Respuesta de API: 200 OK</td><td class='timestamp'>2025-08-25 22:48:21.695</td></tr>
+<tr class='step'><td>22. ApiProxyService</td><td>Llamada a API: getAlumnosTurno (GET)</td><td class='timestamp'>2025-08-25 22:48:21.695</td></tr>
+<tr class='step'><td>23. ApiProxyService</td><td>Respuesta de API: 200 OK</td><td class='timestamp'>2025-08-25 22:48:21.731</td></tr>
+<tr class='step'><td>24. ApiProxyService</td><td>Llamada a API: getAlumnosTurno (GET)</td><td class='timestamp'>2025-08-25 22:48:21.747</td></tr>
+<tr class='step'><td>25. ApiProxyService</td><td>Respuesta de API: 200 OK</td><td class='timestamp'>2025-08-25 22:48:21.796</td></tr>
+<tr class='step'><td>26. ApiProxyService</td><td>Llamada a API: getAlumnosTurno (GET)</td><td class='timestamp'>2025-08-25 22:48:21.796</td></tr>
+<tr class='step'><td>27. ApiProxyService</td><td>Respuesta de API: 200 OK</td><td class='timestamp'>2025-08-25 22:48:21.860</td></tr>
+<tr class='step'><td>28. ApiProxyService</td><td>Llamada a API: getAlumnosTurno (GET)</td><td class='timestamp'>2025-08-25 22:48:21.860</td></tr>
+<tr class='step'><td>29. ApiProxyService</td><td>Respuesta de API: 200 OK</td><td class='timestamp'>2025-08-25 22:48:21.908</td></tr>
+<tr class='step'><td>30. ApiProxyService</td><td>Llamada a API: getAlumnosTurno (GET)</td><td class='timestamp'>2025-08-25 22:48:21.908</td></tr>
+<tr class='step'><td>31. ApiProxyService</td><td>Respuesta de API: 200 OK</td><td class='timestamp'>2025-08-25 22:48:21.967</td></tr>
+<tr class='step'><td>32. ApiProxyService</td><td>Llamada a API: getAlumnosTurno (GET)</td><td class='timestamp'>2025-08-25 22:48:21.967</td></tr>
+<tr class='step'><td>33. ApiProxyService</td><td>Respuesta de API: 200 OK</td><td class='timestamp'>2025-08-25 22:48:22.021</td></tr>
+<tr class='step'><td>34. ApiProxyService</td><td>Llamada a API: getAlumnosTurno (GET)</td><td class='timestamp'>2025-08-25 22:48:22.021</td></tr>
+<tr class='step'><td>35. ApiProxyService</td><td>Respuesta de API: 200 OK</td><td class='timestamp'>2025-08-25 22:48:22.068</td></tr>
+<tr class='step'><td>36. ApiProxyService</td><td>Llamada a API: getAlumnosTurno (GET)</td><td class='timestamp'>2025-08-25 22:48:22.068</td></tr>
+<tr class='step'><td>37. ApiProxyService</td><td>Respuesta de API: 200 OK</td><td class='timestamp'>2025-08-25 22:48:22.131</td></tr>
+<tr class='step'><td>38. OpenAI</td><td>Llamada a OpenAI (iteración 2) - mensajes: [system]      Eres “secretaria”, asistente de una academia en España. Tu objetivo es ayudar a gestionar alumnos, matrículas, pago... | [user] quiero saber el numero de alumnos que tengo inscritos en cada turno y que me lo devuelvas ordenado para ver en que turno... | [assistant] null tool_calls: [{id=call_0M9mbPJrQwtRaGsRDriHTucs, type=function, function={name=call_api, arguments={&quot;name&quot;:&quot;getTurnosActivos&quot;,&quot;method&quot;:&quot;GET&quot;}}}] | [tool] [{&quot;capacidad&quot;:15,&quot;dia&quot;:&quot;lunes&quot;,&quot;duracion_min&quot;:120,&quot;hora_fin&quot;:&quot;21:30&quot;,&quot;hora_inicio&quot;:&quot;19:30&quot;,&quot;id&quot;:1,&quot;tipo&quot;:&quot;adulto&quot;},{&quot;cap... tool_call_id: call_0M9mbPJrQwtRaGsRDriHTucs | [assistant] null tool_calls: [{id=call_l3h4mxztNjnRD0RGFMdnUs1y, type=function, function={name=call_api, arguments={&quot;name&quot;: &quot;getAlumnosTurno&quot;, &quot;method&quot;: &quot;GET&quot;, &quot;pathParams&quot;: {&quot;turno_id&quot;: 1}}}}, {id=call_PsfYwZnVqQiJVWnRvFKVmiwX, type=function, function={name=call_api, arguments={&quot;name&quot;: &quot;getAlumnosTurno&quot;, &quot;method&quot;: &quot;GET&quot;, &quot;pathParams&quot;: {&quot;turno_id&quot;: 2}}}}, {id=call_JPiHLV2x7OGpzu9d89b94T5I, type=function, function={name=call_api, arguments={&quot;name&quot;: &quot;getAlumnosTurno&quot;, &quot;method&quot;: &quot;GET&quot;, &quot;pathParams&quot;: {&quot;turno_id&quot;: 3}}}}, {id=call_B7u94m0WG80ELhYpLf6kFosq, type=function, function={name=call_api, arguments={&quot;name&quot;: &quot;getAlumnosTurno&quot;, &quot;method&quot;: &quot;GET&quot;, &quot;pathParams&quot;: {&quot;turno_id&quot;: 4}}}}, {id=call_oeG6yrbzz4vKIccktMXLtPas, type=function, function={name=call_api, arguments={&quot;name&quot;: &quot;getAlumnosTurno&quot;, &quot;method&quot;: &quot;GET&quot;, &quot;pathParams&quot;: {&quot;turno_id&quot;: 5}}}}, {id=call_9mF9fvjJWVcYTWPXoxzaQbHJ, type=function, function={name=call_api, arguments={&quot;name&quot;: &quot;getAlumnosTurno&quot;, &quot;method&quot;: &quot;GET&quot;, &quot;pathParams&quot;: {&quot;turno_id&quot;: 6}}}}, {id=call_PzS2B0AZw2PKQPrjlrsC2S4O, type=function, function={name=call_api, arguments={&quot;name&quot;: &quot;getAlumnosTurno&quot;, &quot;method&quot;: &quot;GET&quot;, &quot;pathParams&quot;: {&quot;turno_id&quot;: 7}}}}, {id=call_x0mlcVLdF0NWZD22wFUhk3eg, type=function, function={name=call_api, arguments={&quot;name&quot;: &quot;getAlumnosTurno&quot;, &quot;method&quot;: &quot;GET&quot;, &quot;pathParams&quot;: {&quot;turno_id&quot;: 8}}}}, {id=call_6WlJakhzWetlkC5MQp8AkyKi, type=function, function={name=call_api, arguments={&quot;name&quot;: &quot;getAlumnosTurno&quot;, &quot;method&quot;: &quot;GET&quot;, &quot;pathParams&quot;: {&quot;turno_id&quot;: 9}}}}, {id=call_vAh7fKJC7bAJdSXDUlazv4DT, type=function, function={name=call_api, arguments={&quot;name&quot;: &quot;getAlumnosTurno&quot;, &quot;method&quot;: &quot;GET&quot;, &quot;pathParams&quot;: {&quot;turno_id&quot;: 10}}}}, {id=call_qXto2HqzCYejKUndUgmmowz9, type=function, function={name=call_api, arguments={&quot;name&quot;: &quot;getAlumnosTurno&quot;, &quot;method&quot;: &quot;GET&quot;, &quot;pathParams&quot;: {&quot;turno_id&quot;: 11}}}}, {id=call_qLRfeaaaqGBr1qmHCKDZqRmi, type=function, function={name=call_api, arguments={&quot;name&quot;: &quot;getAlumnosTurno&quot;, &quot;method&quot;: &quot;GET&quot;, &quot;pathParams&quot;: {&quot;turno_id&quot;: 12}}}}, {id=call_dROPF81Gka0PloAIfjxHFlpw, type=function, function={name=call_api, arguments={&quot;name&quot;: &quot;getAlumnosTurno&quot;, &quot;method&quot;: &quot;GET&quot;, &quot;pathParams&quot;: {&quot;turno_id&quot;: 13}}}}] | [tool] [{&quot;alumno_id&quot;:50,&quot;email&quot;:&quot;alumno50@example.com&quot;,&quot;inscripcion_id&quot;:1,&quot;nombre&quot;:&quot;Alumno 50&quot;},{&quot;alumno_id&quot;:46,&quot;email&quot;:&quot;alumno... tool_call_id: call_l3h4mxztNjnRD0RGFMdnUs1y | [tool] []
+ tool_call_id: call_PsfYwZnVqQiJVWnRvFKVmiwX | [tool] []
+ tool_call_id: call_JPiHLV2x7OGpzu9d89b94T5I | [tool] []
+ tool_call_id: call_B7u94m0WG80ELhYpLf6kFosq | [tool] []
+ tool_call_id: call_oeG6yrbzz4vKIccktMXLtPas | [tool] []
+ tool_call_id: call_9mF9fvjJWVcYTWPXoxzaQbHJ | [tool] []
+ tool_call_id: call_PzS2B0AZw2PKQPrjlrsC2S4O | [tool] []
+ tool_call_id: call_x0mlcVLdF0NWZD22wFUhk3eg | [tool] []
+ tool_call_id: call_6WlJakhzWetlkC5MQp8AkyKi | [tool] []
+ tool_call_id: call_vAh7fKJC7bAJdSXDUlazv4DT | [tool] []
+ tool_call_id: call_qXto2HqzCYejKUndUgmmowz9 | [tool] []
+ tool_call_id: call_qLRfeaaaqGBr1qmHCKDZqRmi | [tool] []
+ tool_call_id: call_dROPF81Gka0PloAIfjxHFlpw | </td><td class='timestamp'>2025-08-25 22:48:22.131</td></tr>
+<tr class='step'><td>39. OpenAI</td><td>Respuesta de OpenAI: {
+  &quot;id&quot;: &quot;chatcmpl-C8YP0ZO4FLDppTNZyisehLUEj0w14&quot;,
+  &quot;object&quot;: &quot;chat.completion&quot;,
+  &quot;created&quot;: 1756154902,
+  &quot;model&quot;: &quot;gpt-4o-2024-08-06&quot;,
+  &quot;choices&quot;: [
+    {
+      &quot;index&quot;: 0,
+      &quot;message&quot;: {
+        &quot;role&quot;: &quot;assistant&quot;,
+        &quot;content&quot;: &quot;Aquí tienes el número de alumnos inscritos en cada turno, ordenado de mayor a menor:\n\n| Turno ID | Día       | Hora Inicio | Hora Fin | Tipo   | Alumnos Inscritos |\n|----------|-----------|-------------|----------|--------|-------------------|\n| 1        | lunes     | 19:30       | 21:30    | adulto | 2                 |\n| 2        | martes    | 19:30       | 21:30    | adulto | 0                 |\n| 3        | miércoles | 11:30       | 13:30    | adulto | 0                 |\n| 4        | miércoles | 19:30       | 21:30    | adulto | 0                 |\n| 5        | jueves    | 19:30       | 21:30    | adulto | 0                 |\n| 6        | lunes     | 16:30       | 18:00    | niño   | 0                 |\n| 7        | lunes     | 18:00       | 19:30    | niño   | 0                 |\n| 8        | martes    | 17:30       | 19:00    | niño   | 0                 |\n| 9        | miércoles | 17:30       | 19:00    | niño   | 0                 |\n| 10       | jueves    | 17:30       | 19:00    | niño   | 0                 |\n| 11       | viernes   | 16:30       | 18:00    | niño   | 0                 |\n| 12       | viernes   | 18:00       | 20:00    | niño   | 0                 |\n| 13       | sábado    | 11:30       | 13:30    | niño   | 0                 |\n\nActualmente, el turno del lunes para adultos de 19:30 a 21:30 es el único con alumnos inscritos.&quot;,
+        &quot;refusal&quot;: null,
+        &quot;annotations&quot;: []
+      },
+      &quot;logprobs&quot;: null,
+      &quot;finish_reason&quot;: &quot;stop&quot;
+    }
+  ],
+  &quot;usage&quot;: {
+    &quot;prompt_tokens&quot;: 2491,
+    &quot;completion_tokens&quot;: 424,
+    &quot;total_tokens&quot;: 2915,
+    &quot;prompt_tokens_details&quot;: {
+      &quot;cached_tokens&quot;: 1408,
+      &quot;audio_tokens&quot;: 0
+    },
+    &quot;completion_tokens_details&quot;: {
+      &quot;reasoning_tokens&quot;: 0,
+      &quot;audio_tokens&quot;: 0,
+      &quot;accepted_prediction_tokens&quot;: 0,
+      &quot;rejected_prediction_tokens&quot;: 0
+    }
+  },
+  &quot;service_tier&quot;: &quot;default&quot;,
+  &quot;system_fingerprint&quot;: &quot;fp_46bff0e0c8&quot;
+}
+</td><td class='timestamp'>2025-08-25 22:48:26.078</td></tr>
+<tr class='step'><td>40. OpenAIClient</td><td>No hay tool_calls, respuesta directa de OpenAI</td><td class='timestamp'>2025-08-25 22:48:26.094</td></tr>
+<tr class='step'><td>41. ChatController</td><td>Respuesta generada por ChatService&lt;br&gt;Mensaje de salida: Aquí tienes el número de alumnos inscritos en cada turno, ordenado de mayor a menor:
+
+| Turno ID | Día       | Hora Inicio | Hora Fin | Tipo   | Alumnos Inscritos |
+|----------|-----------|-------------|----------|--------|-------------------|
+| 1        | lunes     | 19:30       | 21:30    | adulto | 2                 |
+| 2        | martes    | 19:30       | 21:30    | adulto | 0                 |
+| 3        | miércoles | 11:30       | 13:30    | adulto | 0                 |
+| 4        | miércoles | 19:30       | 21:30    | adulto | 0                 |
+| 5        | jueves    | 19:30       | 21:30    | adulto | 0                 |
+| 6        | lunes     | 16:30       | 18:00    | niño   | 0                 |
+| 7        | lunes     | 18:00       | 19:30    | niño   | 0                 |
+| 8        | martes    | 17:30       | 19:00    | niño   | 0                 |
+| 9        | miércoles | 17:30       | 19:00    | niño   | 0                 |
+| 10       | jueves    | 17:30       | 19:00    | niño   | 0                 |
+| 11       | viernes   | 16:30       | 18:00    | niño   | 0                 |
+| 12       | viernes   | 18:00       | 20:00    | niño   | 0                 |
+| 13       | sábado    | 11:30       | 13:30    | niño   | 0                 |
+
+
+Actualmente, el turno del lunes para adultos de 19:30 a 21:30 es el único con alumnos inscritos.</td><td class='timestamp'>2025-08-25 22:48:26.094</td></tr>
+</tbody></table>
+</body></html>
