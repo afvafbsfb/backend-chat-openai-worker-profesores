@@ -1,4 +1,3 @@
-
 package com.workers.profesores.chat.service;
 
 import java.util.regex.Pattern;
@@ -25,49 +24,51 @@ public class ChatService {
 
     public String runChat(List<ChatRequest.Message> incoming) {
         try {
-                // 0) System prompt base + whitelist dinámica
-                String promptBase = """
-                     Eres “secretaria”, asistente de una academia en España. Tu objetivo es ayudar a gestionar alumnos, matrículas, pagos y consultas sobre la API EXCLUSIVAMENTE usando la función `call_api` contra una lista blanca de endpoints.
+            // 0) System prompt base + whitelist dinámica
+            String promptBase = """
+                 Eres “secretaria”, asistente de una academia en España. Tu objetivo es ayudar a gestionar alumnos, matrículas, pagos y consultas sobre la API EXCLUSIVAMENTE usando la función `call_api` contra una lista blanca de endpoints.
 
-                     Reglas:
-                     1) Usa SOLO `call_api` con los endpoints permitidos. Si falta un parámetro (id, page, size, q...), PÍDEMELO antes de llamar.
-                     2) Construye `call_api` con:
-                         - name: nombre lógico del endpoint (según whitelist)
-                         - method: EXACTO según whitelist
-                         - pathParams/query/body: SOLO los campos necesarios.
-                     3) Si la API devuelve error, explícalo de forma clara y sugiere corrección.
-                     4) Para operaciones destructivas (crear/actualizar/borrar), PIDE CONFIRMACIÓN antes de ejecutar.
-                     5) Optimiza: 1 sola llamada si es posible. Pagina resultados grandes (page/size).
-                     6) Responde SIEMPRE en castellano, con brevedad y claridad; usa viñetas o tablas si ayudan.
+                 Reglas:
+                 1) Usa SOLO `call_api` con los endpoints permitidos. Si falta un parámetro (id, page, size, q...), PÍDEMELO antes de llamar.
+                 2) Construye `call_api` con:
+                     - name: nombre lógico del endpoint (según whitelist)
+                     - method: EXACTO según whitelist
+                     - pathParams/query/body: SOLO los campos necesarios.
+                 3) Si la API devuelve error, explícalo de forma clara y sugiere corrección.
+                 4) Para operaciones destructivas (crear/actualizar/borrar), PIDE CONFIRMACIÓN antes de ejecutar.
+                 5) Optimiza: 1 sola llamada si es posible. Pagina resultados grandes (page/size).
+                 6) Responde SIEMPRE en castellano, con brevedad y claridad; usa viñetas o tablas si ayudan.
 
-                     Cuando devuelvas un listado de datos (alumnos, inscripciones, empresas, etc.), preséntalo SIEMPRE en formato tabla, usando líneas y columnas bien alineadas, de forma clara y fácil de leer para cualquier persona en España.
-                     - Cada registro debe ocupar UNA SOLA FILA de la tabla (no todos en la misma línea).
-                     - Los títulos de columna deben estar bien formateados y alineados.
-                     - No añadas saltos de línea dentro de una misma celda.
-                     - El formato debe ser compatible para copiar y pegar en Excel o Google Sheets.
+                 Cuando devuelvas un listado de datos (alumnos, inscripciones, empresas, etc.), preséntalo SIEMPRE en formato tabla, usando líneas y columnas bien alineadas, de forma clara y fácil de leer para cualquier persona en España.
+                 - Cada registro debe ocupar UNA SOLA FILA de la tabla (no todos en la misma línea).
+                 - Los títulos de columna deben estar bien formateados y alineados.
+                 - No añadas saltos de línea dentro de una misma celda.
+                 - El formato debe ser compatible para copiar y pegar en Excel o Google Sheets.
 
-                     Ejemplo de tabla correcta (cada registro en una línea, nunca todos juntos):
-                     | ID  | Nombre     | Email                |
-                     |-----|------------|----------------------|
-                     | 1   | Alumno 1   | alumno1@ejemplo.com  |
-                     | 2   | Alumno 2   | alumno2@ejemplo.com  |
-                     | 3   | Alumno 3   | alumno3@ejemplo.com  |
-                     | 4   | Alumno 4   | alumno4@ejemplo.com  |
-                     | 5   | Alumno 5   | alumno5@ejemplo.com  |
+                 Ejemplo de tabla correcta (cada registro en una línea, nunca todos juntos):
+                 | ID  | Nombre     | Email                |
+                 |-----|------------|----------------------|
+                 | 1   | Alumno 1   | alumno1@ejemplo.com  |
+                 | 2   | Alumno 2   | alumno2@ejemplo.com  |
+                 | 3   | Alumno 3   | alumno3@ejemplo.com  |
+                 | 4   | Alumno 4   | alumno4@ejemplo.com  |
+                 | 5   | Alumno 5   | alumno5@ejemplo.com  |
 
-                     ⚠️ IMPORTANTE: NUNCA juntes varios registros en una sola línea de la tabla. Cada registro debe ir en su propia línea, igual que en el ejemplo anterior. Si hay muchos registros, sigue el mismo formato, uno por línea.
+                 ⚠️ IMPORTANTE: NUNCA juntes varios registros en una sola línea de la tabla. Cada registro debe ir en su propia línea, igual que en el ejemplo anterior. Si hay muchos registros, sigue el mismo formato, uno por línea.
 
-                     Si el usuario pide el listado en formato Excel o CSV, genera el listado en formato CSV (texto plano, separado por comas) y explica que puede copiar ese texto y pegarlo en Excel o guardarlo como archivo .csv para abrirlo en Excel o Google Sheets.
+                 Si el usuario pide el listado en formato Excel o CSV, genera el listado en formato CSV (texto plano, separado por comas) y explica que puede copiar ese texto y pegarlo en Excel o guardarlo como archivo .csv para abrirlo en Excel o Google Sheets.
 
-                     No digas que no puedes generar archivos Excel: ofrece siempre el CSV como alternativa y explica cómo usarlo.
+                 No digas que no puedes generar archivos Excel: ofrece siempre el CSV como alternativa y explica cómo usarlo.
 
-                     Cuando muestres la tabla o los datos, utiliza frases naturales y amables, como:
-                     - "Aquí tienes la lista de alumnos:"
-                     - "Este es el listado solicitado:"
-                     - "Te muestro la información en formato tabla:"
-                     - "Listado de resultados:"
-                     Evita mencionar palabras técnicas como 'Markdown'.
-                     """;
+                 Cuando muestres la tabla o los datos, utiliza frases naturales y amables, como:
+                 - "Aquí tienes la lista de alumnos:"
+                 - "Este es el listado solicitado:"
+                 - "Te muestro la información en formato tabla:"
+                 - "Listado de resultados:"
+                 Evita mencionar palabras técnicas como 'Markdown'.
+
+                 - Cuando muestres el detalle de un solo registro (alumno, empresa, inscripción, etc.), presenta SIEMPRE todos los campos relevantes (ID, nombre, email, etc.) en una tabla Markdown, aunque solo haya un registro. No omitas nunca el email si está disponible en los datos.
+            """;
             String whitelistTable = openai.renderWhitelistTable();
             String systemPrompt = promptBase + whitelistTable;
 
@@ -77,13 +78,11 @@ public class ChatService {
             );
 
             // 1) Construimos los mensajes a enviar:
-            //    - Prependemos SIEMPRE nuestro system dinámico
-            //    - (Opcional) ignoramos cualquier system previo en 'incoming' para evitar conflictos
             List<Map<String, Object>> seed = new ArrayList<>();
             seed.add(systemMsg);
             for (ChatRequest.Message m : incoming) {
                 String role = m.getRole();
-                if ("system".equals(role)) continue; // evitar system duplicado/contradictorio
+                if ("system".equals(role)) continue;
                 seed.add(Map.of(
                     "role", m.getRole(),
                     "content", m.getContent()
@@ -96,13 +95,14 @@ public class ChatService {
             JsonNode assistantMsg = choice.path("message");
 
             if (!assistantMsg.has("tool_calls")) {
-                // Sin tool calls → respuesta directa
                 String content = assistantMsg.path("content").asText("");
-                return fixMarkdownTable(content);
+                return postProcessResponse(fixMarkdownTable(content));
             }
 
             // 3) Resolver tool_calls
             List<Map<String, Object>> toolOutputs = new ArrayList<>();
+            boolean singleObjectResponse = false;
+            String fichaContent = null;
             for (JsonNode tc : assistantMsg.path("tool_calls")) {
                 String callId   = tc.path("id").asText();
                 String funcName = tc.path("function").path("name").asText();
@@ -141,11 +141,27 @@ public class ChatService {
                     apiResult = "{\"error\":\"Fallo al llamar API: " + ex.getMessage() + "\"}";
                 }
 
+                // Detecta si la respuesta de la API es un solo objeto (no array, no error)
+                try {
+                    JsonNode apiNode = om.readTree(apiResult);
+                    if (apiNode != null && apiNode.isObject() && !apiNode.has("error")) {
+                        singleObjectResponse = true;
+                        fichaContent = renderDetailAsFicha(apiNode);
+                    }
+                } catch (Exception e) {
+                    // ignore
+                }
+
                 toolOutputs.add(Map.of(
                     "role", "tool",
                     "tool_call_id", callId,
                     "content", apiResult
                 ));
+            }
+
+            // Si la respuesta es un solo objeto, devolvemos la ficha directamente (sin pasar por el modelo)
+            if (singleObjectResponse && fichaContent != null) {
+                return fichaContent;
             }
 
             // 4) Segundo turno: reinyectamos el assistant con sus tool_calls + los outputs
@@ -163,7 +179,7 @@ public class ChatService {
 
             JsonNode second = om.readTree(openai.callChatWithTools(followup));
             JsonNode finalMsg = second.path("choices").get(0).path("message");
-            return fixMarkdownTable(finalMsg.path("content").asText(""));
+            return postProcessResponse(fixMarkdownTable(finalMsg.path("content").asText("")));
 
         } catch (Exception e) {
             return "Error en runChat: " + e.getMessage();
@@ -224,13 +240,56 @@ public class ChatService {
             }
             // Reconstruye la tabla
             StringBuilder cleanRows = new StringBuilder();
+            Pattern emailPattern = Pattern.compile("([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})");
             for (String row : allRows) {
-                cleanRows.append(row).append("\n");
+                // Convierte emails en enlaces Markdown mailto
+                String rowWithLinks = emailPattern.matcher(row)
+                    .replaceAll("[$1](mailto:$1)");
+                cleanRows.append(rowWithLinks).append("\n");
             }
             String fixedTable = header + "\n" + separator + "\n" + cleanRows.toString();
             matcher.appendReplacement(sb, Matcher.quoteReplacement(fixedTable));
         }
         matcher.appendTail(sb);
         return sb.toString();
+    }
+
+    // Utilidad: formatea un objeto JSON como ficha (campos uno debajo de otro)
+    private String renderDetailAsFicha(JsonNode node) {
+        if (node == null || !node.isObject()) return "";
+        StringBuilder sb = new StringBuilder();
+        Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+        while (fields.hasNext()) {
+            Map.Entry<String, JsonNode> entry = fields.next();
+            String key = entry.getKey();
+            String value = entry.getValue().asText("");
+            // Si es email, lo convierte en enlace mailto
+            if (key.toLowerCase().contains("mail") && value.contains("@")) {
+                value = "[" + value + "](mailto:" + value + ")";
+            }
+            sb.append("**").append(capitalize(key)).append(":** ").append(value).append("\n");
+        }
+        return sb.toString();
+    }
+
+    private String capitalize(String s) {
+        if (s == null || s.isEmpty()) return s;
+        return s.substring(0, 1).toUpperCase() + s.substring(1);
+    }
+
+    // Detecta si la respuesta es un solo objeto y la muestra como ficha
+    private String postProcessResponse(String content) {
+        try {
+            // Intenta parsear como JSON
+            JsonNode node = om.readTree(content);
+            if (node != null && node.isObject()) {
+                // Es un solo objeto: mostrar como ficha
+                return renderDetailAsFicha(node);
+            }
+        } catch (Exception e) {
+            // No es JSON, devolver tal cual
+        }
+        // Si no es objeto, devolver el contenido original (tabla, texto, etc.)
+        return content;
     }
 }

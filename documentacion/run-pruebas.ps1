@@ -40,4 +40,12 @@ $response4 = Invoke-WebRequest -Uri "http://localhost:8080/chat" `
 $response4.Content
 Write-Host "---"
 
+Write-Host "Prueba 5: Detalle del alumno 45"
+$response5 = Invoke-WebRequest -Uri "http://localhost:8080/chat" `
+  -Method POST `
+  -Headers @{ "Content-Type" = "application/json; charset=utf-8" } `
+  -Body ([System.Text.Encoding]::UTF8.GetBytes('{"messages":[{"role":"user","content":"ahora quiero el detalle del alumno 43"}]}'))
+$response5.Content
+Write-Host "---"
+
 # Puedes añadir más pruebas copiando el bloque anterior y cambiando el contenido del mensaje.
