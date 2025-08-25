@@ -1,0 +1,144 @@
+# Endpoints permitidos para call_api
+endpoints:
+  - name: healthCheck
+    method: GET
+    path: /health
+    description: Health check
+    pathParams: []
+    query: []
+    body: []
+  - name: getTurnosLibres
+    method: GET
+    path: /vlodeiro/secretaria/turnos_libres
+    description: Lista todos los turnos con plazas libres
+    pathParams: []
+    query: []
+    body: []
+  - name: inscribirAlumno
+    method: POST
+    path: /vlodeiro/secretaria/inscribir
+    description: Inscribe un alumno en un turno
+    pathParams: []
+    query: []
+    body:
+      - alumno_id
+      - turno_id
+      - tarifa_id
+  - name: registrarPago
+    method: POST
+    path: /vlodeiro/secretaria/registrar_pago
+    description: Registra un pago para un alumno
+    pathParams: []
+    query: []
+    body:
+      - alumno_id
+      - importe
+      - concepto
+  - name: getTurnosActivos
+    method: GET
+    path: /vlodeiro/secretaria/turnos
+    description: Lista todos los turnos activos de la empresa
+    pathParams: []
+    query: []
+    body: []
+  - name: getTarifas
+    method: GET
+    path: /vlodeiro/secretaria/tarifas
+    description: Lista todas las tarifas
+    pathParams: []
+    query: []
+    body: []
+  - name: crearTarifa
+    method: POST
+    path: /vlodeiro/secretaria/tarifas
+    description: Crea una tarifa
+    pathParams: []
+    query: []
+    body:
+      - empresa_id
+      - descripcion
+      - duracion_min
+      - precio_base
+      - descuento
+      - activo
+  - name: actualizarTarifa
+    method: PUT
+    path: /vlodeiro/secretaria/tarifas/{tarifa_id}
+    description: Actualiza una tarifa
+    pathParams:
+      - tarifa_id
+    query: []
+    body: []
+  - name: eliminarTarifa
+    method: DELETE
+    path: /vlodeiro/secretaria/tarifas/{tarifa_id}
+    description: Elimina una tarifa
+    pathParams:
+      - tarifa_id
+    query: []
+    body: []
+  - name: getAlumnosTurno
+    method: GET
+    path: /vlodeiro/secretaria/turnos/{turno_id}/alumnos
+    description: Lista alumnos inscritos (activos) en un turno
+    pathParams:
+      - turno_id
+    query: []
+    body: []
+  - name: bajaInscripcion
+    method: POST
+    path: /vlodeiro/secretaria/inscripciones/{inscripcion_id}/baja
+    description: Da de baja (fecha_fin = hoy) una inscripción
+    pathParams:
+      - inscripcion_id
+    query: []
+    body: []
+  - name: getAlumnos
+    method: GET
+    path: /vlodeiro/secretaria/alumnos
+    description: Lista todos los alumnos
+    pathParams: []
+    query: []
+    body: []
+  - name: getAlumnoById
+    method: GET
+    path: /vlodeiro/secretaria/alumnos/{alumno_id}
+    description: Obtiene los datos de un alumno por su ID
+    pathParams:
+      - alumno_id
+    query: []
+    body: []
+  - name: buscarAlumnosPorNombre
+    method: GET
+    path: /vlodeiro/secretaria/alumnos/buscar
+    description: Busca alumnos por nombre (coincidencia parcial)
+    pathParams: []
+    query:
+      - nombre
+    body: []
+  - name: crearEmpresa
+    method: POST
+    path: /vlodeiro/empresa/empresa
+    description: Crea una nueva empresa
+    pathParams: []
+    query: []
+    body:
+      - nombre
+      - descripcion
+      - usuarios
+      - config
+  - name: getEmpresas
+    method: GET
+    path: /vlodeiro/empresa/empresa
+    description: Lista todas las empresas
+    pathParams: []
+    query: []
+    body: []
+  - name: getEmpresaById
+    method: GET
+    path: /vlodeiro/empresa/empresa/{empresa_id}
+    description: Obtiene los datos de una empresa por su ID
+    pathParams:
+      - empresa_id
+    query: []
+    body: []
