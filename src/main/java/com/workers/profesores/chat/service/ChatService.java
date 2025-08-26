@@ -36,6 +36,10 @@ public class ChatService {
             String promptBase = """
                  
                  Cuando el usuario pida exportar una tabla completa a Excel o CSV, responde SOLO con un enlace de descarga al archivo, nunca muestres el contenido del archivo (ni CSV ni Excel) en pantalla ni como texto plano.
+                 
+                 ⚠️ Cuando el usuario pregunte únicamente por el número total de registros (por ejemplo: "¿Cuántos alumnos hay?", "¿Cuántos turnos existen?", "Dame el total de alumnos"), responde SOLO con el número total, sin mostrar la lista de registros ni una tabla. Si el usuario pide explícitamente la lista o el detalle junto al total (por ejemplo: "Dame la lista de alumnos y el total"), entonces sí muestra la tabla y el total juntos.
+                 
+                 Si la pregunta es ambigua, prioriza la brevedad: si solo se pide el total, responde solo el total; si se pide la lista, muestra la tabla y el total.
                  El enlace debe ser:
                  [Descargar CSV]({{API_BASE_URL}}/api/export?tabla=nombre_tabla&type=csv&parámetros_reales) o [Descargar Excel]({{API_BASE_URL}}/api/export?tabla=nombre_tabla&type=xlsx&parámetros_reales)
                  El enlace debe incluir SIEMPRE los parámetros REALES de filtro, paginación y orden (por ejemplo: &filter=valor, &page=0, &size=50, &sort=nombre, &order=asc), nunca uses puntos suspensivos ni literales.
@@ -81,6 +85,10 @@ public class ChatService {
                 Si NO hay más registros, indícalo claramente con un mensaje como: “No hay más resultados.”
                 Si existe soporte de paginación en la API (?page, ?limit), úsalo para devolver bloques de 50.
                 Nunca mostrar miles de registros en un único bloque.
+
+                ⚠️ IMPORTANTE sobre paginación:
+                El endpoint `/vlodeiro/secretaria/alumnos` soporta paginación mediante los parámetros `page` (número de página, empezando en 0) y `size` (número de alumnos por página, por defecto 10, máximo 50). 
+                Si el usuario no especifica estos parámetros, usa los valores por defecto. El resto de endpoints de momento no soportan paginación y devuelven todos los resultados disponibles.
 
                 Si el usuario pide el listado en formato Excel o CSV, sigue SIEMPRE la instrucción de responder solo con el enlace de descarga al archivo exportado, nunca muestres el contenido del archivo en el chat.
 

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Flujo de la prueba: prueba-20250826-230103-395</title>
+<style>body{font-family:sans-serif;} table{border-collapse:collapse;width:100%;margin-top:1em;} th,td{border:1px solid #ccc;padding:8px;text-align:left;} th{background:#f0f0f0;} tr:nth-child(even){background:#fafafa;} .step{margin-bottom:1em;} .timestamp{color:#888;font-size:0.9em;}</style>
+</head><body>
+<h2>Flujo de la prueba: prueba-20250826-230103-395</h2>
+<table>
+<thead><tr><th>Paso</th><th>Descripción</th><th>Timestamp</th></tr></thead>
+<tbody>
+<tr class='step'><td>1. ChatController</td><td>Recibida petición POST /chat&lt;br&gt;Mensaje recibido: [user] ¿Cuántos alumnos tengo inscritos?</td><td class='timestamp'>2025-08-26 23:01:03.395</td></tr>
+<tr class='step'><td>2. ChatService</td><td>Inicio de runChat</td><td class='timestamp'>2025-08-26 23:01:03.395</td></tr>
+<tr class='step'><td>3. ChatService</td><td>System prompt construido y whitelist añadida</td><td class='timestamp'>2025-08-26 23:01:03.395</td></tr>
+<tr class='step'><td>4. ChatService</td><td>Mensajes de usuario preparados para OpenAI</td><td class='timestamp'>2025-08-26 23:01:03.395</td></tr>
+<tr class='step'><td>5. OpenAIClient</td><td>Primera llamada a OpenAI (callChatWithTools)</td><td class='timestamp'>2025-08-26 23:01:03.400</td></tr>
+<tr class='step'><td>6. OpenAI</td><td>Llamada a OpenAI (iteración 0) - mensajes: [system] 
+     Cuando el usuario pida exportar una tabla completa a Excel o CSV, responde SOLO con un enlace de descarga al archi... | [user] ¿Cuántos alumnos tengo inscritos? | </td><td class='timestamp'>2025-08-26 23:01:03.400</td></tr>
+<tr class='step'><td>7. OpenAI</td><td>Respuesta de OpenAI: {
+  &quot;id&quot;: &quot;chatcmpl-C8v4qfO3cxzdIjtz5C2LiBfqfa36f&quot;,
+  &quot;object&quot;: &quot;chat.completion&quot;,
+  &quot;created&quot;: 1756242064,
+  &quot;model&quot;: &quot;gpt-4o-2024-08-06&quot;,
+  &quot;choices&quot;: [
+    {
+      &quot;index&quot;: 0,
+      &quot;message&quot;: {
+        &quot;role&quot;: &quot;assistant&quot;,
+        &quot;content&quot;: null,
+        &quot;tool_calls&quot;: [
+          {
+            &quot;id&quot;: &quot;call_DWSbgk3rclOf7NwpkltC97EH&quot;,
+            &quot;type&quot;: &quot;function&quot;,
+            &quot;function&quot;: {
+              &quot;name&quot;: &quot;call_api&quot;,
+              &quot;arguments&quot;: &quot;{\&quot;name\&quot;:\&quot;getAlumnos\&quot;,\&quot;method\&quot;:\&quot;GET\&quot;}&quot;
+            }
+          }
+        ],
+        &quot;refusal&quot;: null,
+        &quot;annotations&quot;: []
+      },
+      &quot;logprobs&quot;: null,
+      &quot;finish_reason&quot;: &quot;tool_calls&quot;
+    }
+  ],
+  &quot;usage&quot;: {
+    &quot;prompt_tokens&quot;: 1886,
+    &quot;completion_tokens&quot;: 20,
+    &quot;total_tokens&quot;: 1906,
+    &quot;prompt_tokens_details&quot;: {
+      &quot;cached_tokens&quot;: 1792,
+      &quot;audio_tokens&quot;: 0
+    },
+    &quot;completion_tokens_details&quot;: {
+      &quot;reasoning_tokens&quot;: 0,
+      &quot;audio_tokens&quot;: 0,
+      &quot;accepted_prediction_tokens&quot;: 0,
+      &quot;rejected_prediction_tokens&quot;: 0
+    }
+  },
+  &quot;service_tier&quot;: &quot;default&quot;,
+  &quot;system_fingerprint&quot;: &quot;fp_46bff0e0c8&quot;
+}
+</td><td class='timestamp'>2025-08-26 23:01:05.014</td></tr>
+<tr class='step'><td>8. ApiProxyService</td><td>Llamada a API: getAlumnos (GET)</td><td class='timestamp'>2025-08-26 23:01:05.016</td></tr>
+<tr class='step'><td>9. ApiProxyService</td><td>Respuesta de API: 200 OK</td><td class='timestamp'>2025-08-26 23:01:05.252</td></tr>
+<tr class='step'><td>10. OpenAI</td><td>Llamada a OpenAI (iteración 1) - mensajes: [system] 
+     Cuando el usuario pida exportar una tabla completa a Excel o CSV, responde SOLO con un enlace de descarga al archi... | [user] ¿Cuántos alumnos tengo inscritos? | [assistant] null tool_calls: [{id=call_DWSbgk3rclOf7NwpkltC97EH, type=function, function={name=call_api, arguments={&quot;name&quot;:&quot;getAlumnos&quot;,&quot;method&quot;:&quot;GET&quot;}}}] | [tool] {&quot;hasMore&quot;:true,&quot;list&quot;:[{&quot;email&quot;:&quot;alumno1@example.com&quot;,&quot;id&quot;:1,&quot;nombre&quot;:&quot;Alumno 1&quot;},{&quot;email&quot;:&quot;alumno2@example.com&quot;,&quot;id&quot;:2... tool_call_id: call_DWSbgk3rclOf7NwpkltC97EH | </td><td class='timestamp'>2025-08-26 23:01:05.253</td></tr>
+<tr class='step'><td>11. OpenAI</td><td>Respuesta de OpenAI: {
+  &quot;id&quot;: &quot;chatcmpl-C8v4snCHs9hSllUh8tDC1BpwbfO4m&quot;,
+  &quot;object&quot;: &quot;chat.completion&quot;,
+  &quot;created&quot;: 1756242066,
+  &quot;model&quot;: &quot;gpt-4o-2024-08-06&quot;,
+  &quot;choices&quot;: [
+    {
+      &quot;index&quot;: 0,
+      &quot;message&quot;: {
+        &quot;role&quot;: &quot;assistant&quot;,
+        &quot;content&quot;: &quot;Actualmente tienes un total de 51 alumnos inscritos. Aquí tienes la lista de los primeros 50 alumnos:\n\n| ID  | Nombre     | Email                |\n|-----|------------|----------------------|\n| 1   | Alumno 1   | alumno1@example.com  |\n| 2   | Alumno 2   | alumno2@example.com  |\n| 3   | Alumno 3   | alumno3@example.com  |\n| 4   | Alumno 4   | alumno4@example.com  |\n| 5   | Alumno 5   | alumno5@example.com  |\n| 6   | Alumno 6   | alumno6@example.com  |\n| 7   | Alumno 7   | alumno7@example.com  |\n| 8   | Alumno 8   | alumno8@example.com  |\n| 9   | Alumno 9   | alumno9@example.com  |\n| 10  | Alumno 10  | alumno10@example.com |\n| 11  | Alumno 11  | alumno11@example.com |\n| 12  | Alumno 12  | alumno12@example.com |\n| 13  | Alumno 13  | alumno13@example.com |\n| 14  | Alumno 14  | alumno14@example.com |\n| 15  | Alumno 15  | alumno15@example.com |\n| 16  | Alumno 16  | alumno16@example.com |\n| 17  | Alumno 17  | alumno17@example.com |\n| 18  | Alumno 18  | alumno18@example.com |\n| 19  | Alumno 19  | alumno19@example.com |\n| 20  | Alumno 20  | alumno20@example.com |\n| 21  | Alumno 21  | alumno21@example.com |\n| 22  | Alumno 22  | alumno22@example.com |\n| 23  | Alumno 23  | alumno23@example.com |\n| 24  | Alumno 24  | alumno24@example.com |\n| 25  | Alumno 25  | alumno25@example.com |\n| 26  | Alumno 26  | alumno26@example.com |\n| 27  | Alumno 27  | alumno27@example.com |\n| 28  | Alumno 28  | alumno28@example.com |\n| 29  | Alumno 29  | alumno29@example.com |\n| 30  | Alumno 30  | alumno30@example.com |\n| 31  | Alumno 31  | alumno31@example.com |\n| 32  | Alumno 32  | alumno32@example.com |\n| 33  | Alumno 33  | alumno33@example.com |\n| 34  | Alumno 34  | alumno34@example.com |\n| 35  | Alumno 35  | alumno35@example.com |\n| 36  | Alumno 36  | alumno36@example.com |\n| 37  | Alumno 37  | alumno37@example.com |\n| 38  | Alumno 38  | alumno38@example.com |\n| 39  | Alumno 39  | alumno39@example.com |\n| 40  | Alumno 40  | alumno40@example.com |\n| 41  | Alumno 41  | alumno41@example.com |\n| 42  | Alumno 42  | alumno42@example.com |\n| 43  | Alumno 43  | alumno43@example.com |\n| 44  | Alumno 44  | alumno44@example.com |\n| 45  | Alumno 45  | alumno45@example.com |\n| 46  | Alumno 46  | alumno46@example.com |\n| 47  | Alumno 47  | alumno47@example.com |\n| 48  | Alumno 48  | alumno48@example.com |\n| 49  | Alumno 49  | alumno49@example.com |\n| 50  | Alumno 50  | alumno50@example.com |\n\n👉 Se muestran solo los 50 primeros resultados. Pídeme ‘siguiente’ para ver más.&quot;,
+        &quot;refusal&quot;: null,
+        &quot;annotations&quot;: []
+      },
+      &quot;logprobs&quot;: null,
+      &quot;finish_reason&quot;: &quot;stop&quot;
+    }
+  ],
+  &quot;usage&quot;: {
+    &quot;prompt_tokens&quot;: 2836,
+    &quot;completion_tokens&quot;: 870,
+    &quot;total_tokens&quot;: 3706,
+    &quot;prompt_tokens_details&quot;: {
+      &quot;cached_tokens&quot;: 1792,
+      &quot;audio_tokens&quot;: 0
+    },
+    &quot;completion_tokens_details&quot;: {
+      &quot;reasoning_tokens&quot;: 0,
+      &quot;audio_tokens&quot;: 0,
+      &quot;accepted_prediction_tokens&quot;: 0,
+      &quot;rejected_prediction_tokens&quot;: 0
+    }
+  },
+  &quot;service_tier&quot;: &quot;default&quot;,
+  &quot;system_fingerprint&quot;: &quot;fp_46bff0e0c8&quot;
+}
+</td><td class='timestamp'>2025-08-26 23:01:15.062</td></tr>
+<tr class='step'><td>12. OpenAIClient</td><td>No hay tool_calls, respuesta directa de OpenAI</td><td class='timestamp'>2025-08-26 23:01:15.064</td></tr>
+<tr class='step'><td>13. ChatController</td><td>Respuesta generada por ChatService&lt;br&gt;Mensaje de salida: Actualmente tienes un total de 51 alumnos inscritos. Aquí tienes la lista de los primeros 50 alumnos:
+
+| ID  | Nombre     | Email                |
+|-----|------------|----------------------|
+| 1   | Alumno 1   | alumno1@example.com  |
+| 2   | Alumno 2   | alumno2@example.com  |
+| 3   | Alumno 3   | alumno3@example.com  |
+| 4   | Alumno 4   | alumno4@example.com  |
+| 5   | Alumno 5   | alumno5@example.com  |
+| 6   | Alumno 6   | alumno6@example.com  |
+| 7   | Alumno 7   | alumno7@example.com  |
+| 8   | Alumno 8   | alumno8@example.com  |
+| 9   | Alumno 9   | alumno9@example.com  |
+| 10  | Alumno 10  | alumno10@example.com |
+| 11  | Alumno 11  | alumno11@example.com |
+| 12  | Alumno 12  | alumno12@example.com |
+| 13  | Alumno 13  | alumno13@example.com |
+| 14  | Alumno 14  | alumno14@example.com |
+| 15  | Alumno 15  | alumno15@example.com |
+| 16  | Alumno 16  | alumno16@example.com |
+| 17  | Alumno 17  | alumno17@example.com |
+| 18  | Alumno 18  | alumno18@example.com |
+| 19  | Alumno 19  | alumno19@example.com |
+| 20  | Alumno 20  | alumno20@example.com |
+| 21  | Alumno 21  | alumno21@example.com |
+| 22  | Alumno 22  | alumno22@example.com |
+| 23  | Alumno 23  | alumno23@example.com |
+| 24  | Alumno 24  | alumno24@example.com |
+| 25  | Alumno 25  | alumno25@example.com |
+| 26  | Alumno 26  | alumno26@example.com |
+| 27  | Alumno 27  | alumno27@example.com |
+| 28  | Alumno 28  | alumno28@example.com |
+| 29  | Alumno 29  | alumno29@example.com |
+| 30  | Alumno 30  | alumno30@example.com |
+| 31  | Alumno 31  | alumno31@example.com |
+| 32  | Alumno 32  | alumno32@example.com |
+| 33  | Alumno 33  | alumno33@example.com |
+| 34  | Alumno 34  | alumno34@example.com |
+| 35  | Alumno 35  | alumno35@example.com |
+| 36  | Alumno 36  | alumno36@example.com |
+| 37  | Alumno 37  | alumno37@example.com |
+| 38  | Alumno 38  | alumno38@example.com |
+| 39  | Alumno 39  | alumno39@example.com |
+| 40  | Alumno 40  | alumno40@example.com |
+| 41  | Alumno 41  | alumno41@example.com |
+| 42  | Alumno 42  | alumno42@example.com |
+| 43  | Alumno 43  | alumno43@example.com |
+| 44  | Alumno 44  | alumno44@example.com |
+| 45  | Alumno 45  | alumno45@example.com |
+| 46  | Alumno 46  | alumno46@example.com |
+| 47  | Alumno 47  | alumno47@example.com |
+| 48  | Alumno 48  | alumno48@example.com |
+| 49  | Alumno 49  | alumno49@example.com |
+| 50  | Alumno 50  | alumno50@example.com |
+
+
+👉 Se muestran solo los 50 primeros resultados. Pídeme ‘siguiente’ para ver más.</td><td class='timestamp'>2025-08-26 23:01:15.073</td></tr>
+</tbody></table>
+</body></html>

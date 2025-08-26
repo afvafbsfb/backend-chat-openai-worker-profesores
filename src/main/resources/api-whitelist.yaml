@@ -96,9 +96,11 @@ endpoints:
   - name: getAlumnos
     method: GET
     path: /vlodeiro/secretaria/alumnos
-    description: Lista todos los alumnos
+    description: Lista paginada de alumnos
     pathParams: []
-    query: []
+    query:
+      - page
+      - size
     body: []
   - name: getAlumnoById
     method: GET

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Flujo de la prueba: prueba-20250826-230805-703</title>
+<style>body{font-family:sans-serif;} table{border-collapse:collapse;width:100%;margin-top:1em;} th,td{border:1px solid #ccc;padding:8px;text-align:left;} th{background:#f0f0f0;} tr:nth-child(even){background:#fafafa;} .step{margin-bottom:1em;} .timestamp{color:#888;font-size:0.9em;}</style>
+</head><body>
+<h2>Flujo de la prueba: prueba-20250826-230805-703</h2>
+<table>
+<thead><tr><th>Paso</th><th>Descripción</th><th>Timestamp</th></tr></thead>
+<tbody>
+<tr class='step'><td>1. ChatController</td><td>Recibida petición POST /chat&lt;br&gt;Mensaje recibido: [user] ¿Cuántos alumnos tengo inscritos?</td><td class='timestamp'>2025-08-26 23:08:05.703</td></tr>
+<tr class='step'><td>2. ChatService</td><td>Inicio de runChat</td><td class='timestamp'>2025-08-26 23:08:05.713</td></tr>
+<tr class='step'><td>3. ChatService</td><td>System prompt construido y whitelist añadida</td><td class='timestamp'>2025-08-26 23:08:05.717</td></tr>
+<tr class='step'><td>4. ChatService</td><td>Mensajes de usuario preparados para OpenAI</td><td class='timestamp'>2025-08-26 23:08:05.717</td></tr>
+<tr class='step'><td>5. OpenAIClient</td><td>Primera llamada a OpenAI (callChatWithTools)</td><td class='timestamp'>2025-08-26 23:08:05.717</td></tr>
+<tr class='step'><td>6. OpenAI</td><td>Llamada a OpenAI (iteración 0) - mensajes: [system] 
+     Cuando el usuario pida exportar una tabla completa a Excel o CSV, responde SOLO con un enlace de descarga al archi... | [user] ¿Cuántos alumnos tengo inscritos? | </td><td class='timestamp'>2025-08-26 23:08:05.717</td></tr>
+<tr class='step'><td>7. OpenAI</td><td>Respuesta de OpenAI: {
+  &quot;id&quot;: &quot;chatcmpl-C8vBegCnxeX5gzKlvjp74HMRNOOxQ&quot;,
+  &quot;object&quot;: &quot;chat.completion&quot;,
+  &quot;created&quot;: 1756242486,
+  &quot;model&quot;: &quot;gpt-4o-2024-08-06&quot;,
+  &quot;choices&quot;: [
+    {
+      &quot;index&quot;: 0,
+      &quot;message&quot;: {
+        &quot;role&quot;: &quot;assistant&quot;,
+        &quot;content&quot;: null,
+        &quot;tool_calls&quot;: [
+          {
+            &quot;id&quot;: &quot;call_VUum1QvuZloiOIP9Fj4E2ziX&quot;,
+            &quot;type&quot;: &quot;function&quot;,
+            &quot;function&quot;: {
+              &quot;name&quot;: &quot;call_api&quot;,
+              &quot;arguments&quot;: &quot;{\&quot;method\&quot;:\&quot;GET\&quot;,\&quot;name\&quot;:\&quot;getAlumnos\&quot;}&quot;
+            }
+          }
+        ],
+        &quot;refusal&quot;: null,
+        &quot;annotations&quot;: []
+      },
+      &quot;logprobs&quot;: null,
+      &quot;finish_reason&quot;: &quot;tool_calls&quot;
+    }
+  ],
+  &quot;usage&quot;: {
+    &quot;prompt_tokens&quot;: 2027,
+    &quot;completion_tokens&quot;: 20,
+    &quot;total_tokens&quot;: 2047,
+    &quot;prompt_tokens_details&quot;: {
+      &quot;cached_tokens&quot;: 0,
+      &quot;audio_tokens&quot;: 0
+    },
+    &quot;completion_tokens_details&quot;: {
+      &quot;reasoning_tokens&quot;: 0,
+      &quot;audio_tokens&quot;: 0,
+      &quot;accepted_prediction_tokens&quot;: 0,
+      &quot;rejected_prediction_tokens&quot;: 0
+    }
+  },
+  &quot;service_tier&quot;: &quot;default&quot;,
+  &quot;system_fingerprint&quot;: &quot;fp_46bff0e0c8&quot;
+}
+</td><td class='timestamp'>2025-08-26 23:08:07.732</td></tr>
+<tr class='step'><td>8. ApiProxyService</td><td>Llamada a API: getAlumnos (GET)</td><td class='timestamp'>2025-08-26 23:08:07.741</td></tr>
+<tr class='step'><td>9. ApiProxyService</td><td>Respuesta de API: 200 OK</td><td class='timestamp'>2025-08-26 23:08:07.957</td></tr>
+<tr class='step'><td>10. OpenAI</td><td>Llamada a OpenAI (iteración 1) - mensajes: [system] 
+     Cuando el usuario pida exportar una tabla completa a Excel o CSV, responde SOLO con un enlace de descarga al archi... | [user] ¿Cuántos alumnos tengo inscritos? | [assistant] null tool_calls: [{id=call_VUum1QvuZloiOIP9Fj4E2ziX, type=function, function={name=call_api, arguments={&quot;method&quot;:&quot;GET&quot;,&quot;name&quot;:&quot;getAlumnos&quot;}}}] | [tool] {&quot;hasMore&quot;:true,&quot;list&quot;:[{&quot;email&quot;:&quot;alumno1@example.com&quot;,&quot;id&quot;:1,&quot;nombre&quot;:&quot;Alumno 1&quot;},{&quot;email&quot;:&quot;alumno2@example.com&quot;,&quot;id&quot;:2... tool_call_id: call_VUum1QvuZloiOIP9Fj4E2ziX | </td><td class='timestamp'>2025-08-26 23:08:07.957</td></tr>
+<tr class='step'><td>11. OpenAI</td><td>Respuesta de OpenAI: {
+  &quot;id&quot;: &quot;chatcmpl-C8vBgxBhs5ArKGfBhPsDBWLIy6zqg&quot;,
+  &quot;object&quot;: &quot;chat.completion&quot;,
+  &quot;created&quot;: 1756242488,
+  &quot;model&quot;: &quot;gpt-4o-2024-08-06&quot;,
+  &quot;choices&quot;: [
+    {
+      &quot;index&quot;: 0,
+      &quot;message&quot;: {
+        &quot;role&quot;: &quot;assistant&quot;,
+        &quot;content&quot;: &quot;Tienes un total de 51 alumnos inscritos.&quot;,
+        &quot;refusal&quot;: null,
+        &quot;annotations&quot;: []
+      },
+      &quot;logprobs&quot;: null,
+      &quot;finish_reason&quot;: &quot;stop&quot;
+    }
+  ],
+  &quot;usage&quot;: {
+    &quot;prompt_tokens&quot;: 2977,
+    &quot;completion_tokens&quot;: 11,
+    &quot;total_tokens&quot;: 2988,
+    &quot;prompt_tokens_details&quot;: {
+      &quot;cached_tokens&quot;: 1920,
+      &quot;audio_tokens&quot;: 0
+    },
+    &quot;completion_tokens_details&quot;: {
+      &quot;reasoning_tokens&quot;: 0,
+      &quot;audio_tokens&quot;: 0,
+      &quot;accepted_prediction_tokens&quot;: 0,
+      &quot;rejected_prediction_tokens&quot;: 0
+    }
+  },
+  &quot;service_tier&quot;: &quot;default&quot;,
+  &quot;system_fingerprint&quot;: &quot;fp_46bff0e0c8&quot;
+}
+</td><td class='timestamp'>2025-08-26 23:08:09.167</td></tr>
+<tr class='step'><td>12. OpenAIClient</td><td>No hay tool_calls, respuesta directa de OpenAI</td><td class='timestamp'>2025-08-26 23:08:09.174</td></tr>
+<tr class='step'><td>13. ChatController</td><td>Respuesta generada por ChatService&lt;br&gt;Mensaje de salida: Tienes un total de 51 alumnos inscritos.</td><td class='timestamp'>2025-08-26 23:08:09.176</td></tr>
+</tbody></table>
+</body></html>
