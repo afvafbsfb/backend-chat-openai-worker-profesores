@@ -23,6 +23,22 @@
 - `/documentacion/run-pruebas.ps1`: script de pruebas automáticas.
 - `/src/main/resources/api-whitelist.yaml`: endpoints permitidos y parámetros.
 - `/src/main/java/com/workers/profesores/chat/service/ChatService.java`: lógica principal y prompt del sistema.
+
+## ¿Qué es la whitelist?
+
+La **whitelist** (lista blanca) es un mecanismo de seguridad y control que define explícitamente qué endpoints de la API de academia puede utilizar el asistente ("secretaria") a través del backend de chat.
+
+- Se encuentra en el archivo `/src/main/resources/api-whitelist.yaml`.
+- Cada entrada especifica:
+   - El nombre lógico del endpoint.
+   - El método HTTP permitido (GET, POST, etc.).
+   - La ruta y los parámetros permitidos (path, query, body).
+   - Una descripción funcional.
+- Solo los endpoints y parámetros definidos en la whitelist pueden ser invocados mediante la función `call_api` por el asistente.
+- Si el usuario solicita una operación fuera de la whitelist, el asistente debe informar que no está permitido.
+- La whitelist se utiliza para construir el prompt dinámico y para validar todas las llamadas a la API, garantizando seguridad y control sobre las operaciones expuestas.
+
+**Importante:** Si se añaden nuevos endpoints o se modifican los existentes, es imprescindible actualizar la whitelist y, si procede, el prompt del sistema para reflejar los cambios.
  
 ## Esquema de clases y flujo principal
 
