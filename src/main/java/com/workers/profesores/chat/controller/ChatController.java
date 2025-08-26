@@ -7,11 +7,13 @@ import com.workers.profesores.chat.util.RequestFlowXmlLogger;
 import com.workers.profesores.chat.util.RequestFlowXmlContext;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.beans.factory.annotation.Value;
 import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/chat")
+@CrossOrigin(origins = "http://localhost:5173", allowedHeaders = "*", allowCredentials = "true")
 public class ChatController {
     private final ChatService chatService;
 

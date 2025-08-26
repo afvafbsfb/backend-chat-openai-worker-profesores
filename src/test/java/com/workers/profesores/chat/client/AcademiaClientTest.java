@@ -22,23 +22,24 @@ class AcademiaClientTest {
         client = new AcademiaClient();
         mockRestTemplate = Mockito.mock(RestTemplate.class);
         ReflectionTestUtils.setField(client, "apiKey", "test-key");
-        ReflectionTestUtils.setField(client, "apiUrl", "https://fake.academia.com/api");
+        ReflectionTestUtils.setField(client, "baseUrl", "https://fake.academia.com/api");
+        ReflectionTestUtils.setField(client, "restTemplate", mockRestTemplate);
     }
 
     @Test
     void testListAlumnos_returnsBody() throws Exception {
         ObjectMapper mapper = new ObjectMapper();
-        JsonNode fakeResponse = mapper.readTree("{\"alumnos\":[1,2,3]}");
+        JsonNode fakeResponse = mapper.readTree("{\"list\":[1,2,3],\"total\":3}");
         ResponseEntity<JsonNode> responseEntity = ResponseEntity.ok(fakeResponse);
-        Mockito.mockStatic(RestTemplate.class);
-        RestTemplate restTemplate = Mockito.mock(RestTemplate.class);
-        Mockito.when(restTemplate.exchange(
+        Mockito.when(mockRestTemplate.exchange(
                 Mockito.anyString(),
                 Mockito.any(),
                 Mockito.any(HttpEntity.class),
                 Mockito.eq(JsonNode.class)
         )).thenReturn(responseEntity);
-        // No llamada real, solo validamos que el método puede devolver el body
-        // (No se puede inyectar el mock fácilmente sin refactor, pero cubre el método)
+        JsonNode result = client.getAlumnos(0, 10);
+        assertNotNull(result);
+        assertEquals(3, result.get("total").asInt());
+        assertTrue(result.get("list").isArray());
     }
 }

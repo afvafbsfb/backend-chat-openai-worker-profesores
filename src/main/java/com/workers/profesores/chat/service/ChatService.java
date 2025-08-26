@@ -34,6 +34,14 @@ public class ChatService {
             if (xmlLogger != null) xmlLogger.addStep("ChatService", "Inicio de runChat");
             // 0) System prompt base + whitelist dinámica
             String promptBase = """
+                 
+                 Cuando el usuario pida exportar una tabla completa a Excel o CSV, responde SOLO con un enlace de descarga al archivo, nunca muestres el contenido del archivo (ni CSV ni Excel) en pantalla ni como texto plano.
+                 El enlace debe ser:
+                 [Descargar CSV]({{API_BASE_URL}}/api/export?tabla=nombre_tabla&type=csv&parámetros_reales) o [Descargar Excel]({{API_BASE_URL}}/api/export?tabla=nombre_tabla&type=xlsx&parámetros_reales)
+                 El enlace debe incluir SIEMPRE los parámetros REALES de filtro, paginación y orden (por ejemplo: &filter=valor, &page=0, &size=50, &sort=nombre, &order=asc), nunca uses puntos suspensivos ni literales.
+                 Sustituye {{API_BASE_URL}} por la URL base real de la API (por ejemplo, http://localhost:8080 o la de producción).
+                 Explica al usuario que puede descargar el archivo haciendo clic en el enlace.
+                 NUNCA muestres el CSV completo ni ningún archivo exportado en el chat, solo el enlace de descarga.
                  Eres “secretaria”, asistente de una academia en España. Tu objetivo es ayudar a gestionar alumnos, matrículas, pagos y consultas sobre la API EXCLUSIVAMENTE usando la función `call_api` contra una lista blanca de endpoints.
 
                  Reglas:
@@ -62,11 +70,21 @@ public class ChatService {
                  | 4   | Alumno 4   | alumno4@ejemplo.com  |
                  | 5   | Alumno 5   | alumno5@ejemplo.com  |
 
-                 ⚠️ IMPORTANTE: NUNCA juntes varios registros en una sola línea de la tabla. Cada registro debe ir en su propia línea, igual que en el ejemplo anterior. Si hay muchos registros, sigue el mismo formato, uno por línea.
+                 ⚠️ IMPORTANTE: NUNCA juntes varios registros en una sola línea de la tabla. Cada registro debe ir en su propia línea, igual que en el ejemplo anterior. 
+                 
+                 Si hay muchos registros, sigue el mismo formato, uno por línea.
 
-                 Si el usuario pide el listado en formato Excel o CSV, genera el listado en formato CSV (texto plano, separado por comas) y explica que puede copiar ese texto y pegarlo en Excel o guardarlo como archivo .csv para abrirlo en Excel o Google Sheets.
+                 🔢 Manejo de listados grandes
+                Si un endpoint devuelve más de 50 registros, mostrar solo los primeros 50 en tabla Markdown.
+                Si hay más registros disponibles, añade un aviso:
+                👉 “Se muestran solo los 50 primeros resultados. Pídeme ‘siguiente’ para ver más.”
+                Si NO hay más registros, indícalo claramente con un mensaje como: “No hay más resultados.”
+                Si existe soporte de paginación en la API (?page, ?limit), úsalo para devolver bloques de 50.
+                Nunca mostrar miles de registros en un único bloque.
 
-                 No digas que no puedes generar archivos Excel: ofrece siempre el CSV como alternativa y explica cómo usarlo.
+                Si el usuario pide el listado en formato Excel o CSV, sigue SIEMPRE la instrucción de responder solo con el enlace de descarga al archivo exportado, nunca muestres el contenido del archivo en el chat.
+
+                No digas que no puedes generar archivos Excel: ofrece siempre el enlace de descarga como alternativa.
 
                  Cuando muestres la tabla o los datos, utiliza frases naturales y amables, como:
                  - "Aquí tienes la lista de alumnos:"
@@ -75,7 +93,11 @@ public class ChatService {
                  - "Listado de resultados:"
                  Evita mencionar palabras técnicas como 'Markdown'.
 
-                 - Cuando muestres el detalle de un solo registro (alumno, empresa, inscripción, etc.), presenta SIEMPRE todos los campos relevantes (ID, nombre, email, etc.) en una tabla Markdown, aunque solo haya un registro. No omitas nunca el email si está disponible en los datos.
+                 - Cuando muestres el detalle de un solo registro (alumno, empresa, inscripción, etc.), presenta SIEMPRE todos los campos relevantes (ID, nombre, email, etc.) en formato ficha, mostrando cada campo en una línea distinta, con el formato **Campo:** valor. Ejemplo:
+                    **Email:** [alumno43@example.com](mailto:alumno43@example.com)
+                    **Id:** 43
+                    **Nombre:** Alumno 43
+                    No uses tabla Markdown para un solo registro. No omitas nunca el email si está disponible en los datos.
             """;
             String whitelistTable = openai.renderWhitelistTable();
             String systemPrompt = promptBase + whitelistTable;
@@ -314,12 +336,14 @@ public class ChatService {
             }
             // Reconstruye la tabla
             StringBuilder cleanRows = new StringBuilder();
-            Pattern emailPattern = Pattern.compile("([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})");
+            Pattern markdownEmail = Pattern.compile("\\[([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})\\]\\(mailto:[^)]*\\)");
+            Pattern htmlEmail = Pattern.compile("<a\\s+href=\\\"mailto:[^\\\"]+\\\">([^<]+)</a>");
+            Pattern plainEmail = Pattern.compile("([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})");
             for (String row : allRows) {
-                // Convierte emails en enlaces Markdown mailto
-                String rowWithLinks = emailPattern.matcher(row)
-                    .replaceAll("[$1](mailto:$1)");
-                cleanRows.append(rowWithLinks).append("\n");
+                // Elimina enlaces Markdown y HTML, deja solo el texto plano del email
+                String rowClean = markdownEmail.matcher(row).replaceAll("$1");
+                rowClean = htmlEmail.matcher(rowClean).replaceAll("$1");
+                cleanRows.append(rowClean).append("\n");
             }
             String fixedTable = header + "\n" + separator + "\n" + cleanRows.toString();
             matcher.appendReplacement(sb, Matcher.quoteReplacement(fixedTable));
@@ -333,13 +357,16 @@ public class ChatService {
         if (node == null || !node.isObject()) return "";
         StringBuilder sb = new StringBuilder();
         Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+        Pattern markdownEmail = Pattern.compile("\\[([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})\\]\\(mailto:[^)]*\\)");
+        Pattern htmlEmail = Pattern.compile("<a\\s+href=\\\"mailto:[^\\\"]+\\\">([^<]+)</a>");
         while (fields.hasNext()) {
             Map.Entry<String, JsonNode> entry = fields.next();
             String key = entry.getKey();
             String value = entry.getValue().asText("");
-            // Si es email, lo convierte en enlace mailto
+            // Elimina enlaces Markdown y HTML, deja solo el texto plano del email
             if (key.toLowerCase().contains("mail") && value.contains("@")) {
-                value = "[" + value + "](mailto:" + value + ")";
+                value = markdownEmail.matcher(value).replaceAll("$1");
+                value = htmlEmail.matcher(value).replaceAll("$1");
             }
             sb.append("**").append(capitalize(key)).append(":** ").append(value).append("\n");
         }

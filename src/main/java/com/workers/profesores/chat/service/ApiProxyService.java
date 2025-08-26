@@ -95,7 +95,7 @@ public class ApiProxyService {
     // private final ObjectMapper om = new ObjectMapper(); // No se usa
 
 
-    @Value("${academy.api.base-url}")
+    @Value("${academia.api.baseurl}")
     private String baseUrl;
 
     @Value("${academia.api.key}")

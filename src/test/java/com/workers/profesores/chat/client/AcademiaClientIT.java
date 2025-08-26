@@ -20,7 +20,7 @@ class AcademiaClientIT {
         ReflectionTestUtils.setField(client, "apiKey", "dummy-key");
         // No hay apiUrl en el stub actual, pero se deja el ejemplo
         try {
-            JsonNode result = client.getAlumnos();
+            JsonNode result = client.getAlumnos(0, 10);
             assertNull(result);
         } catch (Exception e) {
             // El stub nunca lanza excepción, pero si se implementa, se puede ajustar aquí
