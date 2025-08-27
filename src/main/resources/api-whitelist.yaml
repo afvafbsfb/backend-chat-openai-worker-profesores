@@ -102,6 +102,11 @@ endpoints:
       - page
       - size
     body: []
+    paginated: true
+    aliases:
+      - alumnos
+      - listaAlumnos
+      - getAlumnos
   - name: getAlumnoById
     method: GET
     path: /vlodeiro/secretaria/alumnos/{alumno_id}
@@ -143,4 +148,35 @@ endpoints:
     pathParams:
       - empresa_id
     query: []
+    body: []
+
+  - name: listCollection
+    method: GET
+    path: /vlodeiro/secretaria/{resource}
+    description: Lista una colección con intención declarada (paged|all|export)
+    pathParams:
+      - resource
+    query:
+      - mode
+      - page
+      - size
+      - q
+      - sort
+      - order
+    body: []
+    aliases:
+      - list
+      - listCollection
+      - listar
+
+  - name: exportCollectionCsv
+    method: GET
+    path: /vlodeiro/secretaria/{resource}/export
+    description: Exporta la colección a CSV en streaming
+    pathParams:
+      - resource
+    query:
+      - q
+      - sort
+      - order
     body: []

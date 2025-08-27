@@ -56,7 +56,8 @@ public class IntentInterpreterService {
             if (debug) {
                 System.out.println("[IntentInterpreterService][DEBUG] Array JSON extraído: " + json);
             }
-            return mapper.readValue(json, java.util.List.class);
+            // Usar TypeReference para evitar warnings de tipo sin comprobar
+            return mapper.readValue(json, new com.fasterxml.jackson.core.type.TypeReference<java.util.List<java.util.Map<String,Object>>>(){});
         } catch (Exception e) {
             if (debug) {
                 System.out.println("[IntentInterpreterService][DEBUG] Excepción: " + e.getMessage());

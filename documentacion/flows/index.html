@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Índice de Flujos - Chat Backend</title>
+  <style>
+    body { font-family: Inter, Arial, sans-serif; margin: 24px; background: #f9fafb; }
+    h1 { color: #111827; margin-bottom: 16px; }
+    table { border-collapse: collapse; width: 100%; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    th, td { padding: 10px 14px; border-bottom: 1px solid #e5e7eb; }
+    th { background: #f3f4f6; text-align: left; font-size: 0.9rem; color: #374151; }
+    tr:hover td { background: #f9fafc; }
+    a { color: #2563eb; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .date { color: #6b7280; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <h1>Índice de flujos</h1>
+  <p>Haz clic en un flujo para ver el detalle completo.</p>
+
+  <table id="flowsTable">
+    <thead>
+      <tr>
+        <th>Flow ID</th>
+        <th>Fecha</th>
+        <th>Archivo</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Añade aquí manualmente tus flujos, por ejemplo:
+      <tr>
+        <td><a href="prueba-20250827-230101-123.html">prueba-20250827-230101-123</a></td>
+        <td class="date">2025-08-27 23:01:01</td>
+        <td>prueba-20250827-230101-123.html</td>
+      </tr>
+      -->
+    </tbody>
+  </table>
+
+  <script>
+async function loadFlows() {
+  try {
+    const resp = await fetch('flows.json', { cache: 'no-store' });
+    if (!resp.ok) throw new Error('No se pudo cargar flows.json');
+    const flows = await resp.json();
+
+    const tbody = document.querySelector("#flowsTable tbody");
+    tbody.innerHTML = "";
+
+    if (!Array.isArray(flows) || flows.length === 0) {
+      tbody.innerHTML = "<tr><td colspan='3'>No hay flujos registrados todavía.</td></tr>";
+      return;
+    }
+
+    flows.forEach(f => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><a href="${f.file}">${f.id}</a></td>
+        <td class="date">${f.date}</td>
+        <td>${f.file}</td>`;
+      tbody.appendChild(tr);
+    });
+  } catch (err) {
+    console.error(err);
+    document.querySelector("#flowsTable tbody").innerHTML =
+      "<tr><td colspan='3'>No se pudo cargar el índice (flows.json).</td></tr>";
+  }
+}
+loadFlows();
+  </script>
+</body>
+</html>

@@ -39,8 +39,8 @@ public class ApiProxyService {
                 resolvedPath = resolvedPath.replace("{" + p + "}", val);
             }
         }
-    // El método fromHttpUrl está deprecado en Spring 6.2+, pero se mantiene por compatibilidad
-    org.springframework.web.util.UriComponentsBuilder uri = org.springframework.web.util.UriComponentsBuilder.fromHttpUrl(baseUrl + resolvedPath);
+    // Usar fromUriString para evitar uso de API deprecada
+    org.springframework.web.util.UriComponentsBuilder uri = org.springframework.web.util.UriComponentsBuilder.fromUriString(baseUrl + resolvedPath);
     @SuppressWarnings("unchecked")
     java.util.List<String> expectedQuery = (java.util.List<String>) endpoint.getOrDefault("query", java.util.List.of());
         for (String q : expectedQuery) {
@@ -128,8 +128,8 @@ public class ApiProxyService {
                 resolvedPath = resolvedPath.replace("{" + p + "}", val);
             }
         }
-    // El método fromHttpUrl está deprecado en Spring 6.2+, pero se mantiene por compatibilidad
-    UriComponentsBuilder uri = UriComponentsBuilder.fromHttpUrl(baseUrl + resolvedPath);
+    // Usar fromUriString para evitar uso de API deprecada
+    UriComponentsBuilder uri = UriComponentsBuilder.fromUriString(baseUrl + resolvedPath);
     @SuppressWarnings("unchecked")
     List<String> expectedQuery = (List<String>) endpoint.getOrDefault("query", List.of());
         for (String q : expectedQuery) {

@@ -1,0 +1,773 @@
+﻿
+[INFO] Scanning 
+for projects...
+[INFO] 
+[INFO] --< com.bac
+kendworkersprofeso
+res:chat-backend-s
+pringboot-workers-
+profesores >--
+[INFO] Building ch
+at-backend-springb
+oot-workers-profes
+ores 
+0.0.1-SNAPSHOT
+[INFO]   from 
+pom.xml
+[INFO] -----------
+------------------
+---[ jar ]--------
+------------------
+-------
+[INFO] 
+[INFO] --- jacoco:
+0.8.11:prepare-age
+nt (default) @ cha
+t-backend-springbo
+ot-workers-profeso
+res ---
+[INFO] argLine 
+set to "-javaagent
+:C:\\Users\\Angel 
+FV\\.m2\\repositor
+y\\org\\jacoco\\or
+g.jacoco.agent\\0.
+8.11\\org.jacoco.a
+gent-0.8.11-runtim
+e.jar=destfile=C:\
+\chat-backend-spri
+ngboot-workers-pro
+fesores\\target\\j
+acoco.exec"
+[INFO] 
+[INFO] --- resourc
+es:3.3.1:resources
+ (default-resource
+s) @ chat-backend-
+springboot-workers
+-profesores ---
+[INFO] Copying 2 
+resources from src
+\main\resources 
+to target\classes
+[INFO] Copying 2 
+resources from src
+\main\resources 
+to target\classes
+[INFO] 
+[INFO] --- compile
+r:3.14.0:compile 
+(default-compile) 
+@ chat-backend-spr
+ingboot-workers-pr
+ofesores ---
+[INFO] Nothing to 
+compile - all 
+classes are up to 
+date.
+[INFO] 
+[INFO] --- resourc
+es:3.3.1:testResou
+rces (default-test
+Resources) @ chat-
+backend-springboot
+-workers-profesore
+s ---
+[INFO] Copying 2 
+resources from src
+\test\resources 
+to target\test-cla
+sses
+[INFO] 
+[INFO] --- compile
+r:3.14.0:testCompi
+le (default-testCo
+mpile) @ chat-back
+end-springboot-wor
+kers-profesores 
+---
+[INFO] Nothing to 
+compile - all 
+classes are up to 
+date.
+[INFO] 
+[INFO] --- surefir
+e:3.5.3:test 
+(default-test) @ c
+hat-backend-spring
+boot-workers-profe
+sores ---
+[INFO] Using auto 
+detected provider 
+org.apache.maven.s
+urefire.junitplatf
+orm.JUnitPlatformP
+rovider
+[INFO] 
+[INFO] -----------
+------------------
+------------------
+--------
+[INFO]  T E S T S
+[INFO] -----------
+------------------
+------------------
+--------
+[INFO] Running com
+.workers.profesore
+s.chat.ChatBackend
+SpringbootWorkersP
+rofesoresApplicati
+onTests
+22:08:15.001 
+[main] INFO org.sp
+ringframework.test
+.context.support.A
+nnotationConfigCon
+textLoaderUtils 
+-- Could not 
+detect default 
+configuration 
+classes for test 
+class [com.workers
+.profesores.chat.C
+hatBackendSpringbo
+otWorkersProfesore
+sApplicationTests]
+: ChatBackendSprin
+gbootWorkersProfes
+oresApplicationTes
+ts does not 
+declare any 
+static, 
+non-private, 
+non-final, nested 
+classes annotated 
+with 
+@Configuration.
+22:08:15.287 
+[main] INFO org.sp
+ringframework.boot
+.test.context.Spri
+ngBootTestContextB
+ootstrapper -- 
+Found @SpringBootC
+onfiguration com.w
+orkers.profesores.
+chat.ChatBackendSp
+ringbootWorkersPro
+fesoresApplication
+ for test class co
+m.workers.profesor
+es.chat.ChatBacken
+dSpringbootWorkers
+ProfesoresApplicat
+ionTests
+
+  .   ____        
+  _            __ 
+_ _
+ /\\ / ___'_ __ _ 
+_(_)_ __  __ _ \ 
+\ \ \
+( ( )\___ | '_ | 
+'_| | '_ \/ _` | 
+\ \ \ \
+ \\/  ___)| |_)| 
+| | | | || (_| |  
+) ) ) )
+  '  |____| 
+.__|_| |_|_| 
+|_\__, | / / / /
+ =========|_|=====
+=========|___/=/_/
+_/_/
+
+ :: Spring Boot 
+::                
+(v3.5.5)
+
+2025-08-27T22:08:1
+6.146+02:00  INFO 
+36360 --- [       
+    main] ingbootW
+orkersProfesoresAp
+plicationTests : 
+Starting ChatBacke
+ndSpringbootWorker
+sProfesoresApplica
+tionTests using 
+Java 22.0.2 with 
+PID 36360 
+(started by Angel 
+FV in C:\chat-back
+end-springboot-wor
+kers-profesores)
+2025-08-27T22:08:1
+6.147+02:00  INFO 
+36360 --- [       
+    main] ingbootW
+orkersProfesoresAp
+plicationTests : 
+No active profile 
+set, falling back 
+to 1 default 
+profile: "default"
+2025-08-27T22:08:1
+8.719+02:00  INFO 
+36360 --- [       
+    main] o.s.b.a.
+e.web.EndpointLink
+sResolver      : 
+Exposing 1 
+endpoint beneath 
+base path 
+'/actuator'
+2025-08-27T22:08:1
+8.777+02:00  INFO 
+36360 --- [       
+    main] ingbootW
+orkersProfesoresAp
+plicationTests : 
+Started ChatBacken
+dSpringbootWorkers
+ProfesoresApplicat
+ionTests in 3.198 
+seconds (process 
+running for 5.394)
+mvn.cmd : Mockito 
+is currently 
+self-attaching to 
+enable the inline-
+mock-maker. This 
+will no longer 
+work in future 
+releases of the 
+JDK. Please add 
+Mockito as an 
+agent to your 
+build as 
+described in 
+Mockito's 
+documentation: htt
+ps://javadoc.io/do
+c/org.mockito/mock
+ito-core/latest/or
+g.mockito/org/mock
+ito/Mockito.html#0
+.3
+En C:\chat-backend
+-springboot-worker
+s-profesores\docum
+entacion\run-valid
+ation-and-save-flo
+ws.ps1: 23 
+Carácter: 1
++ & $MavenCmd 
+-DskipTests=false 
+verify *>&1 | 
+Tee-Object 
+-FilePath $out ...
++ ~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~
+~~~~~~~
+    + CategoryInf 
+   o          :   
+  NotSpecified:   
+  (Mockito is     
+curr...ockito    
+.html#0.3:Str    
+ing) [], Remo    
+teException
+    + FullyQualif 
+   iedErrorId :   
+  NativeCommand   
+ Error
+ 
+WARNING: A Java 
+agent has been 
+loaded 
+dynamically 
+(C:\Users\Angel FV
+\.m2\repository\ne
+t\bytebuddy\byte-b
+uddy-agent\1.17.7\
+byte-buddy-agent-1
+.17.7.jar)
+WARNING: If a 
+serviceability 
+tool is in use, 
+please run with -X
+X:+EnableDynamicAg
+entLoading to 
+hide this warning
+WARNING: If a 
+serviceability 
+tool is not in 
+use, please run 
+with -Djdk.instrum
+ent.traceUsage 
+for more 
+information
+WARNING: Dynamic 
+loading of agents 
+will be 
+disallowed by 
+default in a 
+future release
+Java HotSpot(TM) 
+64-Bit Server VM 
+warning: Sharing 
+is only supported 
+for boot loader 
+classes because 
+bootstrap 
+classpath has 
+been appended
+[INFO] Tests run: 
+1, Failures: 0, 
+Errors: 0, 
+Skipped: 0, Time 
+elapsed: 5.253 s 
+-- in com.workers.
+profesores.chat.Ch
+atBackendSpringboo
+tWorkersProfesores
+ApplicationTests
+[INFO] Running com
+.workers.profesore
+s.chat.client.Acad
+emiaClientTest
+[INFO] Tests run: 
+1, Failures: 0, 
+Errors: 0, 
+Skipped: 0, Time 
+elapsed: 0.861 s 
+-- in com.workers.
+profesores.chat.cl
+ient.AcademiaClien
+tTest
+[INFO] Running com
+.workers.profesore
+s.chat.client.Open
+AIClientTest
+[INFO] Tests run: 
+1, Failures: 0, 
+Errors: 0, 
+Skipped: 0, Time 
+elapsed: 0.054 s 
+-- in com.workers.
+profesores.chat.cl
+ient.OpenAIClientT
+est
+[INFO] Running com
+.workers.profesore
+s.chat.service.Ope
+nAICallApiServiceT
+est
+2025-08-27T22:08:2
+1.107+02:00 ERROR 
+36360 --- [       
+    main] c.w.p.ch
+at.service.OpenAIC
+allApiService  : 
+La llamada a 
+OpenAI devolvió 
+ResponseEntity 
+nula
+2025-08-27T22:08:2
+1.196+02:00  WARN 
+36360 --- [       
+    main] c.w.p.ch
+at.service.OpenAIC
+allApiService  : 
+No se pudo cargar 
+la whitelist: java
+.io.FileNotFoundEx
+ception: not found
+ at [Source: (com.
+workers.profesores
+.chat.service.Open
+AICallApiServiceTe
+st$1); line: 1, 
+column: 1]
+[INFO] Tests run: 
+15, Failures: 0, 
+Errors: 0, 
+Skipped: 0, Time 
+elapsed: 0.403 s 
+-- in com.workers.
+profesores.chat.se
+rvice.OpenAICallAp
+iServiceTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 
+18, Failures: 0, 
+Errors: 0, 
+Skipped: 0
+[INFO] 
+[INFO] 
+[INFO] --- jacoco:
+0.8.11:report 
+(report) @ chat-ba
+ckend-springboot-w
+orkers-profesores 
+---
+[INFO] Loading 
+execution data 
+file C:\chat-backe
+nd-springboot-work
+ers-profesores\tar
+get\jacoco.exec
+[INFO] Analyzed 
+bundle 'chat-backe
+nd-springboot-work
+ers-profesores' 
+with 37 classes
+[INFO] 
+[INFO] --- 
+jar:3.4.2:jar 
+(default-jar) @ ch
+at-backend-springb
+oot-workers-profes
+ores ---
+[INFO] 
+[INFO] --- spring-
+boot:3.5.5:repacka
+ge (repackage) @ c
+hat-backend-spring
+boot-workers-profe
+sores ---
+[INFO] Replacing 
+main artifact C:\c
+hat-backend-spring
+boot-workers-profe
+sores\target\chat-
+backend-springboot
+-workers-profesore
+s-0.0.1-SNAPSHOT.j
+ar with 
+repackaged 
+archive, adding 
+nested 
+dependencies in 
+BOOT-INF/.
+[INFO] The 
+original artifact 
+has been renamed 
+to C:\chat-backend
+-springboot-worker
+s-profesores\targe
+t\chat-backend-spr
+ingboot-workers-pr
+ofesores-0.0.1-SNA
+PSHOT.jar.original
+[INFO] 
+[INFO] --- failsaf
+e:3.1.2:integratio
+n-test (default) 
+@ chat-backend-spr
+ingboot-workers-pr
+ofesores ---
+[INFO] Using auto 
+detected provider 
+org.apache.maven.s
+urefire.junitplatf
+orm.JUnitPlatformP
+rovider
+[INFO] 
+[INFO] -----------
+------------------
+------------------
+--------
+[INFO]  T E S T S
+[INFO] -----------
+------------------
+------------------
+--------
+[INFO] Running com
+.workers.profesore
+s.chat.client.Acad
+emiaClientIT
+22:08:24.773 
+[main] INFO org.sp
+ringframework.test
+.context.support.A
+nnotationConfigCon
+textLoaderUtils 
+-- Could not 
+detect default 
+configuration 
+classes for test 
+class [com.workers
+.profesores.chat.c
+lient.AcademiaClie
+ntIT]: 
+AcademiaClientIT 
+does not declare 
+any static, 
+non-private, 
+non-final, nested 
+classes annotated 
+with 
+@Configuration.
+22:08:25.036 
+[main] INFO org.sp
+ringframework.boot
+.test.context.Spri
+ngBootTestContextB
+ootstrapper -- 
+Found @SpringBootC
+onfiguration com.w
+orkers.profesores.
+chat.ChatBackendSp
+ringbootWorkersPro
+fesoresApplication
+ for test class co
+m.workers.profesor
+es.chat.client.Aca
+demiaClientIT
+
+  .   ____        
+  _            __ 
+_ _
+ /\\ / ___'_ __ _ 
+_(_)_ __  __ _ \ 
+\ \ \
+( ( )\___ | '_ | 
+'_| | '_ \/ _` | 
+\ \ \ \
+ \\/  ___)| |_)| 
+| | | | || (_| |  
+) ) ) )
+  '  |____| 
+.__|_| |_|_| 
+|_\__, | / / / /
+ =========|_|=====
+=========|___/=/_/
+_/_/
+
+ :: Spring Boot 
+::                
+(v3.5.5)
+
+2025-08-27T22:08:2
+7.179+02:00  INFO 
+32000 --- [       
+    main] c.w.p.ch
+at.client.Academia
+ClientIT       : 
+Starting 
+AcademiaClientIT 
+using Java 22.0.2 
+with PID 32000 
+(started by Angel 
+FV in C:\chat-back
+end-springboot-wor
+kers-profesores)
+2025-08-27T22:08:2
+7.179+02:00  INFO 
+32000 --- [       
+    main] c.w.p.ch
+at.client.Academia
+ClientIT       : 
+The following 1 
+profile is 
+active: "test"
+2025-08-27T22:08:2
+9.828+02:00  INFO 
+32000 --- [       
+    main] o.s.b.a.
+e.web.EndpointLink
+sResolver      : 
+Exposing 1 
+endpoint beneath 
+base path 
+'/actuator'
+2025-08-27T22:08:2
+9.880+02:00  INFO 
+32000 --- [       
+    main] c.w.p.ch
+at.client.Academia
+ClientIT       : 
+Started 
+AcademiaClientIT 
+in 3.263 seconds 
+(process running 
+for 6.618)
+Mockito is 
+currently 
+self-attaching to 
+enable the inline-
+mock-maker. This 
+will no longer 
+work in future 
+releases of the 
+JDK. Please add 
+Mockito as an 
+agent to your 
+build as 
+described in 
+Mockito's 
+documentation: htt
+ps://javadoc.io/do
+c/org.mockito/mock
+ito-core/latest/or
+g.mockito/org/mock
+ito/Mockito.html#0
+.3
+Java HotSpot(TM) 
+64-Bit Server VM 
+warning: Sharing 
+is only supported 
+for boot loader 
+classes because 
+bootstrap 
+classpath has 
+been appended
+WARNING: A Java 
+agent has been 
+loaded 
+dynamically 
+(C:\Users\Angel FV
+\.m2\repository\ne
+t\bytebuddy\byte-b
+uddy-agent\1.17.7\
+byte-buddy-agent-1
+.17.7.jar)
+WARNING: If a 
+serviceability 
+tool is in use, 
+please run with -X
+X:+EnableDynamicAg
+entLoading to 
+hide this warning
+WARNING: If a 
+serviceability 
+tool is not in 
+use, please run 
+with -Djdk.instrum
+ent.traceUsage 
+for more 
+information
+WARNING: Dynamic 
+loading of agents 
+will be 
+disallowed by 
+default in a 
+future release
+[INFO] Tests run: 
+1, Failures: 0, 
+Errors: 0, 
+Skipped: 0, Time 
+elapsed: 6.864 s 
+-- in com.workers.
+profesores.chat.cl
+ient.AcademiaClien
+tIT
+[INFO] Running com
+.workers.profesore
+s.chat.client.Open
+AIClientIT
+2025-08-27T22:08:3
+1.300+02:00  INFO 
+32000 --- [       
+    main] t.c.s.An
+notationConfigCont
+extLoaderUtils : 
+Could not detect 
+default 
+configuration 
+classes for test 
+class [com.workers
+.profesores.chat.c
+lient.OpenAIClient
+IT]: 
+OpenAIClientIT 
+does not declare 
+any static, 
+non-private, 
+non-final, nested 
+classes annotated 
+with 
+@Configuration.
+2025-08-27T22:08:3
+1.304+02:00  INFO 
+32000 --- [       
+    main] .b.t.c.S
+pringBootTestConte
+xtBootstrapper : 
+Found @SpringBootC
+onfiguration com.w
+orkers.profesores.
+chat.ChatBackendSp
+ringbootWorkersPro
+fesoresApplication
+ for test class co
+m.workers.profesor
+es.chat.client.Ope
+nAIClientIT
+[INFO] Tests run: 
+1, Failures: 0, 
+Errors: 0, 
+Skipped: 0, Time 
+elapsed: 0.104 s 
+-- in com.workers.
+profesores.chat.cl
+ient.OpenAIClientI
+T
+[INFO] Running com
+.workers.profesore
+s.chat.client.Open
+AIClientWireMockIT
+[INFO] Tests run: 
+4, Failures: 0, 
+Errors: 0, 
+Skipped: 0, Time 
+elapsed: 0.959 s 
+-- in com.workers.
+profesores.chat.cl
+ient.OpenAIClientW
+ireMockIT
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 
+6, Failures: 0, 
+Errors: 0, 
+Skipped: 0
+[INFO] 
+[INFO] 
+[INFO] --- failsaf
+e:3.1.2:verify 
+(default) @ chat-b
+ackend-springboot-
+workers-profesores
+ ---
+[INFO] -----------
+------------------
+------------------
+------------------
+-------
+[INFO] BUILD 
+SUCCESS
+[INFO] -----------
+------------------
+------------------
+------------------
+-------
+[INFO] Total 
+time:  21.514 s
+[INFO] Finished 
+at: 2025-08-27T22:
+08:32+02:00
+[INFO] -----------
+------------------
+------------------
+------------------
+-------
+
+
+

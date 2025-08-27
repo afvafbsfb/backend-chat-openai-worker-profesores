@@ -35,10 +35,36 @@ public class ChatService {
             // 0) System prompt base + whitelist dinámica
             String promptBase = """
                  
+
                  Cuando el usuario pida exportar una tabla completa a Excel o CSV, responde SOLO con un enlace de descarga al archivo, nunca muestres el contenido del archivo (ni CSV ni Excel) en pantalla ni como texto plano.
-                 
-                 ⚠️ Cuando el usuario pregunte únicamente por el número total de registros (por ejemplo: "¿Cuántos alumnos hay?", "¿Cuántos turnos existen?", "Dame el total de alumnos"), responde SOLO con el número total, sin mostrar la lista de registros ni una tabla. Si el usuario pide explícitamente la lista o el detalle junto al total (por ejemplo: "Dame la lista de alumnos y el total"), entonces sí muestra la tabla y el total juntos.
-                 
+
+                 ⚠️ Cuando el usuario pregunte únicamente por el número total de registros (por ejemplo: "¿Cuántos alumnos hay?", "¿Cuántos turnos existen?", "Dame el total de alumnos"), responde SOLO con el número total, sin mostrar la lista de registros ni una tabla. 
+                 Si el usuario pide explícitamente la lista o el detalle junto al total (por ejemplo: "Dame la lista de alumnos y el total"), entonces sí muestra la tabla y el total juntos.
+
+                                 Regla corta — Peticiones de "total":
+                                 - Si el endpoint está marcado como `paginated` en la whitelist, llama a `call_api` con `page=0` y `size=1` para obtener únicamente la metadata (total). Ejemplo (paginado):
+                                     Usuario: "¿Cuántos alumnos hay?"
+                                     assistant -> call_api:
+                                         name: getAlumnos
+                                         method: GET
+                                         query:
+                                             page: 0
+                                             size: 1
+                                     API_RESPONSE (ejemplo):
+                                         { "page":0, "size":1, "totalElements": 123, "items": [...] }
+                                     assistant final (respuesta al usuario): "123"
+
+                                 - Ejemplo (no paginado):
+                                     Usuario: "¿Cuántos turnos existen?"
+                                     assistant -> call_api:
+                                         name: getTurnosLibres
+                                         method: GET
+                                     API_RESPONSE (ejemplo):
+                                         [ { ... }, { ... } ]
+                                     assistant final (respuesta al usuario): "2"
+
+                                 Siempre responde SOLO con el número cuando la pregunta sea únicamente por el total.
+
                  Si la pregunta es ambigua, prioriza la brevedad: si solo se pide el total, responde solo el total; si se pide la lista, muestra la tabla y el total.
                  El enlace debe ser:
                  [Descargar CSV]({{API_BASE_URL}}/api/export?tabla=nombre_tabla&type=csv&parámetros_reales) o [Descargar Excel]({{API_BASE_URL}}/api/export?tabla=nombre_tabla&type=xlsx&parámetros_reales)
@@ -47,6 +73,15 @@ public class ChatService {
                  Explica al usuario que puede descargar el archivo haciendo clic en el enlace.
                  NUNCA muestres el CSV completo ni ningún archivo exportado en el chat, solo el enlace de descarga.
                  Eres “secretaria”, asistente de una academia en España. Tu objetivo es ayudar a gestionar alumnos, matrículas, pagos y consultas sobre la API EXCLUSIVAMENTE usando la función `call_api` contra una lista blanca de endpoints.
+
+
+                 🔢 Manejo de listados y exportaciones (patrón híbrido IA + backend):
+                 - Cuando el usuario pida "todos" o "sin paginar", llama a `listCollection` con `mode=all`.
+                 - Cuando pida Excel o CSV, llama a `listCollection` con `mode=export`.
+                 - Para listados normales, usa `listCollection` con `mode=paged` y `page`/`size`.
+                 - El backend puede cambiar el modo a `export` si el total excede el límite.
+                 - Si recibes `mode="export"`, no muestres tabla: solo el mensaje y el `downloadUrl`.
+                 - La IA interpreta el lenguaje natural y decide el modo adecuado; el backend valida y ajusta según límites de seguridad, coste y rendimiento.
 
                  Reglas:
                  1) Usa SOLO `call_api` con los endpoints permitidos. Si falta un parámetro (id, page, size, q...), PÍDEMELO antes de llamar.
@@ -78,13 +113,14 @@ public class ChatService {
                  
                  Si hay muchos registros, sigue el mismo formato, uno por línea.
 
-                 🔢 Manejo de listados grandes
-                Si un endpoint devuelve más de 50 registros, mostrar solo los primeros 50 en tabla Markdown.
-                Si hay más registros disponibles, añade un aviso:
-                👉 “Se muestran solo los 50 primeros resultados. Pídeme ‘siguiente’ para ver más.”
-                Si NO hay más registros, indícalo claramente con un mensaje como: “No hay más resultados.”
-                Si existe soporte de paginación en la API (?page, ?limit), úsalo para devolver bloques de 50.
-                Nunca mostrar miles de registros en un único bloque.
+                                 🔢 Manejo de listados grandes y petición de todos los registros
+                                - Por defecto, si hay más de 50 registros, muestra solo los primeros 50 en tabla y avisa: “Se muestran solo los 50 primeros resultados. Pídeme ‘siguiente’ para ver más.”
+                                - Si el usuario pide explícitamente ver todos los registros en una sola tabla (por ejemplo: “sin paginar”, “todos en una tabla”, “muéstrame todos”), ENTONCES:
+                                    - Si el total de registros es menor o igual a 1000 (≤ 1000), muestra la tabla completa con todos los registros.
+                                    - Si el total de registros es estrictamente mayor que 1000 (> 1000), NO muestres la tabla, advierte que mostrar todos podría bloquear la web y sugiere descargar el listado en formato Excel o CSV.
+                                - Si NO hay más registros, indícalo claramente con un mensaje como: “No hay más resultados.”
+                                - Si existe soporte de paginación en la API (?page, ?limit), úsalo para devolver bloques de 50 salvo petición expresa del usuario.
+                                - Nunca mostrar más de 1000 registros en un único bloque en la web.
 
                 ⚠️ IMPORTANTE sobre paginación:
                 El endpoint `/vlodeiro/secretaria/alumnos` soporta paginación mediante los parámetros `page` (número de página, empezando en 0) y `size` (número de alumnos por página, por defecto 10, máximo 50). 
@@ -221,14 +257,23 @@ public class ChatService {
                     }
                 }
                 // Detecta si la respuesta de la API es un solo objeto (no array, no error)
+                // Pero evita tratar como "single object" respuestas paginadas (contienen totalElements o items)
                 try {
                     JsonNode apiNode = om.readTree(apiResult);
                     if (apiNode != null && apiNode.isObject() && !apiNode.has("error")) {
-                        singleObjectResponse = true;
-                        fichaContent = renderDetailAsFicha(apiNode);
-                        if (xmlLogger != null) xmlLogger.addStep("ChatService", "API devolvió un solo objeto, se renderiza como ficha");
-                        if (debug) {
-                            System.out.println("[ChatService][DEBUG] API returned single object, will render as ficha.");
+                        boolean looksPaginated = apiNode.has("totalElements") || apiNode.has("items") || apiNode.has("page") || apiNode.has("size");
+                        if (!looksPaginated) {
+                            singleObjectResponse = true;
+                            fichaContent = renderDetailAsFicha(apiNode);
+                            if (xmlLogger != null) xmlLogger.addStep("ChatService", "API devolvió un solo objeto, se renderiza como ficha");
+                            if (debug) {
+                                System.out.println("[ChatService][DEBUG] API returned single object, will render as ficha.");
+                            }
+                        } else {
+                            if (xmlLogger != null) xmlLogger.addStep("ChatService", "API parece paginada o contener items; no se renderiza ficha inmediatamente");
+                            if (debug) {
+                                System.out.println("[ChatService][DEBUG] API response looks paginated or contains items; deferring rendering.");
+                            }
                         }
                     }
                 } catch (Exception e) {

@@ -9,6 +9,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.client.RestTemplate;
 import java.io.InputStream;
 import java.util.*;
@@ -16,6 +18,7 @@ import java.util.*;
 @Service
 public class OpenAICallApiService {
     private ApiProxyService apiProxyService;
+    private static final Logger logger = LoggerFactory.getLogger(OpenAICallApiService.class);
     @Value("${backend.debug:false}")
     private boolean debug;
     // Permite mockear el RestTemplate en tests
@@ -129,7 +132,8 @@ public class OpenAICallApiService {
     @Value("${openai.api.key}")
     private String openaiApiKey;
 
-    private static final String OPENAI_URL = "https://api.openai.com/v1/chat/completions";
+    @Value("${openai.api.url:https://api.openai.com/v1/chat/completions}")
+    private String openaiApiUrl;
     private List<Map<String, Object>> whitelist;
 
     public OpenAICallApiService() {
@@ -151,7 +155,7 @@ public class OpenAICallApiService {
             }
         } catch (Exception e) {
             whitelist = List.of();
-            System.err.println("[ERROR] No se pudo cargar la whitelist: " + e.getMessage());
+            logger.warn("No se pudo cargar la whitelist: {}", e.getMessage());
         }
     }
 
@@ -181,16 +185,14 @@ public class OpenAICallApiService {
             }
         } catch (Exception e) {
             whitelist = List.of();
-            System.err.println("[ERROR] No se pudo cargar la whitelist: " + e.getMessage());
+            logger.warn("No se pudo cargar la whitelist: {}", e.getMessage());
         }
     }
 
-    @SuppressWarnings("unchecked")
     public String callChatWithTools(List<Map<String, Object>> messages) throws Exception {
         return callChatWithTools(messages, null);
     }
 
-    @SuppressWarnings("unchecked")
     public String callChatWithTools(List<Map<String, Object>> messages, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger) throws Exception {
         if (debug) {
             System.out.println("[OpenAICallApiService][DEBUG] callChatWithTools llamado con mensajes: " + messages);
@@ -232,42 +234,44 @@ public class OpenAICallApiService {
             headers.set("Authorization", "Bearer " + openaiApiKey);
             headers.set("Content-Type", "application/json");
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
-            ResponseEntity<String> response = restTemplate.postForEntity(OPENAI_URL, entity, String.class);
-            if (debug) {
-                System.out.println("[OpenAICallApiService][DEBUG] Respuesta recibida de OpenAI: " + response.getBody());
+            ResponseEntity<String> response = restTemplate.postForEntity(openaiApiUrl, entity, String.class);
+            // Comprobaciones defensivas para evitar NPEs cuando el mock o el servicio remoto devuelven null
+            if (response == null) {
+                logger.error("La llamada a OpenAI devolvió ResponseEntity nula");
+                throw new IllegalStateException("Respuesta nula de OpenAI: ResponseEntity es null");
             }
-            if (xmlLogger != null) xmlLogger.addStep("OpenAI", "Respuesta de OpenAI: " + response.getBody());
-            Map<String, Object> resp = mapper.readValue(response.getBody(), new TypeReference<Map<String, Object>>(){});
-            // Procesar la respuesta de OpenAI
-            List<Map<String, Object>> choices = (List<Map<String, Object>>) resp.get("choices");
+            String responseBody = response.getBody();
+            if (debug) {
+                System.out.println("[OpenAICallApiService][DEBUG] Respuesta recibida de OpenAI: " + responseBody);
+            }
+            if (xmlLogger != null) xmlLogger.addStep("OpenAI", "Respuesta de OpenAI: " + responseBody);
+            if (responseBody == null || responseBody.isBlank()) {
+                logger.error("La llamada a OpenAI devolvió un body nulo o vacío");
+                throw new IllegalStateException("Respuesta de OpenAI vacía o nula");
+            }
+            Map<String, Object> resp = mapper.readValue(responseBody, new TypeReference<Map<String, Object>>(){});
+            // Procesar la respuesta de OpenAI usando conversiones seguras
+            List<Map<String, Object>> choices = mapper.convertValue(resp.get("choices"), new TypeReference<List<Map<String, Object>>>(){});
             if (choices == null || choices.isEmpty()) {
                 return response.getBody(); // Respuesta inesperada
             }
             Map<String, Object> choice = choices.get(0);
-            Object messageObj = choice.get("message");
-            if (!(messageObj instanceof Map)) {
-                return response.getBody(); // Respuesta inesperada
-            }
-            Map<String, Object> message = (Map<String, Object>) messageObj;
+            Map<String, Object> message = mapper.convertValue(choice.get("message"), new TypeReference<Map<String, Object>>(){});
             // Si hay tool_calls, procesarlas
             if (message.containsKey("tool_calls")) {
-                Object toolCallsObj = message.get("tool_calls");
-                if (!(toolCallsObj instanceof List)) {
+                List<Map<String, Object>> toolCallsRaw = mapper.convertValue(message.get("tool_calls"), new TypeReference<List<Map<String, Object>>>(){});
+                if (toolCallsRaw == null) {
                     return response.getBody(); // Respuesta inesperada
                 }
-                List<?> toolCallsRaw = (List<?>) toolCallsObj;
                 // Insertar los mensajes tool justo después del assistant con tool_calls
                 currentMessages.add(message); // Añadir el mensaje assistant con tool_calls
                 List<Map<String, Object>> toolMsgs = new ArrayList<>();
-                for (Object toolCallObj : toolCallsRaw) {
-                    if (!(toolCallObj instanceof Map)) continue;
-                    Map<String, Object> toolCall = (Map<String, Object>) toolCallObj;
-                    Object functionObj = toolCall.get("function");
-                    if (!(functionObj instanceof Map)) continue;
-                    Map<String, Object> function = (Map<String, Object>) functionObj;
+                for (Map<String, Object> toolCall : toolCallsRaw) {
+                    Map<String, Object> function = mapper.convertValue(toolCall.get("function"), new TypeReference<Map<String, Object>>(){});
+                    if (function == null) continue;
                     String toolName = (String) function.get("name");
-                    String toolId = (String) toolCall.get("id");
-                    String argumentsJson = (String) function.get("arguments");
+                    String toolId = toolCall.get("id") == null ? null : String.valueOf(toolCall.get("id"));
+                    String argumentsJson = function.get("arguments") == null ? "{}" : String.valueOf(function.get("arguments"));
                     Map<String, Object> args = mapper.readValue(argumentsJson, new TypeReference<Map<String, Object>>(){});
                     if (debug) {
                         System.out.println("[OpenAICallApiService][DEBUG] Ejecutando tool_call: " + toolName + " args=" + args);

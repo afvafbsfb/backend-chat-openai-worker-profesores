@@ -23,19 +23,47 @@ class OpenAICallApiServiceTest {
         "  \"message\": {\"role\": \"assistant\", \"content\": \"Hola, soy la IA\"} " +
         "}]" +
         "}";
-    Mockito.when(mockRestTemplate.postForEntity(
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    org.mockito.stubbing.OngoingStubbing stub = Mockito.when(mockRestTemplate.postForEntity(
         Mockito.anyString(),
         Mockito.any(HttpEntity.class),
-        Mockito.eq(String.class)
-    )).thenReturn(ResponseEntity.ok(fakeResponse));
+        Mockito.any(Class.class)
+    ));
+    stub.thenReturn(ResponseEntity.ok((Object) fakeResponse));
     OpenAICallApiService spyService = Mockito.spy(service);
     Mockito.doReturn(mockRestTemplate).when(spyService).createRestTemplate();
     List<Map<String, Object>> messages = List.of(
         Map.of("role", "user", "content", "Hola")
     );
     ReflectionTestUtils.setField(spyService, "openaiApiKey", "test-key");
+    ReflectionTestUtils.setField(spyService, "openaiApiUrl", "https://api.openai.com/v1/chat/completions");
     String result = spyService.callChatWithTools(messages);
     assertTrue(result.contains("Hola, soy la IA"));
+    }
+
+    @Test
+    void testCallChatWithTools_throwsOnNullResponseEntity() throws Exception {
+        RestTemplate mockRestTemplate = Mockito.mock(RestTemplate.class);
+        // Forzar que postForEntity devuelva null
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        org.mockito.stubbing.OngoingStubbing stub = Mockito.when(mockRestTemplate.postForEntity(
+            Mockito.anyString(),
+            Mockito.any(HttpEntity.class),
+            Mockito.any(Class.class)
+        ));
+        stub.thenReturn(null);
+
+        OpenAICallApiService spyService = Mockito.spy(service);
+        Mockito.doReturn(mockRestTemplate).when(spyService).createRestTemplate();
+        ReflectionTestUtils.setField(spyService, "openaiApiKey", "test-key");
+        ReflectionTestUtils.setField(spyService, "openaiApiUrl", "https://api.openai.com/v1/chat/completions");
+
+        List<Map<String, Object>> messages = List.of(
+            Map.of("role", "user", "content", "Hola")
+        );
+
+        // Esperamos IllegalStateException por la comprobación defensiva en callChatWithTools
+        assertThrows(IllegalStateException.class, () -> spyService.callChatWithTools(messages));
     }
 
     @Test
