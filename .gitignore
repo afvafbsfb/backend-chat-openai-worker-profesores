@@ -34,3 +34,5 @@ build/
 
 # No subir configuración sensible
 src/main/resources/application.properties
+
+.venv/
