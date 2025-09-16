@@ -36,3 +36,19 @@ build/
 src/main/resources/application.properties
 
 .venv/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Java/Gradle/Maven
+/target/
+/build/
+.mvn/
+\!.mvn/wrapper/maven-wrapper.jar
+
+# IDEs
+.idea/
+.vscode/
+*.iml
