@@ -20,6 +20,8 @@ public class OpenAIClient {
 
     @Value("${openai.api.url:https://api.openai.com/v1/responses}")
     private String apiUrl;
+    @Value("${openai.api.model:gpt-4o-mini}")
+    private String openaiApiModel;
 
     private final RestTemplate restTemplate = new RestTemplate();
 
@@ -27,12 +29,12 @@ public class OpenAIClient {
         if (debug) {
             System.out.println("[OpenAIClient][DEBUG] createResponse llamado con messages: " + messages + ", tools: " + tools);
         }
-        Map<String, Object> body = Map.of(
-                "model", "gpt-4o-mini",
-                "messages", messages,
-                "tools", tools,
-                "stream", false
-        );
+    Map<String, Object> body = Map.of(
+        "model", openaiApiModel,
+        "messages", messages,
+        "tools", tools,
+        "stream", false
+    );
         if (debug) {
             System.out.println("[OpenAIClient][DEBUG] Payload enviado a OpenAI: " + body);
         }
@@ -74,12 +76,12 @@ public class OpenAIClient {
             toolMsg.put("content", toolOutput.get("output").asText());
             messages.add(toolMsg);
         }
-        Map<String, Object> body = Map.of(
-                "model", "gpt-4o-mini",
-                "messages", messages,
-                "tools", List.of(),
-                "stream", false
-        );
+    Map<String, Object> body = Map.of(
+        "model", openaiApiModel,
+        "messages", messages,
+        "tools", List.of(),
+        "stream", false
+    );
         if (debug) {
             System.out.println("[OpenAIClient][DEBUG] Payload enviado a OpenAI: " + body);
         }

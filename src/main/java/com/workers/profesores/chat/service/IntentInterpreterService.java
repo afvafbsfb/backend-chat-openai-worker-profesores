@@ -14,6 +14,8 @@ public class IntentInterpreterService {
     private boolean debug;
     @Value("${openai.api.key}")
     private String openaiApiKey;
+    @Value("${openai.api.model:gpt-4o}")
+    private String openaiApiModel;
 
     private final String OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 
@@ -29,7 +31,7 @@ public class IntentInterpreterService {
         try {
             RestTemplate restTemplate = new RestTemplate();
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", "gpt-4o");
+            requestBody.put("model", openaiApiModel);
             requestBody.put("temperature", 0.3);
             requestBody.put("messages", java.util.List.of(
                     Map.of("role", "user", "content", prompt)

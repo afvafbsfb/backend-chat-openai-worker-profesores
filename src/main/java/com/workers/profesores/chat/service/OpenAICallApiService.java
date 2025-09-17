@@ -134,6 +134,8 @@ public class OpenAICallApiService {
 
     @Value("${openai.api.url:https://api.openai.com/v1/chat/completions}")
     private String openaiApiUrl;
+    @Value("${openai.api.model:gpt-4o}")
+    private String openaiApiModel;
     private List<Map<String, Object>> whitelist;
 
     public OpenAICallApiService() {
@@ -222,7 +224,7 @@ public class OpenAICallApiService {
         for (int iter = 0; iter < maxIterations; iter++) {
             if (xmlLogger != null) xmlLogger.addStep("OpenAI", "Llamada a OpenAI (iteración " + iter + ") - mensajes: " + messagesToLogString(currentMessages));
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", "gpt-4o");
+            requestBody.put("model", openaiApiModel);
             requestBody.put("temperature", 0.2);
             requestBody.put("messages", currentMessages);
             requestBody.put("tools", List.of(callApiTool));
