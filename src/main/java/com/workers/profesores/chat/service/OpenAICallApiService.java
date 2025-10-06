@@ -225,7 +225,6 @@ public class OpenAICallApiService {
             if (xmlLogger != null) xmlLogger.addStep("OpenAI", "Llamada a OpenAI (iteración " + iter + ") - mensajes: " + messagesToLogString(currentMessages));
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("model", openaiApiModel);
-            requestBody.put("temperature", 0.2);
             requestBody.put("messages", currentMessages);
             requestBody.put("tools", List.of(callApiTool));
             if (debug) {

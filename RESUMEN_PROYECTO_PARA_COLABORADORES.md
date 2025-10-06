@@ -1,29 +1,37 @@
-# RESUMEN DEL PROYECTO: chat-backend-springboot-workers-profesores
+```markdown
+# RESUMEN DEL PROYECTO: chat-backend (mediador) para app Android
 
-## Estado actual
-- Backend Spring Boot funcionando como intermediario entre el frontend del chat y la API de academia.
-- Lógica de paginación y presentación de resultados gestionada íntegramente en el backend y el prompt del asistente ("secretaria").
-- El frontend del chat solo muestra la respuesta recibida, sin lógica de paginación propia.
+## Contexto y objetivo (actualizado)
+- Este proyecto es un mediador (backend-chat) que recibe peticiones desde la app Android, valida el JWT/OAuth del usuario y, según su rol, consulta la API de academia o responde localmente.
+- Cliente: App Android (solo pantalla de login por ahora). No se enviarán tablas Markdown en las respuestas; las respuestas serán texto plano o listas sencillas (JSON) pensadas para renderizar en Android (RecyclerView o TextView).
 
-## Decisiones clave
-- **Paginación:** Solo el endpoint `/vlodeiro/secretaria/alumnos` soporta paginación (parámetros `page` y `size`). El resto de endpoints devuelven todos los resultados.
-- **Prompt del asistente:**
-  - Si el usuario pide solo el total de registros, se responde solo con el número.
-  - Si pide la lista y el total, se muestran ambos.
-  - Listados grandes: solo los primeros 50 registros, con aviso y opción de pedir "siguiente".
-  - Exportaciones: solo se muestra el enlace de descarga, nunca el contenido del archivo.
-- **Frontend:** No debe implementar lógica de paginación ni manipular directamente los parámetros de la API de academia.
+## Arquitectura recomendada
 
-## Cómo contribuir o continuar
-- Mantener la lógica de negocio y presentación en el backend.
-- Si se añaden nuevos endpoints con paginación, actualizar el prompt y la whitelist.
-- Documentar cualquier cambio relevante en este archivo.
+Android (Bearer access_token) → Backend-Chat (mediador) → API (OAuth) → OpenAI (function-calling)
 
-## Documentación útil
-- `/documentacion/run-pruebas.ps1`: script de pruebas automáticas.
-- `/src/main/resources/api-whitelist.yaml`: endpoints permitidos y parámetros.
-- `/src/main/java/com/workers/profesores/chat/service/ChatService.java`: lógica principal y prompt del sistema.
+... (mismo contenido que RESUMEN_PROYECTO.md, adaptado para colaboradores)
 
+## Comandos prácticos (PowerShell) para crear rama, commit y push
+Si quieres trabajar en una rama `ampliacion-proyecto` (recomendado) ejecuta en PowerShell desde la raíz del repo:
+
+```powershell
+# crear rama local y cambiar a ella
+git checkout -b ampliacion-proyecto
+
+# añadir cambios y commitear
+git add .
+git commit -m "feat(chat): adaptar backend-chat para Android + OAuth (mvp)"
+
+# pushear la rama al remoto
+git push -u origin ampliacion-proyecto
+```
+
+Si quieres que lo haga yo (crear la rama y pushearla), confírmalo y ejecutaré los comandos.
+
+---
+
+> Este archivo sirve como referencia para colaboradores. Actualízalo tras cualquier cambio relevante en la arquitectura, lógica de negocio o integraciones.
+```
 
 ## Patrón genérico para listados grandes y exportación de colecciones
 

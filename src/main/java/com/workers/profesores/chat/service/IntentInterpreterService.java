@@ -32,7 +32,6 @@ public class IntentInterpreterService {
             RestTemplate restTemplate = new RestTemplate();
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("model", openaiApiModel);
-            requestBody.put("temperature", 0.3);
             requestBody.put("messages", java.util.List.of(
                     Map.of("role", "user", "content", prompt)
             ));
