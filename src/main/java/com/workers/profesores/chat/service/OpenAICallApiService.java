@@ -113,9 +113,26 @@ public class OpenAICallApiService {
     /**
      * Renderiza la whitelist YAML como una tabla de endpoints para el prompt de sistema.
      */
+    @Deprecated
     public String renderWhitelistTable() {
+        // Legacy name - delegate to the spec-first renderer
+        return renderEndpointsTable();
+    }
+
+    /**
+     * New API: render endpoints table (spec-first). Use this method in new code.
+     */
+    public String renderEndpointsTable() {
         // For safety, return a short narrative description (no Markdown tables)
         return renderWhitelistNarrativeWithDescriptions(getWhitelistLimited());
+    }
+
+    /**
+     * Return the current endpoints loaded (from served-openapi.json when available).
+     * Kept as public helper for other services/tests.
+     */
+    public List<Map<String, Object>> getEndpoints() {
+        return whitelist == null ? List.of() : whitelist;
     }
     @Value("${openai.api.key}")
     private String openaiApiKey;
@@ -132,11 +149,50 @@ public class OpenAICallApiService {
     private boolean openaiMock;
     private List<Map<String, Object>> whitelist;
 
+    @SuppressWarnings("unused")
+    private SpecLoaderService specLoaderService;
+
     public OpenAICallApiService() {
-        // Para Spring: ApiProxyService será inyectado después
+        // Do not attempt to load legacy YAML at construction time; prefer SpecLoaderService injection.
+        this.whitelist = new ArrayList<>();
+    }
+
+    // Se usa setter-injection perezosa para evitar referencia circular durante el arranque
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setApiProxyService(@Lazy ApiProxyService apiProxyService) {
+        this.apiProxyService = apiProxyService;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setSpecLoaderService(SpecLoaderService specLoaderService) {
+        this.specLoaderService = specLoaderService;
+        // Try to load whitelist from spec; if empty, keep YAML fallback
         try {
+            List<Map<String,Object>> specList = specLoaderService.getWhitelist();
+            if (specList != null && !specList.isEmpty()) {
+                this.whitelist = specList;
+                logger.info("Loaded whitelist from served-openapi.json with {} endpoints", specList.size());
+                return;
+            }
+        } catch (Exception ex) {
+            logger.warn("SpecLoaderService failed: {}. Falling back to YAML whitelist.", ex.getMessage());
+        }
+        if (this.whitelist == null || this.whitelist.isEmpty()) {
+            loadWhitelistFromYaml();
+        }
+    }
+
+    private void loadWhitelistFromYaml() {
+        try {
+            ClassPathResource resource = new ClassPathResource("api-whitelist.yaml");
+            if (!resource.exists()) {
+                // No legacy YAML present: don't spam warnings during tests or normal runs.
+                whitelist = List.of();
+                return;
+            }
+            logger.warn("Loading api-whitelist.yaml (DEPRECATED). Prefer served-openapi.json as canonical source.");
             ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-            InputStream is = new ClassPathResource("api-whitelist.yaml").getInputStream();
+            InputStream is = resource.getInputStream();
             Map<String, Object> yaml = mapper.readValue(is, new TypeReference<Map<String, Object>>(){});
             Object endpointsObj = yaml.get("endpoints");
             whitelist = new ArrayList<>();
@@ -155,18 +211,24 @@ public class OpenAICallApiService {
         }
     }
 
-    // Se usa setter-injection perezosa para evitar referencia circular durante el arranque
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    public void setApiProxyService(@Lazy ApiProxyService apiProxyService) {
-        this.apiProxyService = apiProxyService;
-    }
+
 
     // Constructor para tests: permite inyectar un InputStream alternativo (o null para usar el real)
     public OpenAICallApiService(ApiProxyService apiProxyService, InputStream whitelistInputStream) {
         this.apiProxyService = apiProxyService;
         try {
             ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-            InputStream is = whitelistInputStream != null ? whitelistInputStream : new ClassPathResource("api-whitelist.yaml").getInputStream();
+            InputStream is;
+            if (whitelistInputStream != null) {
+                is = whitelistInputStream;
+            } else {
+                ClassPathResource resource = new ClassPathResource("api-whitelist.yaml");
+                if (!resource.exists()) {
+                    whitelist = List.of();
+                    return;
+                }
+                is = resource.getInputStream();
+            }
             Map<String, Object> yaml = mapper.readValue(is, new TypeReference<Map<String, Object>>(){});
             Object endpointsObj = yaml.get("endpoints");
             whitelist = new ArrayList<>();
@@ -258,9 +320,10 @@ public class OpenAICallApiService {
                     HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
                     String url = composeCompletionsUrl();
                     ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
-                    if (response == null) {
-                        logger.error("La llamada a OpenAI devolvió ResponseEntity nula");
-                        responseBody = mapper.writeValueAsString(Map.of("error", "openai_response_null", "message", "ResponseEntity is null"));
+                    // Normalize: if response or body is null, return a JSON error object
+                    if (response == null || response.getBody() == null) {
+                        logger.error("La llamada a OpenAI devolvió ResponseEntity o body nulo");
+                        responseBody = mapper.writeValueAsString(Map.of("error", "openai_response_null", "message", "ResponseEntity or body is null"));
                     } else {
                         responseBody = response.getBody();
                     }
@@ -322,7 +385,7 @@ public class OpenAICallApiService {
                         } else {
                             try {
                                 // use the string-returning executeWhitelistedCall which normalizes errors into JSON
-                                toolResult = apiProxyService.executeWhitelistedCall(endpoint, methodFromModel, pathParams, query, body, authorization);
+                                toolResult = apiProxyService.executeSpecCall(endpoint, methodFromModel, pathParams, query, body, authorization);
                                 if (xmlLogger != null) xmlLogger.addStep("ApiProxyService", "Respuesta de API (string)");
                             } catch (Exception ex2) {
                                 // Ensure we always return a JSON object describing the failure
@@ -361,6 +424,9 @@ public class OpenAICallApiService {
     public Map<String, Object> getEndpointByName(String name) {
         if (whitelist == null) return null;
         for (Map<String, Object> ep : whitelist) {
+            // Prefer operationId if present (canonical name), fallback to name for backwards compat
+            Object opId = ep.get("operationId");
+            if (opId != null && Objects.equals(String.valueOf(opId), name)) return ep;
             if (Objects.equals(ep.get("name"), name)) return ep;
         }
         return null;

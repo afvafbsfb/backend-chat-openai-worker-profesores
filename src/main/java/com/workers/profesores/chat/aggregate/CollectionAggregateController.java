@@ -105,10 +105,10 @@ public class CollectionAggregateController {
                 q.put(rt.getPageParam(), page);
                 q.put(rt.getSizeParam(), size);
             }
-            String result = apiProxy.executeWhitelistedCall(
-                    Map.of("path", rt.getAcademiaPath()), "GET",
-                    om.valueToTree(pathParams), om.valueToTree(q), null
-            );
+        String result = apiProxy.executeSpecCall(
+            Map.of("path", rt.getAcademiaPath()), "GET",
+            om.valueToTree(pathParams), om.valueToTree(q), null, null
+        );
             JsonNode node = om.readTree(result);
             return extractItemsOrArray(node);
         } catch (Exception e) {
@@ -169,10 +169,10 @@ public class CollectionAggregateController {
                 q.put(rt.getPageParam(), page);
                 q.put(rt.getSizeParam(), size);
             }
-            String result = apiProxy.executeWhitelistedCall(
-                    Map.of("path", rt.getAcademiaPath()), "GET",
-                    om.valueToTree(pathParams), om.valueToTree(q), null
-            );
+        String result = apiProxy.executeSpecCall(
+            Map.of("path", rt.getAcademiaPath()), "GET",
+            om.valueToTree(pathParams), om.valueToTree(q), null, null
+        );
             return om.readTree(result);
         } catch (Exception e) {
             throw new RuntimeException("Error llamando a API academia: " + e.getMessage(), e);

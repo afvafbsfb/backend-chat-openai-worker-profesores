@@ -142,6 +142,20 @@ public class ApiProxyService {
     return executeWhitelistedCall(endpoint, methodFromModel, pathParams, query, body, null);
     }
 
+    /**
+     * New alias: execute a call using the spec endpoints metadata. Kept for clarity when migrating away from the term "whitelist".
+     */
+    public String executeSpecCall(
+        Map<String, Object> endpoint,
+        String methodFromModel,
+        JsonNode pathParams,
+        JsonNode query,
+        JsonNode body,
+        String authorization
+    ) throws Exception {
+        return executeWhitelistedCall(endpoint, methodFromModel, pathParams, query, body, authorization);
+    }
+
     // Nueva firma que acepta Authorization header y la propaga
     public String executeWhitelistedCall(
         Map<String, Object> endpoint,

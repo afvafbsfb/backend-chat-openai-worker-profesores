@@ -129,7 +129,7 @@ Buenas prácticas para el equipo Android
 - Siempre parsear la respuesta como JSON primero; luego decidir si es array/objeto/text.
 - Evitar dependencias en formato libre (Markdown). El backend no devolverá tablas Markdown.
 - Estandarizar totales: preferir `{"total":123}` o `{"totalElements":123}`.
-- Documentar y versionar cualquier cambio en la `api-whitelist.yaml` o en contratos de respuesta.
+ - Documentar y versionar cualquier cambio en el contrato/openapi: el artifact canónico es `served-openapi.json` (publicado desde el repo de la API). No mantengas un `api-whitelist.yaml` localmente: usa la spec para generar documentación y validaciones.
 
 Si queréis, puedo agregar:
 

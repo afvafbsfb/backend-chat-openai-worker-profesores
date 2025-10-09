@@ -1,0 +1,13 @@
+{
+  "openapi": "3.0.2",
+  "paths": {
+    "/academias": {
+      "get": {
+        "operationId": "academias.listar_academias",
+        "x-permissions": {
+          "allowed_roles": ["Admin_plataforma"]
+        }
+      }
+    }
+  }
+}

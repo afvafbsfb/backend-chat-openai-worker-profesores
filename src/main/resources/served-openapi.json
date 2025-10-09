@@ -1,0 +1,1420 @@
+{
+  "components": {
+    "schemas": {
+      "Academia": {
+        "additionalProperties": false,
+        "properties": {
+          "direccion": {
+            "type": "string"
+          },
+          "id": {
+            "readOnly": true,
+            "type": "integer"
+          },
+          "nombre": {
+            "type": "string"
+          },
+          "telefono": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "nombre"
+        ],
+        "type": "object"
+      },
+      "LoginRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "format": "email",
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "type": "object"
+      },
+      "LoginResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "tokens": {
+            "additionalProperties": {},
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "Rol": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "readOnly": true,
+            "type": "integer"
+          },
+          "nombre": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "Usuario": {
+        "additionalProperties": false,
+        "properties": {
+          "academia_id": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "email": {
+            "format": "email",
+            "type": "string"
+          },
+          "estado": {
+            "type": "string"
+          },
+          "fecha_alta": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "readOnly": true,
+            "type": "integer"
+          },
+          "nombre": {
+            "type": "string"
+          },
+          "rol": {
+            "$ref": "#/components/schemas/Rol"
+          }
+        },
+        "type": "object"
+      },
+      "PaginatedAcademia": {
+        "type": "object",
+        "properties": {
+          "totalElements": {
+            "type": "integer"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Academia"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          }
+        }
+      },
+      "PaginatedUsuario": {
+        "type": "object",
+        "properties": {
+          "totalElements": {
+            "type": "integer"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Usuario"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "bearerFormat": "JWT",
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "description": "Spec generated from code (partial)",
+    "title": "API Workers Profesores",
+    "version": "1.0.0"
+  },
+  "openapi": "3.0.2",
+  "paths": {
+    "/academias": {
+      "get": {
+        "description": "Auto-generated operation for academias.listar_academias",
+        "operationId": "academias.listar_academias",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedAcademia"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /academias",
+        "tags": [
+          "Academias"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Filtrar por id de academia (cuando el permiso lo permite)"
+          }
+        ],
+        "x-permissions": {
+          "allowed_roles": [
+            "Admin_academia",
+            "Admin_plataforma",
+            "Profesor_academia"
+          ],
+          "enforced_filters": {
+            "id": "current_user.academia_id"
+          },
+          "note": "Listado de academias: admin_plataforma puede listar todas; admin_academia y profesor_academia sólo su propia academia",
+          "scope_by_role": {
+            "Admin_plataforma": "global",
+            "Admin_academia": "own_academia",
+            "Profesor_academia": "own_academia"
+          },
+          "source": "permissions_map",
+          "generated_at": "2025-10-09T13:32:30.791558+00:00"
+        }
+      },
+      "post": {
+        "description": "Auto-generated operation for academias.crear_academia",
+        "operationId": "academias.crear_academia",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Academia"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedAcademia"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /academias",
+        "tags": [
+          "Academias"
+        ],
+        "x-permissions": {
+          "allowed_roles": [
+            "Admin_plataforma"
+          ],
+          "scope": "global",
+          "source": "permissions_map",
+          "generated_at": "2025-10-09T13:32:30.791574+00:00"
+        }
+      }
+    },
+    "/academias/{academia_id}": {
+      "delete": {
+        "description": "Auto-generated operation for academias.eliminar_academia",
+        "operationId": "academias.eliminar_academia",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "academia_id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Academia"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "DELETE /academias/{academia_id}",
+        "tags": [
+          "Academias"
+        ],
+        "x-permissions": {
+          "allowed_roles": [
+            "Admin_plataforma"
+          ],
+          "scope": "global",
+          "source": "permissions_map",
+          "generated_at": "2025-10-09T13:32:30.791591+00:00"
+        }
+      },
+      "get": {
+        "description": "Auto-generated operation for academias.obtener_academia",
+        "operationId": "academias.obtener_academia",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "academia_id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Academia"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /academias/{academia_id}",
+        "tags": [
+          "Academias"
+        ],
+        "x-permissions": {
+          "allowed_roles": [
+            "Admin_academia",
+            "Admin_plataforma",
+            "Profesor_academia"
+          ],
+          "note": "Lectura de academia: admin_plataforma global; admin_academia/profesor_academia limitados a su propia academia",
+          "scope_by_role": {
+            "Admin_plataforma": "global",
+            "Admin_academia": "own_academia",
+            "Profesor_academia": "own_academia"
+          },
+          "source": "permissions_map",
+          "generated_at": "2025-10-09T13:32:30.791651+00:00"
+        }
+      },
+      "patch": {
+        "description": "Auto-generated operation for academias.modificar_academia",
+        "operationId": "academias.modificar_academia",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "academia_id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Academia"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Academia"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "PATCH /academias/{academia_id}",
+        "tags": [
+          "Academias"
+        ],
+        "x-permissions": {
+          "allowed_roles": [
+            "Admin_academia",
+            "Admin_plataforma"
+          ],
+          "scope_by_role": {
+            "Admin_academia": "own_academia",
+            "Admin_plataforma": "global"
+          },
+          "source": "permissions_map",
+          "generated_at": "2025-10-09T13:32:30.791585+00:00"
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "description": "Inicio de sesión con email y password",
+        "operationId": "login.login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            },
+            "description": "Login exitoso"
+          },
+          "401": {
+            "description": "Credenciales inválidas"
+          }
+        },
+        "summary": "Login usuario",
+        "tags": [
+          "login"
+        ],
+        "x-permissions": {
+          "allowed_roles": [],
+          "note": "Login público (no requiere rol)",
+          "scope": "public",
+          "source": "permissions_map",
+          "generated_at": "2025-10-09T13:32:30.791656+00:00"
+        },
+        "security": []
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "description": "Auto-generated operation for login_bp.logout",
+        "operationId": "login.logout",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /auth/logout",
+        "tags": [
+          "oauth"
+        ],
+        "x-permissions": {
+          "allowed_roles": [
+            "Admin_academia",
+            "Admin_plataforma",
+            "Profesor_academia"
+          ],
+          "note": "Logout para usuarios autenticados",
+          "scope": "own_user",
+          "source": "permissions_map",
+          "generated_at": "2025-10-09T13:32:30.791662+00:00"
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "description": "Auto-generated operation for login_bp.refresh_tokens",
+        "operationId": "login.refresh_tokens",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /auth/refresh",
+        "tags": [
+          "oauth"
+        ],
+        "x-permissions": {
+          "allowed_roles": [
+            "Admin_academia",
+            "Admin_plataforma",
+            "Profesor_academia"
+          ],
+          "note": "Refresh de tokens para usuarios autenticados",
+          "scope": "own_user",
+          "source": "permissions_map",
+          "generated_at": "2025-10-09T13:32:30.791670+00:00"
+        }
+      }
+    },
+    "/auth/unblock": {
+      "post": {
+        "description": "Auto-generated operation for login_bp.unblock_user",
+        "operationId": "login.unblock_user",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /auth/unblock",
+        "tags": [
+          "oauth"
+        ],
+        "x-permissions": {
+          "allowed_roles": [
+            "Admin_academia",
+            "Admin_plataforma"
+          ],
+          "note": "Desbloqueo de usuarios: admin_plataforma global; admin_academia su academia",
+          "scope_by_role": {
+            "Admin_plataforma": "global",
+            "Admin_academia": "own_academia"
+          },
+          "source": "permissions_map",
+          "generated_at": "2025-10-09T13:32:30.791676+00:00"
+        }
+      }
+    },
+    "/docs": {
+      "get": {
+        "description": "Auto-generated operation for docs.docs_ui",
+        "operationId": "docs.docs_ui",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "GET /docs",
+        "tags": [
+          "Docs/Health"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "description": "Auto-generated operation for health",
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "GET /health",
+        "tags": [
+          "Docs/Health"
+        ]
+      }
+    },
+    "/openapi.json": {
+      "get": {
+        "description": "Auto-generated operation for docs.openapi_json",
+        "operationId": "docs.openapi_json",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "GET /openapi.json",
+        "tags": [
+          "Docs/Health"
+        ]
+      }
+    },
+    "/usuarios/": {
+      "get": {
+        "description": "Auto-generated operation for usuarios.listar_usuarios",
+        "operationId": "usuarios.listar_usuarios",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedUsuario"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /usuarios/",
+        "tags": [
+          "Usuarios"
+        ],
+        "parameters": [
+          {
+            "name": "academia_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Filtrar por academia_id (nota: para roles de academia se fuerza este filtro)"
+          },
+          {
+            "name": "rol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filtrar por nombre del rol (e.g. Admin_plataforma, Admin_academia, Profesor)"
+          },
+          {
+            "name": "nombre",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Buscar por parte del nombre (ilike)"
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Filtrar por id del usuario (puede usarse como usuario_id)"
+          }
+        ],
+        "x-permissions": {
+          "allowed_roles": [
+            "Admin_academia",
+            "Admin_plataforma",
+            "Profesor_academia"
+          ],
+          "enforced_filters": {
+            "academia_id": "current_user.academia_id"
+          },
+          "note": "Listado de usuarios: admin_plataforma puede consultar todos; admin_academia y profesor_academia sólo su propia academia",
+          "scope_by_role": {
+            "Admin_plataforma": "global",
+            "Admin_academia": "own_academia",
+            "Profesor_academia": "own_academia"
+          },
+          "source": "permissions_map",
+          "generated_at": "2025-10-09T13:32:30.791600+00:00"
+        }
+      },
+      "post": {
+        "description": "Auto-generated operation for usuarios.crear_usuario",
+        "operationId": "usuarios.crear_usuario",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Usuario"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedUsuario"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /usuarios/",
+        "tags": [
+          "Usuarios"
+        ],
+        "x-permissions": {
+          "allowed_roles": [
+            "Admin_academia",
+            "Admin_plataforma"
+          ],
+          "note": "Admin_academia puede crear usuarios solo en su academia y no puede crear Admin_plataforma",
+          "scope": "own_academia",
+          "allowed_target_roles": {
+            "Admin_plataforma": [
+              "Admin_plataforma",
+              "Admin_academia",
+              "Profesor_academia"
+            ],
+            "Admin_academia": [
+              "Admin_academia",
+              "Profesor_academia"
+            ]
+          },
+          "source": "permissions_map",
+          "generated_at": "2025-10-09T13:32:30.791614+00:00"
+        }
+      }
+    },
+    "/usuarios/me": {
+      "get": {
+        "description": "Auto-generated operation for usuarios.obtener_mi_perfil",
+        "operationId": "usuarios.obtener_mi_perfil",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Usuario"
+                }
+              }
+            },
+            "description": "Perfil del usuario autenticado"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /usuarios/me",
+        "tags": [
+          "Usuarios"
+        ],
+        "x-permissions": {
+          "allowed_roles": [
+            "Admin_academia",
+            "Admin_plataforma",
+            "Profesor_academia"
+          ],
+          "note": "Cada usuario puede ver su propio perfil; admins pueden verlo según su scope",
+          "scope": "own_user",
+          "source": "permissions_map",
+          "generated_at": "2025-10-09T13:32:30.791683+00:00"
+        }
+      }
+    },
+    "/usuarios/recover": {
+      "get": {
+        "description": "Auto-generated operation for usuarios.recuperar_credenciales",
+        "operationId": "usuarios.recuperar_credenciales",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Usuario"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /usuarios/recover",
+        "tags": [
+          "Usuarios"
+        ],
+        "x-permissions": {
+          "allowed_roles": [],
+          "note": "Recuperación de credenciales: la operación puede iniciarse sin sesión (por ejemplo 'forgot password'), pero solo debe permitir recuperar las credenciales del propio usuario. Los admins pueden tener flujos separados para administrar credenciales de otros usuarios.",
+          "scope": "own_user",
+          "source": "permissions_map",
+          "generated_at": "2025-10-09T13:32:30.791697+00:00"
+        }
+      }
+    },
+    "/usuarios/{usuario_id}": {
+      "delete": {
+        "description": "Auto-generated operation for usuarios.eliminar_usuario",
+        "operationId": "usuarios.eliminar_usuario",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "usuario_id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Usuario"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "DELETE /usuarios/{usuario_id}",
+        "tags": [
+          "Usuarios"
+        ],
+        "x-permissions": {
+          "allowed_roles": [
+            "Admin_academia",
+            "Admin_plataforma"
+          ],
+          "note": "Admin_academia solo puede borrar usuarios de su propia academia",
+          "scope_by_role": {
+            "Admin_plataforma": "global",
+            "Admin_academia": "own_academia"
+          },
+          "source": "permissions_map",
+          "generated_at": "2025-10-09T13:32:30.791623+00:00"
+        }
+      },
+      "get": {
+        "description": "Auto-generated operation for usuarios.obtener_usuario",
+        "operationId": "usuarios.obtener_usuario",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "usuario_id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Usuario"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /usuarios/{usuario_id}",
+        "tags": [
+          "Usuarios"
+        ],
+        "x-permissions": {
+          "allowed_roles": [
+            "Admin_academia",
+            "Admin_plataforma",
+            "Profesor_academia"
+          ],
+          "note": "Lectura de usuario: admin_plataforma global; admin_academia y profesor_academia limitados a su academia",
+          "scope_by_role": {
+            "Admin_plataforma": "global",
+            "Admin_academia": "own_academia",
+            "Profesor_academia": "own_academia"
+          },
+          "source": "permissions_map",
+          "generated_at": "2025-10-09T13:32:30.791691+00:00"
+        }
+      },
+      "patch": {
+        "description": "Auto-generated operation for usuarios.actualizar_usuario",
+        "operationId": "usuarios.actualizar_usuario_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "usuario_id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Usuario"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Usuario"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "PATCH /usuarios/{usuario_id}",
+        "tags": [
+          "Usuarios"
+        ],
+        "x-permissions": {
+          "allowed_roles": [
+            "Admin_academia",
+            "Admin_plataforma",
+            "Profesor_academia"
+          ],
+          "note": "Permisos de modificación por rol y ámbito",
+          "scope_by_role": {
+            "Admin_plataforma": "global",
+            "Admin_academia": "own_academia",
+            "Profesor_academia": "own_user"
+          },
+          "mutable_fields_by_role": {
+            "Admin_plataforma": [
+              "rol",
+              "email",
+              "estado",
+              "nombre"
+            ],
+            "Admin_academia": [
+              "email",
+              "nombre",
+              "estado"
+            ],
+            "Profesor_academia": [
+              "email",
+              "nombre",
+              "password"
+            ]
+          },
+          "source": "permissions_map",
+          "generated_at": "2025-10-09T13:32:30.791644+00:00"
+        }
+      },
+      "put": {
+        "description": "Auto-generated operation for usuarios.actualizar_usuario",
+        "operationId": "usuarios.actualizar_usuario_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "usuario_id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Usuario"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Usuario"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "PUT /usuarios/{usuario_id}",
+        "tags": [
+          "Usuarios"
+        ],
+        "x-permissions": {
+          "allowed_roles": [
+            "Admin_academia",
+            "Admin_plataforma",
+            "Profesor_academia"
+          ],
+          "note": "Permisos de modificación por rol y ámbito",
+          "scope_by_role": {
+            "Admin_plataforma": "global",
+            "Admin_academia": "own_academia",
+            "Profesor_academia": "own_user"
+          },
+          "mutable_fields_by_role": {
+            "Admin_plataforma": [
+              "rol",
+              "email",
+              "estado",
+              "nombre"
+            ],
+            "Admin_academia": [
+              "email",
+              "nombre",
+              "estado"
+            ],
+            "Profesor_academia": [
+              "email",
+              "nombre",
+              "password"
+            ]
+          },
+          "source": "permissions_map",
+          "generated_at": "2025-10-09T13:32:30.791633+00:00"
+        }
+      }
+    },
+    "/usuarios/{usuario_id}/credentials": {
+      "put": {
+        "description": "Auto-generated operation for usuarios.actualizar_credenciales",
+        "operationId": "usuarios.actualizar_credenciales",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "usuario_id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Usuario"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Usuario"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "PUT /usuarios/{usuario_id}/credentials",
+        "tags": [
+          "Usuarios"
+        ],
+        "x-permissions": {
+          "allowed_roles": [
+            "Admin_academia",
+            "Admin_plataforma",
+            "Profesor_academia"
+          ],
+          "note": "Modificación de credenciales/propio perfil",
+          "scope_by_role": {
+            "Admin_plataforma": "global",
+            "Admin_academia": "own_academia",
+            "Profesor_academia": "own_user"
+          },
+          "mutable_fields_by_role": {
+            "Admin_plataforma": [
+              "password",
+              "email",
+              "nombre",
+              "rol",
+              "academia_id",
+              "estado"
+            ],
+            "Admin_academia": [
+              "password",
+              "email",
+              "nombre",
+              "rol",
+              "academia_id",
+              "estado"
+            ],
+            "Profesor_academia": [
+              "password",
+              "email",
+              "nombre"
+            ]
+          },
+          "source": "permissions_map",
+          "generated_at": "2025-10-09T13:32:30.791708+00:00"
+        }
+      }
+    },
+    "/usuarios/{usuario_id}/role": {
+      "put": {
+        "description": "Auto-generated operation for usuarios.actualizar_rol",
+        "operationId": "usuarios.actualizar_rol",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "usuario_id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Usuario"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Usuario"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "PUT /usuarios/{usuario_id}/role",
+        "tags": [
+          "Usuarios"
+        ],
+        "x-permissions": {
+          "allowed_roles": [
+            "Admin_academia",
+            "Admin_plataforma"
+          ],
+          "note": "Cambio de rol: admin_academia limitado a su academia",
+          "scope_by_role": {
+            "Admin_plataforma": "global",
+            "Admin_academia": "own_academia"
+          },
+          "source": "permissions_map",
+          "generated_at": "2025-10-09T13:32:30.791716+00:00"
+        }
+      }
+    },
+    "/usuarios/{usuario_id}/status": {
+      "put": {
+        "description": "Auto-generated operation for usuarios.actualizar_estado",
+        "operationId": "usuarios.actualizar_estado",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "usuario_id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Usuario"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Usuario"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "PUT /usuarios/{usuario_id}/status",
+        "tags": [
+          "Usuarios"
+        ],
+        "x-permissions": {
+          "allowed_roles": [
+            "Admin_academia",
+            "Admin_plataforma"
+          ],
+          "note": "Cambio de estado de usuario: admins",
+          "scope_by_role": {
+            "Admin_plataforma": "global",
+            "Admin_academia": "own_academia"
+          },
+          "source": "permissions_map",
+          "generated_at": "2025-10-09T13:32:30.791725+00:00"
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "description": "Inicio de sesión (email/password).",
+      "name": "login"
+    },
+    {
+      "description": "Refresh, logout y gestión de tokens.",
+      "name": "oauth"
+    },
+    {
+      "description": "Operaciones relacionadas con academias y su configuración.",
+      "name": "Academias"
+    },
+    {
+      "description": "Gestión de usuarios, perfiles y credenciales.",
+      "name": "Usuarios"
+    },
+    {
+      "description": "Documentación y endpoints de salud.",
+      "name": "Docs/Health"
+    }
+  ]
+}

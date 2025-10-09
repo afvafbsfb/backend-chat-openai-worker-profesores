@@ -1,0 +1,27 @@
+name: Validate served-openapi
+
+on:
+  push:
+    branches: [ 'ampliacion-proyecto' ]
+  workflow_dispatch: {}
+
+jobs:
+  validate-served-openapi:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download served-openapi.json (optional)
+        env:
+          SERVED_OPENAPI_URL: ${{ secrets.SERVED_OPENAPI_URL }}
+        run: |
+          if [ -n "$SERVED_OPENAPI_URL" ]; then
+            echo "Downloading served-openapi.json from $SERVED_OPENAPI_URL"
+            curl -fsSL "$SERVED_OPENAPI_URL" -o src/main/resources/served-openapi.json
+          else
+            echo "No SERVED_OPENAPI_URL provided, skipping download"
+          fi
+
+      - name: Run unit tests (focus)
+        run: mvn -DskipITs test -Dtest=*OpenAICallApiServiceOperationIdTest test

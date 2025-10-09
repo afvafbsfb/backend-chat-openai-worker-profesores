@@ -32,7 +32,7 @@ public class ChatService {
             if (xmlLogger != null) xmlLogger.addStep("ChatService", "Inicio de runChat");
             // 0) System prompt base + whitelist dinámica
             String promptBase = "Eres un asistente (secretaria) para una plataforma de academias en España. Solo puedes acceder a los recursos de la API mediante la función call_api y siempre bajo las condiciones de autorizacion que tenga el rol del usuario logueado. Cuando necesites datos, usa exclusivamente call_api con los endpoints permitidos. Responde en castellano, de forma breve y clara. Si necesitas confirmar una operación destructiva, pide confirmación explícita antes de ejecutar. Cuando pidas listados grandes, sugiere exportar a CSV/Excel en lugar de mostrar miles de filas. No uses tablas Markdown en el system prompt ni en las instrucciones del sistema.";
-            String whitelistTable = openai.renderWhitelistTable();
+                String whitelistTable = openai.renderEndpointsTable();
             // Prefetch user profile (so model has user's name available) and añadir contexto resumido del usuario (UserClaims)
             String profileJsonForPrompt = "{}";
             String userNameForPrompt = null;
@@ -40,7 +40,7 @@ public class ChatService {
                 Map<String, Object> epProfile = openai.getEndpointByName("getMiPerfil");
                 if (epProfile != null) {
                     // executeWhitelistedCall normaliza a JSON string
-                    profileJsonForPrompt = apiProxy.executeWhitelistedCall(epProfile, "GET", null, null, null, authorization);
+                    profileJsonForPrompt = apiProxy.executeSpecCall(epProfile, "GET", null, null, null, authorization);
                     try {
                         JsonNode pnode = om.readTree(profileJsonForPrompt);
                         if (pnode.has("nombre")) userNameForPrompt = pnode.path("nombre").asText(null);
@@ -232,7 +232,7 @@ public class ChatService {
                 try {
                     // Antes de ejecutar, validar permisos y sanitizar parámetros
                     try {
-                        apiResult = apiProxy.executeWhitelistedCall(ep, methodFromModel, pathParams, query, body, authorization);
+                        apiResult = apiProxy.executeSpecCall(ep, methodFromModel, pathParams, query, body, authorization);
                     } catch (Exception exInner) {
                         // Ensure apiResult is always a JSON string describing the error
                         Map<String, Object> errMap = Map.of("error", "authorization_failure", "message", exInner.getMessage() == null ? "" : exInner.getMessage());

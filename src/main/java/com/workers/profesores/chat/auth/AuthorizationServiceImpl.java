@@ -13,11 +13,31 @@ public class AuthorizationServiceImpl implements AuthorizationService {
     @Override
     public void checkAllowed(UserClaims claims, Map<String, Object> endpoint, String method, JsonNode pathParams, JsonNode query) {
         if (claims == null) throw new RuntimeException("Forbidden: no claims provided");
+        if (endpoint == null) endpoint = Map.of();
+        // If x-permissions present, honor allowed_roles if defined
+        Object xp = endpoint == null ? null : endpoint.get("x-permissions");
+        if (xp instanceof Map<?, ?>) {
+            Map<?, ?> xperm = (Map<?, ?>) xp;
+            Object allowed = xperm.get("allowed_roles");
+            if (allowed instanceof java.util.List<?>) {
+                @SuppressWarnings("unchecked") java.util.List<String> allowedRoles = (java.util.List<String>) allowed;
+                // If the user has any allowed role, permit
+                boolean ok = false;
+                if (claims.roles != null) {
+                    for (String r : claims.roles) {
+                        if (allowedRoles.contains(r)) { ok = true; break; }
+                    }
+                }
+                if (!ok) throw new RuntimeException("Forbidden: role not allowed by x-permissions");
+            }
+        }
+        // Fallback/backwards-compatible behavior for role-specific logic
         if (claims.isAdminPlataforma()) return; // todo permitido
         if (claims.isAdminAcademia()) {
             // Denegar operaciones de gestión de academias si endpoint contiene create/delete on academias
             String path = String.valueOf(endpoint.getOrDefault("path", ""));
-            if (path.contains("/academias") && ("POST".equalsIgnoreCase(method) || "DELETE".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method))) {
+            if (path.contains("/academias") && ("POST".equalsIgnoreCase(method) || "DELETE".equalsIgnoreCase(method) || "PUT".
+                    equalsIgnoreCase(method))) {
                 throw new RuntimeException("Forbidden: Admin_academia no puede crear/borrar academias");
             }
             // el resto permitido siempre que se limite a su academia; la sanitización se encargará de forzar academy_id
@@ -33,34 +53,60 @@ public class AuthorizationServiceImpl implements AuthorizationService {
 
     @Override
     public java.util.Map<String, JsonNode> sanitizeParams(UserClaims claims, Map<String, Object> endpoint, JsonNode pathParams, JsonNode query) {
-        // Si es Admin_academia forzamos academy_id en query/path si existe en claims
-        if (claims != null && claims.isAdminAcademia()) {
-            if (claims.academiaId != null) {
-                // Insertar academia_id en query si endpoint acepta 'academia_id'
-                java.util.Map<String, JsonNode> out = new java.util.HashMap<>();
-                com.fasterxml.jackson.databind.node.ObjectNode q = query != null && query.isObject() ? (com.fasterxml.jackson.databind.node.ObjectNode) query.deepCopy() : om.createObjectNode();
-                q.put("academia_id", claims.academiaId);
-                out.put("pathParams", pathParams == null ? om.createObjectNode() : pathParams);
-                out.put("query", q);
-                return out;
+        if (endpoint == null) endpoint = Map.of();
+        com.fasterxml.jackson.databind.node.ObjectNode q = query != null && query.isObject() ? (com.fasterxml.jackson.databind.node.ObjectNode) query.deepCopy() : om.createObjectNode();
+        com.fasterxml.jackson.databind.node.ObjectNode p = pathParams != null && pathParams.isObject() ? (com.fasterxml.jackson.databind.node.ObjectNode) pathParams.deepCopy() : om.createObjectNode();
+        // If x-permissions has enforced_filters, apply them
+        Object xp = endpoint == null ? null : endpoint.get("x-permissions");
+        if (xp instanceof Map<?, ?> && claims != null) {
+            Map<?, ?> xperm = (Map<?, ?>) xp;
+            Object enforced = xperm.get("enforced_filters");
+            if (enforced instanceof Map<?, ?>) {
+                @SuppressWarnings("unchecked") Map<String, Object> enforcedMap = (Map<String, Object>) enforced;
+                for (Map.Entry<String, Object> e : enforcedMap.entrySet()) {
+                    String param = e.getKey();
+                    String expr = String.valueOf(e.getValue());
+                    // Support simple expression: current_user.academia_id or current_user.usuarioId
+                    if ("current_user.academia_id".equals(expr) && claims.academiaId != null) {
+                        q.put(param, claims.academiaId);
+                    } else if ("current_user.usuarioId".equals(expr) && claims.usuarioId != null) {
+                        q.put(param, claims.usuarioId);
+                    }
+                }
             }
         }
-        return Map.of("pathParams", pathParams == null ? om.createObjectNode() : pathParams, "query", query == null ? om.createObjectNode() : query);
+        // Backwards-compatible behaviour: if Admin_academia ensure academia_id
+        if (claims != null && claims.isAdminAcademia() && claims.academiaId != null) {
+            q.put("academia_id", claims.academiaId);
+        }
+        return Map.of("pathParams", p, "query", q);
     }
 
     @Override
     public java.util.Map<String, Object> transformIfNeeded(UserClaims claims, Map<String, Object> endpoint, JsonNode pathParams, JsonNode query) {
         if (endpoint == null || claims == null) return null;
-        String name = String.valueOf(endpoint.getOrDefault("name", ""));
-        // Policy: if request is getAcademias (collection) and user is Admin_academia, transform to getAcademiaById
-        if ("getAcademias".equals(name) && claims.isAdminAcademia()) {
+        // Prefer operationId as canonical name
+        String operationId = String.valueOf(endpoint.getOrDefault("operationId", endpoint.getOrDefault("name", "")));
+        // Example policy: if a collection endpoint (operationId contains "listar" or returns Paginated) and user is Admin_academia, transform to item-level
+        if ((operationId.toLowerCase().contains("listar") || operationId.toLowerCase().contains("list")) && claims.isAdminAcademia()) {
+            // Need an associated item endpoint; we expect SpecLoader or other logic to have an endpoint named like 'obtener' counterpart
             if (claims.academiaId == null) {
                 throw new RuntimeException("Forbidden: admin_academia sin academia asociada");
             }
-            // Intent: lookup endpoint metadata for getAcademiaById from the whitelist stored in OpenAICallApiService
-            // We'll return a structure that ApiProxyService can use: endpointMetaName and overridden params
             java.util.Map<String, Object> result = new java.util.HashMap<>();
-            result.put("transform_to", "getAcademiaById");
+            // Heuristics: try to guess transform target by replacing 'listar' with 'obtener' or take from x-permissions.transform_to if present
+            Object xp = endpoint.get("x-permissions");
+            if (xp instanceof Map<?, ?>) {
+                Map<?, ?> xperm = (Map<?, ?>) xp;
+                Object transformTo = xperm.get("transform_to");
+                if (transformTo != null) {
+                    result.put("transform_to", String.valueOf(transformTo));
+                }
+            }
+            if (!result.containsKey("transform_to")) {
+                String guess = operationId.replace("listar", "obtener");
+                result.put("transform_to", guess);
+            }
             com.fasterxml.jackson.databind.node.ObjectNode newPath = om.createObjectNode();
             newPath.put("id", claims.academiaId);
             result.put("pathParams", newPath);

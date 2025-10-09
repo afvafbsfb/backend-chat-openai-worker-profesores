@@ -109,7 +109,8 @@
 					</execution>
 					<execution>
 						<id>report</id>
-						<phase>test</phase>
+						<!-- Generate coverage report in verify phase to avoid class/execution-data mismatch during test runs -->
+						<phase>verify</phase>
 						<goals>
 							<goal>report</goal>
 						</goals>
