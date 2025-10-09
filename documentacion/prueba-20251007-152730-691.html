@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Flujo de la prueba: prueba-20251007-152730-691</title>
+<style>body{font-family:sans-serif;} table{border-collapse:collapse;width:100%;margin-top:1em;} th,td{border:1px solid #ccc;padding:8px;text-align:left;} th{background:#f0f0f0;} tr:nth-child(even){background:#fafafa;} .step{margin-bottom:1em;} .timestamp{color:#888;font-size:0.9em;}</style>
+</head><body>
+<h2>Flujo de la prueba: prueba-20251007-152730-691</h2>
+<table>
+<thead><tr><th>Paso</th><th>Descripción</th><th>Timestamp</th></tr></thead>
+<tbody>
+<tr class='step'><td>1. ChatController</td><td>Recibida petición POST /chat&lt;br&gt;Mensaje recibido: [user] Quiero ver el listado de las academias</td><td class='timestamp'>2025-10-07 15:27:30.691</td></tr>
+<tr class='step'><td>2. ChatService</td><td>Inicio de runChat</td><td class='timestamp'>2025-10-07 15:27:30.691</td></tr>
+<tr class='step'><td>3. ChatService</td><td>System prompt construido y whitelist añadida</td><td class='timestamp'>2025-10-07 15:27:30.802</td></tr>
+<tr class='step'><td>4. ChatService</td><td>Mensajes de usuario preparados para OpenAI</td><td class='timestamp'>2025-10-07 15:27:30.802</td></tr>
+<tr class='step'><td>5. OpenAIClient</td><td>Primera llamada a OpenAI (callChatWithTools)</td><td class='timestamp'>2025-10-07 15:27:30.802</td></tr>
+<tr class='step'><td>6. OpenAI</td><td>Llamada a OpenAI (iteración 0) - mensajes: [system] Eres un asistente (secretaria) para una plataforma de academias en España. Solo puedes acceder a los recursos de la API ... | [system] Perfil_usuario: {
+  &quot;academia_id&quot;: null,
+  &quot;email&quot;: &quot;admin_plataforma@academia.com&quot;,
+  &quot;estado&quot;: &quot;Activo&quot;,
+  &quot;fecha_alta... | [user] Quiero ver el listado de las academias | </td><td class='timestamp'>2025-10-07 15:27:30.802</td></tr>
+<tr class='step'><td>7. OpenAI</td><td>Respuesta de OpenAI: {
+  &quot;id&quot;: &quot;chatcmpl-CO20wrdzzj98JQjIzBSI7bC2AsHA6&quot;,
+  &quot;object&quot;: &quot;chat.completion&quot;,
+  &quot;created&quot;: 1759843650,
+  &quot;model&quot;: &quot;gpt-5-mini-2025-08-07&quot;,
+  &quot;choices&quot;: [
+    {
+      &quot;index&quot;: 0,
+      &quot;message&quot;: {
+        &quot;role&quot;: &quot;assistant&quot;,
+        &quot;content&quot;: null,
+        &quot;tool_calls&quot;: [
+          {
+            &quot;id&quot;: &quot;call_dTPLGpfpqHZTLgmRsCnMuN22&quot;,
+            &quot;type&quot;: &quot;function&quot;,
+            &quot;function&quot;: {
+              &quot;name&quot;: &quot;call_api&quot;,
+              &quot;arguments&quot;: &quot;{\&quot;name\&quot;:\&quot;listAcademias\&quot;,\&quot;method\&quot;:\&quot;GET\&quot;}&quot;
+            }
+          }
+        ],
+        &quot;refusal&quot;: null,
+        &quot;annotations&quot;: []
+      },
+      &quot;finish_reason&quot;: &quot;tool_calls&quot;
+    }
+  ],
+  &quot;usage&quot;: {
+    &quot;prompt_tokens&quot;: 1384,
+    &quot;completion_tokens&quot;: 93,
+    &quot;total_tokens&quot;: 1477,
+    &quot;prompt_tokens_details&quot;: {
+      &quot;cached_tokens&quot;: 1280,
+      &quot;audio_tokens&quot;: 0
+    },
+    &quot;completion_tokens_details&quot;: {
+      &quot;reasoning_tokens&quot;: 64,
+      &quot;audio_tokens&quot;: 0,
+      &quot;accepted_prediction_tokens&quot;: 0,
+      &quot;rejected_prediction_tokens&quot;: 0
+    }
+  },
+  &quot;service_tier&quot;: &quot;default&quot;,
+  &quot;system_fingerprint&quot;: null
+}
+</td><td class='timestamp'>2025-10-07 15:27:34.456</td></tr>
+<tr class='step'><td>8. ApiProxyService</td><td>Llamada a API: listAcademias (GET)</td><td class='timestamp'>2025-10-07 15:27:34.456</td></tr>
+<tr class='step'><td>9. ApiProxyService</td><td>Respuesta de API (string)</td><td class='timestamp'>2025-10-07 15:27:34.604</td></tr>
+<tr class='step'><td>10. OpenAI</td><td>Llamada a OpenAI (iteración 1) - mensajes: [system] Eres un asistente (secretaria) para una plataforma de academias en España. Solo puedes acceder a los recursos de la API ... | [system] Perfil_usuario: {
+  &quot;academia_id&quot;: null,
+  &quot;email&quot;: &quot;admin_plataforma@academia.com&quot;,
+  &quot;estado&quot;: &quot;Activo&quot;,
+  &quot;fecha_alta... | [user] Quiero ver el listado de las academias | [assistant] null tool_calls: [{id=call_dTPLGpfpqHZTLgmRsCnMuN22, type=function, function={name=call_api, arguments={&quot;name&quot;:&quot;listAcademias&quot;,&quot;method&quot;:&quot;GET&quot;}}}] | [tool] {
+  &quot;ok&quot;: true,
+  &quot;result&quot;: [
+    {
+      &quot;id&quot;: 25,
+      &quot;nombre&quot;: &quot;Academia 2&quot;
+    },
+    {
+      &quot;id&quot;: 27,
+      &quot;nom... tool_call_id: call_dTPLGpfpqHZTLgmRsCnMuN22 | </td><td class='timestamp'>2025-10-07 15:27:34.607</td></tr>
+<tr class='step'><td>11. OpenAI</td><td>Respuesta de OpenAI: {
+  &quot;id&quot;: &quot;chatcmpl-CO210nWI8tfPFPl3owX7imTapUOpJ&quot;,
+  &quot;object&quot;: &quot;chat.completion&quot;,
+  &quot;created&quot;: 1759843654,
+  &quot;model&quot;: &quot;gpt-5-mini-2025-08-07&quot;,
+  &quot;choices&quot;: [
+    {
+      &quot;index&quot;: 0,
+      &quot;message&quot;: {
+        &quot;role&quot;: &quot;assistant&quot;,
+        &quot;content&quot;: &quot;{\&quot;text\&quot;:\&quot;Listado de academias (5).\&quot;,\&quot;academias\&quot;:[{\&quot;id\&quot;:25,\&quot;nombre\&quot;:\&quot;Academia 2\&quot;},{\&quot;id\&quot;:27,\&quot;nombre\&quot;:\&quot;Academia Conflict\&quot;},{\&quot;id\&quot;:24,\&quot;nombre\&quot;:\&quot;Academia Patched X\&quot;},{\&quot;id\&quot;:23,\&quot;nombre\&quot;:\&quot;Academia Patched Y\&quot;},{\&quot;id\&quot;:26,\&quot;nombre\&quot;:\&quot;Academia Test X\&quot;}],\&quot;suggestions\&quot;:[\&quot;Crear academia\&quot;,\&quot;Ver detalles de una academia (por id)\&quot;,\&quot;Exportar a CSV\&quot;]}&quot;,
+        &quot;refusal&quot;: null,
+        &quot;annotations&quot;: []
+      },
+      &quot;finish_reason&quot;: &quot;stop&quot;
+    }
+  ],
+  &quot;usage&quot;: {
+    &quot;prompt_tokens&quot;: 1539,
+    &quot;completion_tokens&quot;: 295,
+    &quot;total_tokens&quot;: 1834,
+    &quot;prompt_tokens_details&quot;: {
+      &quot;cached_tokens&quot;: 0,
+      &quot;audio_tokens&quot;: 0
+    },
+    &quot;completion_tokens_details&quot;: {
+      &quot;reasoning_tokens&quot;: 192,
+      &quot;audio_tokens&quot;: 0,
+      &quot;accepted_prediction_tokens&quot;: 0,
+      &quot;rejected_prediction_tokens&quot;: 0
+    }
+  },
+  &quot;service_tier&quot;: &quot;default&quot;,
+  &quot;system_fingerprint&quot;: null
+}
+</td><td class='timestamp'>2025-10-07 15:27:42.553</td></tr>
+<tr class='step'><td>12. OpenAIClient</td><td>No hay tool_calls, respuesta directa de OpenAI</td><td class='timestamp'>2025-10-07 15:27:42.569</td></tr>
+<tr class='step'><td>13. ChatController</td><td>Respuesta generada por ChatService&lt;br&gt;Mensaje de salida: {&quot;text&quot;:&quot;Listado de academias (5).&quot;,&quot;academias&quot;:[{&quot;id&quot;:25,&quot;nombre&quot;:&quot;Academia 2&quot;},{&quot;id&quot;:27,&quot;nombre&quot;:&quot;Academia Conflict&quot;},{&quot;id&quot;:24,&quot;nombre&quot;:&quot;Academia Patched X&quot;},{&quot;id&quot;:23,&quot;nombre&quot;:&quot;Academia Patched Y&quot;},{&quot;id&quot;:26,&quot;nombre&quot;:&quot;Academia Test X&quot;}],&quot;suggestions&quot;:[&quot;Crear academia&quot;,&quot;Ver detalles de una academia (por id)&quot;,&quot;Exportar a CSV&quot;]}</td><td class='timestamp'>2025-10-07 15:27:42.569</td></tr>
+</tbody></table>
+</body></html>

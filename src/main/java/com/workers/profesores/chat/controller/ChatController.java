@@ -3,6 +3,8 @@ package com.workers.profesores.chat.controller;
 
 import com.workers.profesores.chat.dto.ChatRequest;
 import com.workers.profesores.chat.service.ChatService;
+import com.workers.profesores.chat.auth.JwtVerifier;
+import com.workers.profesores.chat.auth.UserClaims;
 import com.workers.profesores.chat.util.RequestFlowXmlLogger;
 import com.workers.profesores.chat.util.RequestFlowXmlContext;
 import org.springframework.http.ResponseEntity;
@@ -16,17 +18,20 @@ import java.time.LocalDateTime;
 @CrossOrigin(origins = "http://localhost:5173", allowedHeaders = "*", allowCredentials = "true")
 public class ChatController {
     private final ChatService chatService;
+    private final JwtVerifier jwtVerifier;
 
     // Flag para activar/desactivar modo debug global
     @Value("${backend.debug:false}")
     private boolean debug;
 
-    public ChatController(ChatService chatService) {
+    public ChatController(ChatService chatService, JwtVerifier jwtVerifier) {
         this.chatService = chatService;
+        this.jwtVerifier = jwtVerifier;
     }
 
     @PostMapping
-    public ResponseEntity<String> chat(@RequestBody ChatRequest request, @RequestHeader(value = "X-Flow-Diagram", required = false) String flowDiagram) {
+    public ResponseEntity<String> chat(@RequestBody ChatRequest request, @RequestHeader(value = "X-Flow-Diagram", required = false) String flowDiagram,
+                                       @RequestHeader(value = "Authorization", required = false) String authorization) {
         // Solo crear el logger HTML si la cabecera X-Flow-Diagram=true está presente
         RequestFlowXmlLogger xmlLogger = null;
         String requestId = null;
@@ -60,7 +65,15 @@ public class ChatController {
                 }
                 return ResponseEntity.badRequest().body("Request vacío");
             }
-            result = chatService.runChat(request.getMessages(), xmlLogger);
+            // Verificar JWT y extraer claims
+            UserClaims claims = null;
+            try {
+                claims = jwtVerifier.verify(authorization);
+            } catch (Exception ex) {
+                if (xmlLogger != null) xmlLogger.addStep("ChatController", "JWT inválido: " + ex.getMessage());
+                return ResponseEntity.status(401).body("Token inválido o expirado");
+            }
+            result = chatService.runChat(request.getMessages(), xmlLogger, authorization, claims);
             if (xmlLogger != null) {
                 String outputMsg = (result != null && !result.isEmpty()) ? ("<br>Mensaje de salida: " + result) : "";
                 xmlLogger.addStep("ChatController", "Respuesta generada por ChatService" + outputMsg);

@@ -1,181 +1,165 @@
-# Antes de ejecutar este script, sitúate en la raíz del proyecto con:
-# cd C:\chat-backend-springboot-workers-profesores
+<#
+Documentación: formas de arrancar el backend (mediador)
+   y las pruebas desde el api-workers-profesores
 
-# Levantar el backend en una consola powershell
-# maven en el path --> mvn spring-boot:run       :sin maven en path --> .\mvnw spring-boot:run  
-# esta orden      mvn spring-boot:run     compila y levanta el back-end
+$env:OPENAI_API_KEY='sk-...TU-CLAVE-AQUI...'
 
-#tambien se puede compilar con -->  mvn clean package  ó     .\mvnw clean package y luego levantar con jar
-# java -jar "target\chat-backend-springboot-workers-profesores-0.0.1-SNAPSHOT.jar"
+# ejecutar el comando siguiente indicando que arranque el backend y que NO haga mock (OpenAI decidirá siempre)
 
-# Y luego ejecuta:
-# powershell -ExecutionPolicy Bypass -File .\documentacion\run-pruebas.ps1
+mvn "-Dopenai.mock=false" "-Dopenai.api.key=$env:OPENAI_API_KEY" "-Dbackend.debug=true" spring-boot:run
 
-# Script de pruebas automáticas para el backend de chat
-# Ejecuta cada prueba, espera la respuesta y la muestra en consola
-# Puedes añadir más pruebas siguiendo el mismo formato
 
-###############################################################
-# --- Config índice de flujos ---
-$FLOWS_DIR   = "documentacion/flows"
-$FLOWS_INDEX = Join-Path $FLOWS_DIR "flows.json"
-$FLOWS_KEEP  = 200   # número máximo de flujos a mantener en el índice
+#otra opción (menos recomendable, porque no arranca el backend ni controla parámetros):
+mvn "-Dopenai.mock=false" "-Dopenai.api.baseurl=https://api.openai.com/v1" "-Dopenai.api.endpoint.completions=/chat/completions" "-Dopenai.api.endpoint.responses=/responses" "-Dacademia.api.baseurl=http://localhost:5000" "-Dbackend.debug=true" spring-boot:run
 
-# ---- NUEVO: identificador de flujo compartido ----
+cd 'C:\Users\Angel FV\Desktop\FORMACION\api-workers-profesores'
+$env:MEDIATOR_URL = 'http://localhost:8080'
+
+pytest tests/chat/test_mediator_chat.py -q
+
+#>
+param(
+  [switch]$StartBackend,
+  [switch]$MockOpenAI,
+  [ValidateSet('test','prod')] [string]$Mode = 'test',
+  [bool]$OpenIndex = $true
+)
+
+# Normalize StartBackend: default true when caller omits the parameter (keeps prior behaviour),
+# but allow explicit -StartBackend:$false to disable.
+if (-not $PSBoundParameters.ContainsKey('StartBackend')) {
+  $StartBackend = $true
+} else {
+  # If caller passed -StartBackend or -StartBackend:$true/$false, convert to boolean
+  $StartBackend = [bool]$StartBackend.IsPresent
+}
+
+# Script parametrizable de pruebas para el backend de chat.
+# - Puede arrancar el backend localmente (opcional) con -StartBackend
+# - Controlar si el backend arranca con OpenAI mockeado: -MockOpenAI (por defecto: false en esta primera versión)
+# - Mode=test generará flows/HTML y activa backend.debug; Mode=prod desactiva generación de flows y logs verbosos.
+
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
+Push-Location (Join-Path $scriptDir '..')  # situarse en la raíz del repo
+
+# Identificador del flujo (se mantiene solo como referencia si quieres forzar headers desde aquí)
 $FLOW_ID = "prueba-{0:yyyyMMdd-HHmmss}-{1}" -f (Get-Date), (Get-Random -Maximum 1000)
 
 function New-AuthHeaders {
+  param([switch]$IncludeFlow)
   $h = @{"Content-Type"="application/json"}
-  if ($API_KEY)   { $h["X-Api-Key"]     = $API_KEY }
-  if ($JWT_TOKEN) { $h["Authorization"] = "Bearer $JWT_TOKEN" }
+  if ($env:API_KEY)   { $h["X-Api-Key"]     = $env:API_KEY }
+  if ($env:JWT_TOKEN) { $h["Authorization"] = "Bearer $env:JWT_TOKEN" }
   $h["X-Flow-Id"] = $FLOW_ID
+  if ($IncludeFlow) { $h["X-Flow-Diagram"] = 'true' }
   return $h
 }
 
-# Importar función para actualizar el índice
-. "$PSScriptRoot\flows\Update-FlowsIndex.ps1"
+# Cargar helper para actualizar el índice (si existe)
+if (Test-Path "$PSScriptRoot\flows\Update-FlowsIndex.ps1") { . "$PSScriptRoot\flows\Update-FlowsIndex.ps1" }
 
-Write-Host "Prueba 1: Saludo al API"
-$response1 = Invoke-WebRequest -Uri "http://localhost:8080/chat" `
-  -Method POST `
-  -Headers (New-AuthHeaders) `
-  -Body ([System.Text.Encoding]::UTF8.GetBytes('{"messages":[{"role":"user","content":"Hola"}]}'))
-$response1.Content
-Write-Host "---"
-
-Write-Host "Prueba 2: Quiero el Número de alumnos inscritos"
-$response2 = Invoke-WebRequest -Uri "http://localhost:8080/chat" `
-  -Method POST `
-  -Headers (New-AuthHeaders) `
-  -Body ([System.Text.Encoding]::UTF8.GetBytes('{"messages":[{"role":"user","content":"¿Cuántos alumnos tengo inscritos?"}]}'))
-$response2.Content
-Write-Host "---"
-
-Write-Host "Prueba 3: quiero la Lista de alumnos y el número total"
-$response3 = Invoke-WebRequest -Uri "http://localhost:8080/chat" `
-  -Method POST `
-  -Headers (New-AuthHeaders) `
-  -Body ([System.Text.Encoding]::UTF8.GetBytes('{"messages":[{"role":"user","content":"me puedes pasar la lista de alumnos y el numero total que tengo?"}]}'))
-$response3.Content
-Write-Host "---"
-
-Write-Host "Prueba 4: Quiero el Total de alumnos y lista de los 10 primeros"
-$response4 = Invoke-WebRequest -Uri "http://localhost:8080/chat" `
-  -Method POST `
-  -Headers (New-AuthHeaders) `
-  -Body ([System.Text.Encoding]::UTF8.GetBytes('{"messages":[{"role":"user","content":"dame por favor el total de alumnos y la lista de los 10 primeros alumnos."}]}'))
-$response4.Content
-Write-Host "---"
-
-Write-Host "Prueba 5: Quiero el Detalle del alumno 45"
-$response5 = Invoke-WebRequest -Uri "http://localhost:8080/chat" `
-  -Method POST `
-  -Headers (New-AuthHeaders) `
-  -Body ([System.Text.Encoding]::UTF8.GetBytes('{"messages":[{"role":"user","content":"ahora quiero el detalle del alumno 43"}]}'))
-$response5.Content
-Write-Host "---"
-
-Write-Host "Prueba 6: Quiero el número de alumnos inscritos en cada turno"
-$response6 = Invoke-WebRequest -Uri "http://localhost:8080/chat" `
-  -Method POST `
-  -Headers (New-AuthHeaders) `
-  -Body ([System.Text.Encoding]::UTF8.GetBytes('{"messages":[{"role":"user","content":"quiero saber el numero de alumnos que tengo inscritos en cada turno y que me lo devuelvas ordenado para ver en que turnos tengo mas alumnos y en que turnos tengo menos"}]}'))
-$response6.Content
-Write-Host "---"
-
-# Prueba 7: Exportar alumnos a CSV
-Write-Host "Prueba 7: Quiero Exportar alumnos a CSV"
-$response7 = Invoke-WebRequest -Uri "http://localhost:8080/api/export?tabla=alumnos&type=csv" `
-  -Method GET `
-  -Headers (New-AuthHeaders)
-if ($response7.StatusCode -eq 200) {
-    Write-Host "Exportación correcta. Tamaño del archivo descargado: $($response7.Content.Length) bytes."
-} else {
-    Write-Host "Error en la exportación: $($response7.StatusCode) $($response7.StatusDescription)"
-}
-Write-Host "---"
-
-# Prueba 8: Exportar los 10 primeros alumnos ordenados por nombre descendente a Excel
-Write-Host "Prueba 8: Quiero Exportar alumnos a Excel (10 primeros, ordenados por nombre descendente)"
-$response8 = Invoke-WebRequest -Uri "http://localhost:8080/api/export?tabla=alumnos&type=xlsx&page=0&size=10&sort=nombre&order=desc" `
-  -Method GET `
-  -Headers (New-AuthHeaders)
-if ($response8.StatusCode -eq 200) {
-    Write-Host "Exportación Excel correcta. Tamaño del archivo descargado: $($response8.Content.Length) bytes."
-} else {
-    Write-Host "Error en la exportación Excel: $($response8.StatusCode) $($response8.StatusDescription)"
-}
-Write-Host "---"
-
-
-# --- Mostrar Flow ID y link local ---
-Write-Host "`n---" -ForegroundColor DarkGray
-Write-Host "Flow ID: $FLOW_ID" -ForegroundColor Yellow
-$flowHtmlLocal = Join-Path $FLOWS_DIR "$FLOW_ID.html"
-Write-Host "Si corres local, abre: $flowHtmlLocal"
-Write-Host "Si lo sirves desde el backend, la URL dependerá de cómo expongas /documentacion/flows/..." -ForegroundColor DarkGray
-
-# --- Generar HTML resumen del flow con las respuestas recogidas ---
-try {
-  # Helper compatible con PowerShell 5.1 para extraer contenido o devolver un placeholder
-  function Get-RespContent($r) {
-    if ($null -ne $r) { return $r.Content }
-    return "(sin respuesta)"
+function Wait-For-Health {
+  param([string]$Url = 'http://localhost:8080', [int]$Timeout = 60)
+  $health = "$($Url.TrimEnd('/'))/actuator/health"
+  $deadline = (Get-Date).AddSeconds($Timeout)
+  while ((Get-Date) -lt $deadline) {
+    try {
+      $r = Invoke-RestMethod -Uri $health -Method Get -TimeoutSec 3 -ErrorAction Stop
+          if ($r -and ($r.status -or $r.STATUS)) {
+            $status = $null
+            if ($r.status) { $status = $r.status } elseif ($r.STATUS) { $status = $r.STATUS }
+            if ($status -and $status.ToString().ToUpper() -eq 'UP') { return $true }
+          } else { return $true }
+    } catch { Start-Sleep -Seconds 1 }
   }
-
-  $responses = @{
-    prueba1 = Get-RespContent $response1
-    prueba2 = Get-RespContent $response2
-    prueba3 = Get-RespContent $response3
-    prueba4 = Get-RespContent $response4
-    prueba5 = Get-RespContent $response5
-    prueba6 = Get-RespContent $response6
-    prueba7 = Get-RespContent $response7
-    prueba8 = Get-RespContent $response8
-  }
-
-  $html = @"
-<!doctype html>
-<html lang="es">
-<head><meta charset="utf-8"><title>Flow $FLOW_ID</title>
-<style>body{font-family:Arial,Helvetica,sans-serif;padding:18px;background:#f7fafc}pre{background:#fff;border:1px solid #e5e7eb;padding:12px;border-radius:6px;overflow:auto}</style>
-</head>
-<body>
-<h1>Flow: $FLOW_ID</h1>
-<p>Fecha: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")</p>
-<h2>Respuestas</h2>
-<h3>Prueba 1 - Saludo</h3>
-<pre>$($responses.prueba1)</pre>
-<h3>Prueba 2 - Número de alumnos</h3>
-<pre>$($responses.prueba2)</pre>
-<h3>Prueba 3 - Lista y total</h3>
-<pre>$($responses.prueba3)</pre>
-<h3>Prueba 4 - Total y 10 primeros</h3>
-<pre>$($responses.prueba4)</pre>
-<h3>Prueba 5 - Detalle alumno</h3>
-<pre>$($responses.prueba5)</pre>
-<h3>Prueba 6 - Alumnos por turno</h3>
-<pre>$($responses.prueba6)</pre>
-<h3>Prueba 7 - Export CSV</h3>
-<pre>$($responses.prueba7)</pre>
-<h3>Prueba 8 - Export Excel</h3>
-<pre>$($responses.prueba8)</pre>
-</body>
-</html>
-"@
-
-  if (-not (Test-Path $FLOWS_DIR)) { New-Item -ItemType Directory -Path $FLOWS_DIR -Force | Out-Null }
-  $html | Out-File -FilePath $flowHtmlLocal -Encoding utf8
-  Write-Host "HTML del flow guardado en: $flowHtmlLocal" -ForegroundColor Green
-} catch {
-  Write-Warning "No se pudo generar HTML del flow: $($_.Exception.Message)"
+  return $false
 }
 
-# --- Actualizar índice de flujos ---
-Update-FlowsIndex -FlowId $FLOW_ID -HtmlFileName (Split-Path $flowHtmlLocal -Leaf) -When (Get-Date)
-Write-Host "`nÍndice actualizado: $FLOWS_INDEX" -ForegroundColor Green
-Write-Host "Abre el índice: $(Resolve-Path $FLOWS_INDEX)" -ForegroundColor DarkCyan
+# Función para arrancar el backend si se solicita
+$mvnProc = $null
+if ($StartBackend) {
+  Write-Host "Arrancando backend (StartBackend = $StartBackend) ..."
+  # Cargar posibles propiedades locales (application-local.properties)
+  $localPropsPath = Join-Path $PWD 'src\main\resources\application-local.properties'
+  if (Test-Path $localPropsPath) {
+    Write-Host "Cargando propiedades locales desde $localPropsPath"
+    $lines = Get-Content $localPropsPath | Where-Object { $_ -and ($_ -match '=') }
+    foreach ($ln in $lines) {
+      $parts = $ln -split '=', 2
+      $key = $parts[0].Trim()
+      $val = $parts[1].Trim()
+      switch ($key) {
+        'openai.api.key' { $env:OPENAI_API_KEY = $val }
+        'openai.api.baseurl' { $env:OPENAI_API_URL = $val } # legacy env var used by some components
+        'openai.api.endpoint.completions' { $env:OPENAI_API_ENDPOINT_COMPLETIONS = $val }
+        'openai.api.endpoint.responses' { $env:OPENAI_API_ENDPOINT_RESPONSES = $val }
+        'openai.api.model' { $env:OPENAI_API_MODEL = $val }
+        'academia.api.baseurl' { $env:ACADEMIA_API_BASEURL = $val }
+        default { }
+      }
+    }
+  }
+  # Construir argumentos para mvnw
+  if ($MockOpenAI.IsPresent) { $openaiMockValue = 'true' } else { $openaiMockValue = 'false' }
+  if ($Mode -eq 'test') { $backendDebug = 'true' } else { $backendDebug = 'false' }
+  # No local welcome handling: always delegate to OpenAI; remove chat.handle.welcome config
+  # Defaults for test mode: prefer local academy API if not provided
+  if (-not $env:ACADEMIA_API_BASEURL) { $env:ACADEMIA_API_BASEURL = 'http://localhost:5000' }
+  $procArgs = @(
+    "-Dopenai.mock=$openaiMockValue",
+  "-Dopenai.api.key=$($env:OPENAI_API_KEY)",
+  "-Dopenai.api.baseurl=$($env:OPENAI_API_URL)",
+  "-Dopenai.api.endpoint.completions=$($env:OPENAI_API_ENDPOINT_COMPLETIONS)",
+  "-Dopenai.api.endpoint.responses=$($env:OPENAI_API_ENDPOINT_RESPONSES)",
+  "-Dacademia.api.baseurl=$($env:ACADEMIA_API_BASEURL)",
+    "-Dbackend.debug=$backendDebug",
+    'spring-boot:run'
+  )
+  # Ejecutar mvnw.cmd en background
+  $mvnExe = Join-Path $PWD 'mvnw.cmd'
+  if (-not (Test-Path $mvnExe)) { Write-Warning "mvnw.cmd no encontrado en la raíz. Asegúrate de ejecutar desde la raíz del repo." } else {
+  Write-Host "Iniciando: $mvnExe $($procArgs -join ' ')"
+  # Prepare logs directory and files for background process output capture
+  $logDir = Join-Path $scriptDir 'logs'
+  if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir | Out-Null }
+  $safeFlowId = $FLOW_ID -replace '[^a-zA-Z0-9_-]', '_'
+  $stdout = Join-Path $logDir "mvn_stdout_$safeFlowId.log"
+  $stderr = Join-Path $logDir "mvn_stderr_$safeFlowId.log"
+  # Build a single command line that cmd.exe will run; use cmd.exe /c to support redirection in PowerShell 5.1
+  $cmdLine = '"' + $mvnExe + '" ' + ($procArgs -join ' ') + ' > "' + $stdout + '" 2> "' + $stderr + '"'
+  # Start via cmd.exe so we can use shell redirection and still get a PID from Start-Process
+  $mvnProc = Start-Process -FilePath 'cmd.exe' -ArgumentList '/c', $cmdLine -WorkingDirectory $PWD -PassThru
+    Write-Host "Proceso mvn iniciado en background, PID: $($mvnProc.Id). Logs: $stdout and $stderr. Esperando /actuator/health..."
+    if (-not (Wait-For-Health -Url 'http://localhost:8080' -Timeout 60)) { Write-Warning "Timeout esperando /actuator/health. Revisa los logs en $logDir para más detalles." }
+  }
+} else {
+  Write-Host "StartBackend = false: se asume que el mediador ya está corriendo. Comprobando /actuator/health..."
+  if (-not (Wait-For-Health -Url 'http://localhost:8080' -Timeout 30)) { Write-Warning "Mediator no responde en http://localhost:8080/actuator/health" }
+}
 
-# Puedes añadir más pruebas copiando el bloque anterior y cambiando el contenido del mensaje.
+
+Write-Host "Mediator arrancado (o verificado). Este script solo arranca/verifica el backend. No ejecuta pruebas." -ForegroundColor Cyan
+
+Write-Host "Instrucciones para ejecutar pruebas (desde el repositorio api-workers-profesores):`n" -ForegroundColor DarkCyan
+Write-Host "1) Abre una terminal y sitúate en el repo api-workers-profesores" -ForegroundColor Gray
+Write-Host "   cd C:\ruta\a\api-workers-profesores" -ForegroundColor Yellow
+Write-Host "2) Asegúrate de que el test apunta al mediador (por defecto http://localhost:8080). Puedes exportar la variable MEDIATOR_URL si tu test la usa." -ForegroundColor Gray
+Write-Host "   # ejemplo PowerShell:" -ForegroundColor Gray
+Write-Host "   $env:MEDIATOR_URL = 'http://localhost:8080'" -ForegroundColor Yellow
+Write-Host "3) Ejecuta pytest desde ese repo (los tests harán login y llamarán al mediador):" -ForegroundColor Gray
+Write-Host "   pytest tests/chat/test_mediator_chat.py -q" -ForegroundColor Yellow
+
+Write-Host "Generación de flows/HTML: si quieres que los tests generen los artefactos de flujo, los tests deben añadir estas cabeceras en las peticiones al mediador:" -ForegroundColor Gray
+Write-Host "   X-Flow-Diagram: true" -ForegroundColor Yellow
+Write-Host "   X-Flow-Id: <uuid-por-prueba>" -ForegroundColor Yellow
+
+if ($StartBackend -and $mvnProc) {
+    Write-Host "Si deseas detener el backend iniciado por este script, ejecuta:" -ForegroundColor Gray
+    Write-Host "  Stop-Process -Id $($mvnProc.Id) -Force" -ForegroundColor Yellow
+}
+
+Pop-Location
+
+Write-Host "Fin: el mediador está listo para recibir peticiones (por ejemplo, desde api-workers-profesores)." -ForegroundColor Green
 
 

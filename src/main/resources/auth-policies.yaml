@@ -1,0 +1,25 @@
+defaults:
+  admin_platform_roles: ["Admin_plataforma"]
+  admin_academia_roles: ["Admin_academia"]
+  profesor_roles: ["Profesor_academia"]
+
+policies:
+  - name: getAcademias
+    method: GET
+    path: /academias
+    type: collection
+    allowed_roles: ["Admin_plataforma"]
+    scoped: false
+
+  - name: getAcademiaById
+    method: GET
+    path: /academias/{id}
+    type: item
+    allowed_roles: ["Admin_plataforma", "Admin_academia"]
+    scoped: true
+
+  - name: createAcademia
+    method: POST
+    path: /academias
+    allowed_roles: ["Admin_plataforma"]
+    forbidden_for: ["Admin_academia", "Profesor_academia"]

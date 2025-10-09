@@ -17,7 +17,19 @@ public class IntentInterpreterService {
     @Value("${openai.api.model:gpt-4o}")
     private String openaiApiModel;
 
-    private final String OPENAI_URL = "https://api.openai.com/v1/chat/completions";
+    @Value("${openai.api.baseurl:https://api.openai.com/v1}")
+    private String openaiApiBaseUrl;
+
+    @Value("${openai.api.endpoint.completions:/chat/completions}")
+    private String openaiApiEndpointCompletions;
+
+    // Compose full URL at runtime to allow overriding base or endpoints independently
+    private String getOpenAiCompletionsUrl() {
+        String base = openaiApiBaseUrl == null ? "https://api.openai.com/v1" : openaiApiBaseUrl.trim();
+        String endpoint = openaiApiEndpointCompletions == null ? "/chat/completions" : openaiApiEndpointCompletions.trim();
+        if (!base.endsWith("/") && !endpoint.startsWith("/")) base = base + "/";
+        return base.endsWith("/") ? base.replaceAll("/+$", "") + endpoint : base + endpoint;
+    }
 
     public java.util.List<Map<String, Object>> interpretarIntencion(String textoUsuario) {
         if (debug) {
@@ -42,7 +54,7 @@ public class IntentInterpreterService {
             headers.set("Authorization", "Bearer " + openaiApiKey);
             headers.set("Content-Type", "application/json");
             org.springframework.http.HttpEntity<Map<String, Object>> entity = new org.springframework.http.HttpEntity<>(requestBody, headers);
-            org.springframework.http.ResponseEntity<String> response = restTemplate.postForEntity(OPENAI_URL, entity, String.class);
+            org.springframework.http.ResponseEntity<String> response = restTemplate.postForEntity(getOpenAiCompletionsUrl(), entity, String.class);
             if (debug) {
                 System.out.println("[IntentInterpreterService][DEBUG] Respuesta recibida de OpenAI: " + response.getBody());
             }

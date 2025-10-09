@@ -1,6 +1,5 @@
 package com.workers.profesores.chat.model.openai;
 
-import java.util.List;
 import java.util.Map;
 
 public class ToolSchema {

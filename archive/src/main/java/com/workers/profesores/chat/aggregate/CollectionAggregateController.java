@@ -1,3 +1,5 @@
+// Archivo archivado: CollectionAggregateController.java
+// Copia del original para mantener historial tras la limpieza.
 package com.workers.profesores.chat.aggregate;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -18,7 +20,7 @@ import java.util.*;
 import com.workers.profesores.chat.logging.RequestFlowXmlLogger;
 
 @RestController
-@RequestMapping("/academias")
+@RequestMapping("/vlodeiro/secretaria")
 
 @SuppressWarnings("unchecked")
 public class CollectionAggregateController {
@@ -206,7 +208,7 @@ public class CollectionAggregateController {
     }
 
     private String buildExportUrl(String resource, Map<String, String> query) {
-        StringBuilder b = new StringBuilder("/academias/").append(resource).append("/export");
+        StringBuilder b = new StringBuilder("/vlodeiro/secretaria/").append(resource).append("/export");
         if (!query.isEmpty()) {
             b.append("?");
             b.append(query.entrySet().stream()

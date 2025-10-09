@@ -1,6 +1,4 @@
 package com.workers.profesores.chat.service;
-
-import com.workers.profesores.chat.model.openai.ToolSchema;
 import java.util.List;
 import java.util.Map;
 

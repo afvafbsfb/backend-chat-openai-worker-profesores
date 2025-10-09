@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -24,7 +25,7 @@ public class OpenAICallApiService {
     // Permite mockear el RestTemplate en tests
     protected RestTemplate createRestTemplate() { return new RestTemplate(); }
     // --- Configuración de renderizado de whitelist ---
-    @Value("${whitelist.render.table:true}")
+    @Value("${whitelist.render.table:false}")
     private boolean whitelistRenderTable;
 
     @Value("${whitelist.render.narrative:true}")
@@ -113,29 +114,22 @@ public class OpenAICallApiService {
      * Renderiza la whitelist YAML como una tabla de endpoints para el prompt de sistema.
      */
     public String renderWhitelistTable() {
-        if (whitelist == null || whitelist.isEmpty()) return "(No hay endpoints en la whitelist)";
-        StringBuilder sb = new StringBuilder();
-        sb.append("\n\nWhitelist de endpoints permitidos:\n");
-        sb.append("| name           | method | path                | pathParams | query         |\n");
-        sb.append("|----------------|--------|---------------------|------------|--------------|\n");
-        for (Map<String, Object> ep : whitelist) {
-            String name = String.valueOf(ep.getOrDefault("name", ""));
-            String method = String.valueOf(ep.getOrDefault("method", ""));
-            String path = String.valueOf(ep.getOrDefault("path", ""));
-            String pathParams = ep.get("pathParams") != null ? ep.get("pathParams").toString() : "";
-            String query = ep.get("query") != null ? ep.get("query").toString() : "";
-            sb.append(String.format("| %-14s | %-6s | %-19s | %-10s | %-12s |\n",
-                name, method, path, pathParams, query));
-        }
-        return sb.toString();
+        // For safety, return a short narrative description (no Markdown tables)
+        return renderWhitelistNarrativeWithDescriptions(getWhitelistLimited());
     }
     @Value("${openai.api.key}")
     private String openaiApiKey;
 
-    @Value("${openai.api.url:https://api.openai.com/v1/chat/completions}")
-    private String openaiApiUrl;
-    @Value("${openai.api.model:gpt-4o}")
+    @Value("${openai.api.baseurl:https://api.openai.com/v1}")
+    private String openaiApiBaseUrl;
+
+    @Value("${openai.api.endpoint.completions:/chat/completions}")
+    private String openaiApiEndpointCompletions;
+
+    @Value("${openai.api.model:gpt-4o-mini}")
     private String openaiApiModel;
+    @Value("${openai.mock:false}")
+    private boolean openaiMock;
     private List<Map<String, Object>> whitelist;
 
     public OpenAICallApiService() {
@@ -161,9 +155,9 @@ public class OpenAICallApiService {
         }
     }
 
-    @org.springframework.beans.factory.annotation.Autowired
-    public OpenAICallApiService(ApiProxyService apiProxyService) {
-        this();
+    // Se usa setter-injection perezosa para evitar referencia circular durante el arranque
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setApiProxyService(@Lazy ApiProxyService apiProxyService) {
         this.apiProxyService = apiProxyService;
     }
 
@@ -192,12 +186,17 @@ public class OpenAICallApiService {
     }
 
     public String callChatWithTools(List<Map<String, Object>> messages) throws Exception {
-        return callChatWithTools(messages, null);
+        return callChatWithTools(messages, null, null);
     }
 
     public String callChatWithTools(List<Map<String, Object>> messages, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger) throws Exception {
+        return callChatWithTools(messages, xmlLogger, null);
+    }
+
+    // Nueva sobrecarga que acepta Authorization header para propagarlo a las tool calls que hagan llamadas a la API
+    public String callChatWithTools(List<Map<String, Object>> messages, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) throws Exception {
         if (debug) {
-            System.out.println("[OpenAICallApiService][DEBUG] callChatWithTools llamado con mensajes: " + messages);
+            System.out.println("[OpenAICallApiService][DEBUG] callChatWithTools llamado con mensajes: " + messages + ", authorization=" + (authorization != null ? "present" : "absent"));
         }
         // Define la tool genérica call_api
         Map<String, Object> callApiTool = Map.of(
@@ -230,31 +229,60 @@ public class OpenAICallApiService {
             if (debug) {
                 System.out.println("[OpenAICallApiService][DEBUG] Iteración " + iter + " - Payload enviado a OpenAI: " + requestBody);
             }
-            RestTemplate restTemplate = createRestTemplate();
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("Authorization", "Bearer " + openaiApiKey);
-            headers.set("Content-Type", "application/json");
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
-            ResponseEntity<String> response = restTemplate.postForEntity(openaiApiUrl, entity, String.class);
-            // Comprobaciones defensivas para evitar NPEs cuando el mock o el servicio remoto devuelven null
-            if (response == null) {
-                logger.error("La llamada a OpenAI devolvió ResponseEntity nula");
-                throw new IllegalStateException("Respuesta nula de OpenAI: ResponseEntity es null");
-            }
-            String responseBody = response.getBody();
-            if (debug) {
-                System.out.println("[OpenAICallApiService][DEBUG] Respuesta recibida de OpenAI: " + responseBody);
-            }
-            if (xmlLogger != null) xmlLogger.addStep("OpenAI", "Respuesta de OpenAI: " + responseBody);
-            if (responseBody == null || responseBody.isBlank()) {
-                logger.error("La llamada a OpenAI devolvió un body nulo o vacío");
-                throw new IllegalStateException("Respuesta de OpenAI vacía o nula");
+            String responseBody;
+            if (openaiMock) {
+                // Build a deterministic mock response that contains a single tool_call to call_api
+                if (xmlLogger != null) xmlLogger.addStep("OpenAI", "openai.mock=true -> devolviendo respuesta simulada (tool_call listAcademias)");
+                Map<String,Object> function = new HashMap<>();
+                function.put("name", "call_api");
+                // arguments must be a JSON string as the real OpenAI responses often encode them as string
+                Map<String,Object> args = new HashMap<>();
+                args.put("name", "listAcademias");
+                args.put("method", "GET");
+                args.put("pathParams", Map.of());
+                args.put("query", Map.of());
+                args.put("body", Map.of());
+                function.put("arguments", mapper.writeValueAsString(args));
+                Map<String,Object> toolCall = Map.of("id", "mock-1", "function", function);
+                Map<String,Object> message = Map.of("role", "assistant", "tool_calls", List.of(toolCall));
+                Map<String,Object> choice = Map.of("message", message);
+                Map<String,Object> respMap = Map.of("choices", List.of(choice));
+                responseBody = mapper.writeValueAsString(respMap);
+                if (debug) System.out.println("[OpenAICallApiService][DEBUG] Mock OpenAI response: " + responseBody);
+            } else {
+                try {
+                    RestTemplate restTemplate = createRestTemplate();
+                    HttpHeaders headers = new HttpHeaders();
+                    headers.set("Authorization", "Bearer " + openaiApiKey);
+                    headers.set("Content-Type", "application/json");
+                    HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+                    String url = composeCompletionsUrl();
+                    ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+                    if (response == null) {
+                        logger.error("La llamada a OpenAI devolvió ResponseEntity nula");
+                        responseBody = mapper.writeValueAsString(Map.of("error", "openai_response_null", "message", "ResponseEntity is null"));
+                    } else {
+                        responseBody = response.getBody();
+                    }
+                } catch (Exception ex) {
+                    logger.error("Error al llamar a OpenAI: {}", ex.getMessage());
+                    // Nunca lanzar: siempre devolver un body JSON para que el consumidor pueda parsearlo
+                    responseBody = mapper.writeValueAsString(Map.of("error", "openai_request_failed", "message", ex.getMessage() == null ? "" : ex.getMessage()));
+                }
+                if (debug) {
+                    System.out.println("[OpenAICallApiService][DEBUG] Respuesta recibida de OpenAI: " + responseBody);
+                }
+                if (xmlLogger != null) xmlLogger.addStep("OpenAI", "Respuesta de OpenAI: " + responseBody);
+                if (responseBody == null || responseBody.isBlank()) {
+                    logger.error("La llamada a OpenAI devolvió un body nulo o vacío, generando objeto de error");
+                    responseBody = mapper.writeValueAsString(Map.of("error", "openai_empty_response", "message", "Empty or null response body"));
+                }
             }
             Map<String, Object> resp = mapper.readValue(responseBody, new TypeReference<Map<String, Object>>(){});
             // Procesar la respuesta de OpenAI usando conversiones seguras
             List<Map<String, Object>> choices = mapper.convertValue(resp.get("choices"), new TypeReference<List<Map<String, Object>>>(){});
             if (choices == null || choices.isEmpty()) {
-                return response.getBody(); // Respuesta inesperada
+                return responseBody; // Respuesta inesperada
             }
             Map<String, Object> choice = choices.get(0);
             Map<String, Object> message = mapper.convertValue(choice.get("message"), new TypeReference<Map<String, Object>>(){});
@@ -262,7 +290,7 @@ public class OpenAICallApiService {
             if (message.containsKey("tool_calls")) {
                 List<Map<String, Object>> toolCallsRaw = mapper.convertValue(message.get("tool_calls"), new TypeReference<List<Map<String, Object>>>(){});
                 if (toolCallsRaw == null) {
-                    return response.getBody(); // Respuesta inesperada
+                    return responseBody; // Respuesta inesperada
                 }
                 // Insertar los mensajes tool justo después del assistant con tool_calls
                 currentMessages.add(message); // Añadir el mensaje assistant con tool_calls
@@ -288,26 +316,24 @@ public class OpenAICallApiService {
                         Map<String, Object> endpoint = getEndpointByName(endpointName);
                         if (xmlLogger != null) xmlLogger.addStep("ApiProxyService", "Llamada a API: " + endpointName + " (" + methodFromModel + ")");
                         if (endpoint == null) {
-                            toolResult = "[ERROR] Endpoint no permitido o no encontrado: " + endpointName;
+                            Map<String,Object> err = Map.of("error", "endpoint_not_allowed", "message", "Endpoint no permitido o no encontrado: " + endpointName);
+                            toolResult = mapper.writeValueAsString(err);
                             if (xmlLogger != null) xmlLogger.addStep("ApiProxyService", "Endpoint no permitido o no encontrado: " + endpointName);
                         } else {
                             try {
-                                org.springframework.http.ResponseEntity<String> respApi = null;
-                                try {
-                                    respApi = apiProxyService.executeWhitelistedCallWithResponse(endpoint, methodFromModel, pathParams, query, body);
-                                    toolResult = respApi.getBody() == null ? "{}" : respApi.getBody();
-                                    if (xmlLogger != null) xmlLogger.addStep("ApiProxyService", "Respuesta de API: " + respApi.getStatusCode());
-                                } catch (org.springframework.web.client.HttpStatusCodeException ex2) {
-                                    toolResult = "[ERROR] Código de error: " + ex2.getStatusCode();
-                                    if (xmlLogger != null) xmlLogger.addStep("ApiProxyService", "Error de API: " + ex2.getStatusCode());
-                                }
+                                // use the string-returning executeWhitelistedCall which normalizes errors into JSON
+                                toolResult = apiProxyService.executeWhitelistedCall(endpoint, methodFromModel, pathParams, query, body, authorization);
+                                if (xmlLogger != null) xmlLogger.addStep("ApiProxyService", "Respuesta de API (string)");
                             } catch (Exception ex2) {
-                                toolResult = "[ERROR] Excepción al llamar API: " + ex2.getMessage();
+                                // Ensure we always return a JSON object describing the failure
+                                Map<String,Object> err = Map.of("error", "exception", "message", ex2.getMessage() == null ? "" : ex2.getMessage());
+                                toolResult = mapper.writeValueAsString(err);
                                 if (xmlLogger != null) xmlLogger.addStep("ApiProxyService", "Excepción al llamar API: " + ex2.getMessage());
                             }
                         }
                     } else {
-                        toolResult = "[ERROR] Tool no soportada: " + toolName;
+                        Map<String,Object> err = Map.of("error", "tool_not_supported", "message", "Tool no soportada: " + toolName);
+                        toolResult = mapper.writeValueAsString(err);
                         if (xmlLogger != null) xmlLogger.addStep("ApiProxyService", "Tool no soportada: " + toolName);
                     }
                     // Crear el mensaje de tipo tool
@@ -323,11 +349,12 @@ public class OpenAICallApiService {
             } else {
                 // No hay tool_calls, respuesta final
                 currentMessages.add(message); // Añadir el mensaje assistant final
-                return response.getBody();
+                return responseBody;
             }
         }
-        // Si se alcanza este punto, se ha superado el número máximo de iteraciones
-        return "[ERROR] Demasiadas iteraciones de tool calling (posible bucle infinito)";
+            // Si se alcanza este punto, se ha superado el número máximo de iteraciones
+            Map<String,Object> errTooMany = Map.of("error", "too_many_iterations", "message", "Demasiadas iteraciones de tool calling (posible bucle infinito)");
+            return mapper.writeValueAsString(errTooMany);
     }
 
     // Método utilitario para buscar endpoint por nombre (restaurado)
@@ -337,6 +364,12 @@ public class OpenAICallApiService {
             if (Objects.equals(ep.get("name"), name)) return ep;
         }
         return null;
+    }
+    private String composeCompletionsUrl() {
+        String base = openaiApiBaseUrl == null ? "https://api.openai.com/v1" : openaiApiBaseUrl.trim();
+        String endpoint = openaiApiEndpointCompletions == null ? "/chat/completions" : openaiApiEndpointCompletions.trim();
+        if (!base.endsWith("/") && !endpoint.startsWith("/")) base = base + "/";
+        return base.endsWith("/") ? base.replaceAll("/+$", "") + endpoint : base + endpoint;
     }
     // Utilidad para loggear los mensajes de OpenAI de forma legible
     // Utilidad para loggear los mensajes de OpenAI de forma legible

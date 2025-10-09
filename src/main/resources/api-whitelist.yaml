@@ -1,182 +1,166 @@
-# Endpoints permitidos para call_api
+# Whitelist reducida generada a partir de api-workers-profesores
+# Incluye endpoints de 'academias', 'usuarios' y autenticación básica (login/refresh/logout)
 endpoints:
-  - name: healthCheck
-    method: GET
-    path: /health
-    description: Health check
-    pathParams: []
-    query: []
-    body: []
-  - name: getTurnosLibres
-    method: GET
-    path: /vlodeiro/secretaria/turnos_libres
-    description: Lista todos los turnos con plazas libres
-    pathParams: []
-    query: []
-    body: []
-  - name: inscribirAlumno
+  - name: crearAcademia
     method: POST
-    path: /vlodeiro/secretaria/inscribir
-    description: Inscribe un alumno en un turno
+    path: /academias
+    description: Crea una nueva academia
     pathParams: []
     query: []
     body:
-      - alumno_id
-      - turno_id
-      - tarifa_id
-  - name: registrarPago
-    method: POST
-    path: /vlodeiro/secretaria/registrar_pago
-    description: Registra un pago para un alumno
-    pathParams: []
-    query: []
-    body:
-      - alumno_id
-      - importe
-      - concepto
-  - name: getTurnosActivos
+      - nombre
+
+  - name: listAcademias
     method: GET
-    path: /vlodeiro/secretaria/turnos
-    description: Lista todos los turnos activos de la empresa
+    path: /academias
+    description: Lista todas las academias (requiere Admin_plataforma)
     pathParams: []
     query: []
     body: []
-  - name: getTarifas
+
+  - name: getAcademiaById
     method: GET
-    path: /vlodeiro/secretaria/tarifas
-    description: Lista todas las tarifas
+    path: /academias/{academia_id}
+    description: Obtiene los datos de una academia por su ID
+    pathParams:
+      - academia_id
+    query: []
+    body: []
+
+  - name: updateAcademia
+    method: PATCH
+    path: /academias/{academia_id}
+    description: Modifica una academia (nombre)
+    pathParams:
+      - academia_id
+    query: []
+    body:
+      - nombre
+
+  - name: listUsuarios
+    method: GET
+    path: /usuarios
+    description: Lista usuarios (paginación/filtrado puede implementarse en el mediador)
     pathParams: []
     query: []
     body: []
-  - name: crearTarifa
+
+  - name: createUsuario
     method: POST
-    path: /vlodeiro/secretaria/tarifas
-    description: Crea una tarifa
+    path: /usuarios
+    description: Crea un nuevo usuario
     pathParams: []
     query: []
     body:
-      - empresa_id
-      - descripcion
-      - duracion_min
-      - precio_base
-      - descuento
-      - activo
-  - name: actualizarTarifa
+      - nombre
+      - email
+      - password
+      - rol_id
+      - academia_id
+
+  - name: getUsuarioById
+    method: GET
+    path: /usuarios/{usuario_id}
+    description: Obtiene los datos de un usuario por id
+    pathParams:
+      - usuario_id
+    query: []
+    body: []
+
+  - name: updateUsuario
     method: PUT
-    path: /vlodeiro/secretaria/tarifas/{tarifa_id}
-    description: Actualiza una tarifa
+    path: /usuarios/{usuario_id}
+    description: Actualiza un usuario (PUT)
     pathParams:
-      - tarifa_id
-    query: []
-    body: []
-  - name: eliminarTarifa
-    method: DELETE
-    path: /vlodeiro/secretaria/tarifas/{tarifa_id}
-    description: Elimina una tarifa
-    pathParams:
-      - tarifa_id
-    query: []
-    body: []
-  - name: getAlumnosTurno
-    method: GET
-    path: /vlodeiro/secretaria/turnos/{turno_id}/alumnos
-    description: Lista alumnos inscritos (activos) en un turno
-    pathParams:
-      - turno_id
-    query: []
-    body: []
-  - name: bajaInscripcion
-    method: POST
-    path: /vlodeiro/secretaria/inscripciones/{inscripcion_id}/baja
-    description: Da de baja (fecha_fin = hoy) una inscripción
-    pathParams:
-      - inscripcion_id
-    query: []
-    body: []
-  - name: getAlumnos
-    method: GET
-    path: /vlodeiro/secretaria/alumnos
-    description: Lista paginada de alumnos
-    pathParams: []
-    query:
-      - page
-      - size
-    body: []
-    paginated: true
-    aliases:
-      - alumnos
-      - listaAlumnos
-      - getAlumnos
-  - name: getAlumnoById
-    method: GET
-    path: /vlodeiro/secretaria/alumnos/{alumno_id}
-    description: Obtiene los datos de un alumno por su ID
-    pathParams:
-      - alumno_id
-    query: []
-    body: []
-  - name: buscarAlumnosPorNombre
-    method: GET
-    path: /vlodeiro/secretaria/alumnos/buscar
-    description: Busca alumnos por nombre (coincidencia parcial)
-    pathParams: []
-    query:
-      - nombre
-    body: []
-  - name: crearEmpresa
-    method: POST
-    path: /vlodeiro/empresa/empresa
-    description: Crea una nueva empresa
-    pathParams: []
+      - usuario_id
     query: []
     body:
       - nombre
-      - descripcion
-      - usuarios
-      - config
-  - name: getEmpresas
+      - email
+      - rol_id
+      - academia_id
+
+  - name: deleteUsuario
+    method: DELETE
+    path: /usuarios/{usuario_id}
+    description: Elimina un usuario por id
+    pathParams:
+      - usuario_id
+    query: []
+    body: []
+
+  - name: updateCredencialesUsuario
+    method: PUT
+    path: /usuarios/{usuario_id}/credentials
+    description: Actualiza credenciales (password)
+    pathParams:
+      - usuario_id
+    query: []
+    body:
+      - password
+
+  - name: updateRolUsuario
+    method: PUT
+    path: /usuarios/{usuario_id}/role
+    description: Actualiza rol de usuario
+    pathParams:
+      - usuario_id
+    query: []
+    body:
+      - rol_id
+
+  - name: updateEstadoUsuario
+    method: PUT
+    path: /usuarios/{usuario_id}/status
+    description: Actualiza el estado del usuario
+    pathParams:
+      - usuario_id
+    query: []
+    body:
+      - estado
+
+  - name: recoverCredentials
     method: GET
-    path: /vlodeiro/empresa/empresa
-    description: Lista todas las empresas
+    path: /usuarios/recover
+    description: Recuperar credenciales por email (query param 'email')
+    pathParams: []
+    query:
+      - email
+    body: []
+
+  - name: getMiPerfil
+    method: GET
+    path: /usuarios/me
+    description: Obtener perfil del usuario autenticado
     pathParams: []
     query: []
     body: []
-  - name: getEmpresaById
-    method: GET
-    path: /vlodeiro/empresa/empresa/{empresa_id}
-    description: Obtiene los datos de una empresa por su ID
-    pathParams:
-      - empresa_id
+
+  - name: login
+    method: POST
+    path: /auth/login
+    description: Login y obtención de tokens
+    pathParams: []
     query: []
-    body: []
+    body:
+      - email
+      - password
 
-  - name: listCollection
-    method: GET
-    path: /vlodeiro/secretaria/{resource}
-    description: Lista una colección con intención declarada (paged|all|export)
-    pathParams:
-      - resource
-    query:
-      - mode
-      - page
-      - size
-      - q
-      - sort
-      - order
-    body: []
-    aliases:
-      - list
-      - listCollection
-      - listar
+  - name: refresh
+    method: POST
+    path: /auth/refresh
+    description: Refresh de tokens
+    pathParams: []
+    query: []
+    body:
+      - refresh_token
 
-  - name: exportCollectionCsv
-    method: GET
-    path: /vlodeiro/secretaria/{resource}/export
-    description: Exporta la colección a CSV en streaming
-    pathParams:
-      - resource
-    query:
-      - q
-      - sort
-      - order
+  - name: logout
+    method: POST
+    path: /auth/logout
+    description: Logout (invalidación de refresh token)
+    pathParams: []
+    query: []
+    body:
+      - refresh_token
     body: []

@@ -19,14 +19,14 @@ public class AcademiaClient {
     @Value("${backend.debug:false}")
     private boolean debug;
 
-    @Value("${academia.api.baseurl}")
+    @Value("${academia.api.baseurl:http://localhost:5000}")
     private String baseUrl;
 
     @Autowired
     private RestTemplate restTemplate;
 
 
-    @Value("${academia.api.key}")
+    @Value("${academia.api.key:}")
     private String apiKey;
     // --- Métodos generados a partir de la whitelist ---
     public JsonNode healthCheck() { if (debug) System.out.println("[AcademiaClient][DEBUG] healthCheck()"); return null; }

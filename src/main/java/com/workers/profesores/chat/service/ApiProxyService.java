@@ -3,6 +3,7 @@ package com.workers.profesores.chat.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -15,12 +16,26 @@ public class ApiProxyService {
     // ...existing code...
 
     // Devuelve ResponseEntity para logging de status code (solo para pruebas)
+    // Version antigua mantenida para compatibilidad
     public org.springframework.http.ResponseEntity<String> executeWhitelistedCallWithResponse(
-            Map<String, Object> endpoint,
-            String methodFromModel,
-            com.fasterxml.jackson.databind.JsonNode pathParams,
-            com.fasterxml.jackson.databind.JsonNode query,
-            com.fasterxml.jackson.databind.JsonNode body
+        Map<String, Object> endpoint,
+        String methodFromModel,
+        com.fasterxml.jackson.databind.JsonNode pathParams,
+        com.fasterxml.jackson.databind.JsonNode query,
+        com.fasterxml.jackson.databind.JsonNode body
+    ) throws Exception {
+    return executeWhitelistedCallWithResponse(endpoint, methodFromModel, pathParams, query, body, null);
+    }
+
+    // Nueva firma que acepta Authorization header (Bearer token). Si authorization != null y comienza con "Bearer ",
+    // se usará como header Authorization; en otro caso, si academyApiKey está definida, se usará X-API-Key para compatibilidad.
+    public org.springframework.http.ResponseEntity<String> executeWhitelistedCallWithResponse(
+        Map<String, Object> endpoint,
+        String methodFromModel,
+        com.fasterxml.jackson.databind.JsonNode pathParams,
+        com.fasterxml.jackson.databind.JsonNode query,
+        com.fasterxml.jackson.databind.JsonNode body,
+        String authorization
     ) throws Exception {
         if (debugApiProxy) {
             System.out.println("[ApiProxyService][DEBUG] executeWhitelistedCallWithResponse llamado con endpoint=" + endpoint + ", methodFromModel=" + methodFromModel + ", pathParams=" + pathParams + ", query=" + query + ", body=" + body);
@@ -49,7 +64,10 @@ public class ApiProxyService {
             }
         }
         org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
-        if (academyApiKey != null && !academyApiKey.isBlank()) {
+        // Preferir Authorization Bearer token si se pasa; si no, usar X-API-Key para compatibilidad
+        if (authorization != null && authorization.toLowerCase().startsWith("bearer ")) {
+            headers.set("Authorization", authorization);
+        } else if (academyApiKey != null && !academyApiKey.isBlank()) {
             headers.set("x-api-key", academyApiKey);
         }
         org.springframework.http.HttpEntity<String> entity;
@@ -95,21 +113,43 @@ public class ApiProxyService {
     // private final ObjectMapper om = new ObjectMapper(); // No se usa
 
 
-    @Value("${academia.api.baseurl}")
+    @Value("${academia.api.baseurl:http://localhost:5000}")
     private String baseUrl;
 
-    @Value("${academia.api.key}")
+    @Value("${academia.api.key:}")
     private String academyApiKey;
 
     @Value("${debug.api.proxy:false}")
     private boolean debugApiProxy;
 
+    @Autowired(required = false)
+    private com.workers.profesores.chat.auth.JwtVerifier jwtVerifier;
+
+    @Autowired(required = false)
+    private com.workers.profesores.chat.auth.AuthorizationService authorizationService;
+
+    @Autowired(required = false)
+    private com.workers.profesores.chat.service.OpenAICallApiService openAICallApiService;
+
+    // Versión antigua para compatibilidad
     public String executeWhitelistedCall(
-            Map<String, Object> endpoint,
-            String methodFromModel,
-            JsonNode pathParams,
-            JsonNode query,
-            JsonNode body
+        Map<String, Object> endpoint,
+        String methodFromModel,
+        JsonNode pathParams,
+        JsonNode query,
+        JsonNode body
+    ) throws Exception {
+    return executeWhitelistedCall(endpoint, methodFromModel, pathParams, query, body, null);
+    }
+
+    // Nueva firma que acepta Authorization header y la propaga
+    public String executeWhitelistedCall(
+        Map<String, Object> endpoint,
+        String methodFromModel,
+        JsonNode pathParams,
+        JsonNode query,
+        JsonNode body,
+        String authorization
     ) throws Exception {
         if (debugApiProxy) {
             System.out.println("[ApiProxyService][DEBUG] executeWhitelistedCall llamado con endpoint=" + endpoint + ", methodFromModel=" + methodFromModel + ", pathParams=" + pathParams + ", query=" + query + ", body=" + body);
@@ -138,7 +178,35 @@ public class ApiProxyService {
             }
         }
         HttpHeaders headers = new HttpHeaders();
-        if (academyApiKey != null && !academyApiKey.isBlank()) {
+    // Si recibimos Authorization, validamos claims y aplicamos políticas
+        if (authorization != null && authorization.toLowerCase().startsWith("bearer ") && jwtVerifier != null && authorizationService != null) {
+            com.workers.profesores.chat.auth.UserClaims claims;
+            try {
+                claims = jwtVerifier.verify(authorization);
+            } catch (Exception ex) {
+                throw new RuntimeException("Invalid token: " + ex.getMessage());
+            }
+            // Validar permiso según la política
+            authorizationService.checkAllowed(new com.workers.profesores.chat.auth.UserClaims(claims.usuarioId, claims.roles, claims.academiaId, claims.profesorUsuarioId), endpoint, methodFromModel, pathParams, query);
+            // Transformar si la política lo requiere (por ejemplo: collection -> item)
+            java.util.Map<String, Object> transform = authorizationService.transformIfNeeded(new com.workers.profesores.chat.auth.UserClaims(claims.usuarioId, claims.roles, claims.academiaId, claims.profesorUsuarioId), endpoint, pathParams, query);
+            if (transform != null && transform.containsKey("transform_to") && openAICallApiService != null) {
+                String newEpName = String.valueOf(transform.get("transform_to"));
+                Map<String, Object> newEp = openAICallApiService.getEndpointByName(newEpName);
+                if (newEp == null) throw new RuntimeException("Transform error: endpoint metadata not found for " + newEpName);
+                endpoint = newEp;
+                pathParams = (com.fasterxml.jackson.databind.JsonNode) transform.getOrDefault("pathParams", pathParams);
+                query = (com.fasterxml.jackson.databind.JsonNode) transform.getOrDefault("query", query);
+            } else {
+                java.util.Map<String, com.fasterxml.jackson.databind.JsonNode> sanitized = authorizationService.sanitizeParams(new com.workers.profesores.chat.auth.UserClaims(claims.usuarioId, claims.roles, claims.academiaId, claims.profesorUsuarioId), endpoint, pathParams, query);
+                pathParams = sanitized.getOrDefault("pathParams", pathParams);
+                query = sanitized.getOrDefault("query", query);
+            }
+            headers.set("Authorization", authorization);
+        } else if (authorization != null && authorization.toLowerCase().startsWith("bearer ")) {
+            // Si no disponemos de verifier/authorizationService, al menos pasar el header
+            headers.set("Authorization", authorization);
+        } else if (academyApiKey != null && !academyApiKey.isBlank()) {
             headers.set("x-api-key", academyApiKey);
         }
         HttpEntity<String> entity;
@@ -171,10 +239,23 @@ public class ApiProxyService {
             }
             return resp.getBody() == null ? "{}" : resp.getBody();
         } catch (org.springframework.web.client.HttpStatusCodeException ex) {
+            // Devuelve siempre un JSON estructurado con status y body para que el llamador lo maneje fácilmente
             if (debugApiProxy) {
                 System.out.println("[ApiProxyService][DEBUG] Error respuesta: " + ex.getStatusCode() + " - " + ex.getResponseBodyAsString());
             }
-            throw ex;
+            int status = ex.getStatusCode() != null ? ex.getStatusCode().value() : -1;
+            String respBody = ex.getResponseBodyAsString();
+            String safeBody = respBody == null ? "" : respBody.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n");
+            String result = "{\"error\":\"http_error\",\"status\":" + status + ",\"body\":\"" + safeBody + "\"}";
+            return result;
+        } catch (Exception ex) {
+            // Errores de red, tiempo de espera, etc. Normalizar también a JSON
+            if (debugApiProxy) {
+                System.out.println("[ApiProxyService][DEBUG] Exception calling academy API: " + ex.getMessage());
+            }
+            String safe = ex.getMessage() == null ? "" : ex.getMessage().replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n");
+            String result = "{\"error\":\"exception\",\"message\":\"" + safe + "\"}";
+            return result;
         }
     }
 }

@@ -34,6 +34,7 @@ build/
 
 # No subir configuración sensible
 src/main/resources/application.properties
+# application-local.properties contains local defaults and must NOT be committed with secrets
 src/main/resources/application-local.properties
 
 .venv/

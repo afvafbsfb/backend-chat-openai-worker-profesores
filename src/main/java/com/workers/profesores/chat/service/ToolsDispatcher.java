@@ -1,6 +1,5 @@
 package com.workers.profesores.chat.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.workers.profesores.chat.client.AcademiaClient;
 import com.workers.profesores.chat.model.openai.ToolCall;
 import com.workers.profesores.chat.model.openai.ToolOutput;

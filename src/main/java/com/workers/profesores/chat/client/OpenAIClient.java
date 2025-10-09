@@ -20,6 +20,10 @@ public class OpenAIClient {
 
     @Value("${openai.api.url:https://api.openai.com/v1/responses}")
     private String apiUrl;
+    @Value("${openai.api.baseurl:https://api.openai.com/v1}")
+    private String openaiApiBaseUrl;
+    @Value("${openai.api.endpoint.responses:/responses}")
+    private String openaiApiEndpointResponses;
     @Value("${openai.api.model:gpt-4o-mini}")
     private String openaiApiModel;
 
@@ -42,11 +46,20 @@ public class OpenAIClient {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(apiKey);
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
-        JsonNode response = restTemplate.postForObject(apiUrl, entity, JsonNode.class);
+        String url = composeResponsesUrl();
+        if (debug) System.out.println("[OpenAIClient][DEBUG] POST to OpenAI URL: " + url);
+        JsonNode response = restTemplate.postForObject(url, entity, JsonNode.class);
         if (debug) {
             System.out.println("[OpenAIClient][DEBUG] Respuesta recibida de OpenAI: " + response);
         }
         return response;
+    }
+
+    private String composeResponsesUrl() {
+        String base = openaiApiBaseUrl == null ? "https://api.openai.com/v1" : openaiApiBaseUrl.trim();
+        String endpoint = openaiApiEndpointResponses == null ? "/responses" : openaiApiEndpointResponses.trim();
+        if (!base.endsWith("/") && !endpoint.startsWith("/")) base = base + "/";
+        return base.endsWith("/") ? base.replaceAll("/+$", "") + endpoint : base + endpoint;
     }
 
     // Adaptado a tools v2: reenviar mensajes + tool_outputs
