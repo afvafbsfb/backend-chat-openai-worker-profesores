@@ -105,6 +105,25 @@ public class AuthorizationServiceImpl implements AuthorizationService {
             }
             if (!result.containsKey("transform_to")) {
                 String guess = operationId.replace("listar", "obtener");
+                // If guess looks like 'xxx.obtener_yyy' and yyy is plural (ends with 's'),
+                // try a singular form 'yyy' -> 'yy' by removing trailing 's'. This handles
+                // common operationId patterns like 'usuarios.listar_usuarios' -> 'usuarios.obtener_usuario'.
+                try {
+                    int dot = guess.indexOf('.');
+                    if (dot >= 0) {
+                        String prefix = guess.substring(0, dot + 1); // includes dot
+                        String suffix = guess.substring(dot + 1);
+                        if (suffix.contains("_")) {
+                            int us = suffix.lastIndexOf('_');
+                            String tail = suffix.substring(us + 1);
+                            if (tail.endsWith("s") && tail.length() > 1) {
+                                String singularTail = tail.substring(0, tail.length() - 1);
+                                String candidate = prefix + suffix.substring(0, us + 1) + singularTail;
+                                guess = candidate;
+                            }
+                        }
+                    }
+                } catch (Exception ignored) {}
                 result.put("transform_to", guess);
             }
             com.fasterxml.jackson.databind.node.ObjectNode newPath = om.createObjectNode();

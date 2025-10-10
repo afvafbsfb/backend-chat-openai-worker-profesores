@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.beans.factory.annotation.Value;
 import java.time.LocalDateTime;
+import java.security.MessageDigest;
+import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping("/chat")
@@ -68,6 +70,17 @@ public class ChatController {
             // Verificar JWT y extraer claims
             UserClaims claims = null;
             try {
+                if (debug && authorization != null) {
+                    try {
+                        String a = authorization.trim();
+                        String preview = a.length() > 12 ? a.substring(0, 8) + "..." : a;
+                        MessageDigest md = MessageDigest.getInstance("SHA-256");
+                        byte[] digest = md.digest(a.getBytes(StandardCharsets.UTF_8));
+                        StringBuilder sb = new StringBuilder();
+                        for (int i = 0; i < 4 && i < digest.length; i++) sb.append(String.format("%02x", digest[i]));
+                        System.out.println("[ChatController][DEBUG] Incoming Authorization preview=" + preview + ", token_sha4=" + sb.toString());
+                    } catch (Exception ignore) { }
+                }
                 claims = jwtVerifier.verify(authorization);
             } catch (Exception ex) {
                 if (xmlLogger != null) xmlLogger.addStep("ChatController", "JWT inválido: " + ex.getMessage());

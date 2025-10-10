@@ -59,11 +59,28 @@ public class SpecLoaderService {
                     Matcher m = pathParamRe.matcher(path);
                     while (m.find()) pathParams.add(m.group(1));
                     List<String> queryParams = new ArrayList<>();
+                    // Detailed metadata for query params (type/default/minimum/maximum/description)
+                    List<Map<String,Object>> queryDetails = new ArrayList<>();
                     JsonNode parameters = op.get("parameters");
                     if (parameters != null && parameters.isArray()) {
                         for (JsonNode pnode : parameters) {
                             if (pnode.has("in") && "query".equals(pnode.get("in").asText()) && pnode.has("name")) {
-                                queryParams.add(pnode.get("name").asText());
+                                String pname = pnode.get("name").asText();
+                                queryParams.add(pname);
+                                try {
+                                    JsonNode schemaNode = pnode.get("schema");
+                                    JsonNode resolvedSchema = resolveRefIfNeeded(schemaNode, root);
+                                    Map<String,Object> qd = new HashMap<>();
+                                    qd.put("name", pname);
+                                    if (resolvedSchema != null && resolvedSchema.has("type")) qd.put("type", resolvedSchema.get("type").asText());
+                                    if (resolvedSchema != null && resolvedSchema.has("default")) qd.put("default", resolvedSchema.get("default"));
+                                    if (resolvedSchema != null && resolvedSchema.has("minimum")) qd.put("minimum", resolvedSchema.get("minimum"));
+                                    if (resolvedSchema != null && resolvedSchema.has("maximum")) qd.put("maximum", resolvedSchema.get("maximum"));
+                                    if (pnode.has("description")) qd.put("description", pnode.get("description").asText());
+                                    queryDetails.add(qd);
+                                } catch (Exception e) {
+                                    // ignore metadata extraction errors and continue
+                                }
                             }
                         }
                     }
@@ -103,10 +120,34 @@ public class SpecLoaderService {
                     endpoint.put("description", description);
                     endpoint.put("pathParams", pathParams);
                     endpoint.put("query", queryParams);
+                    if (!queryDetails.isEmpty()) endpoint.put("queryDetails", queryDetails);
                     endpoint.put("body", body);
                     if (op.has("x-permissions")) {
                         endpoint.put("x-permissions", mapper.convertValue(op.get("x-permissions"), new TypeReference<Map<String,Object>>(){}));
                     }
+                    // Detect paginated responses: look at 200 response schema for totalElements/items or page/size
+                    boolean paginated = false;
+                    try {
+                        JsonNode responses = op.get("responses");
+                        if (responses != null && responses.has("200")) {
+                            JsonNode r200 = responses.get("200");
+                            if (r200 != null && r200.has("content")) {
+                                JsonNode appJson = r200.path("content").path("application/json");
+                                if (appJson != null && appJson.has("schema")) {
+                                    JsonNode respSchema = resolveRefIfNeeded(appJson.get("schema"), root);
+                                    if (respSchema != null && respSchema.has("properties")) {
+                                        JsonNode props = respSchema.get("properties");
+                                        if (props.has("totalElements") || props.has("items") || props.has("page") || props.has("size")) {
+                                            paginated = true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        // ignore
+                    }
+                    if (paginated) endpoint.put("paginated", true);
                     out.add(endpoint);
                 }
             }

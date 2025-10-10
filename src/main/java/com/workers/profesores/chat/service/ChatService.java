@@ -29,6 +29,13 @@ public class ChatService {
             if (debug) {
                 System.out.println("[ChatService][DEBUG] runChat called with incoming: " + incoming);
             }
+            if (debug && authorization != null) {
+                try {
+                    String a = authorization.trim();
+                    if (a.length() > 10) a = a.substring(0, 7) + "...";
+                    System.out.println("[ChatService][DEBUG] Authorization header received (masked): " + a);
+                } catch (Exception ex) { /* ignore */ }
+            }
             if (xmlLogger != null) xmlLogger.addStep("ChatService", "Inicio de runChat");
             // 0) System prompt base + whitelist dinámica
             String promptBase = "Eres un asistente (secretaria) para una plataforma de academias en España. Solo puedes acceder a los recursos de la API mediante la función call_api y siempre bajo las condiciones de autorizacion que tenga el rol del usuario logueado. Cuando necesites datos, usa exclusivamente call_api con los endpoints permitidos. Responde en castellano, de forma breve y clara. Si necesitas confirmar una operación destructiva, pide confirmación explícita antes de ejecutar. Cuando pidas listados grandes, sugiere exportar a CSV/Excel en lugar de mostrar miles de filas. No uses tablas Markdown en el system prompt ni en las instrucciones del sistema.";
@@ -37,8 +44,24 @@ public class ChatService {
             String profileJsonForPrompt = "{}";
             String userNameForPrompt = null;
             try {
+                // Try canonical friendly name first; if not found try operationId used in the API
                 Map<String, Object> epProfile = openai.getEndpointByName("getMiPerfil");
+                if (epProfile == null) {
+                    // The served-openapi often exposes operationId like 'usuarios.obtener_mi_perfil'
+                    epProfile = openai.getEndpointByName("usuarios.obtener_mi_perfil");
+                }
                 if (epProfile != null) {
+                    if (xmlLogger != null && authorization != null) {
+                        try {
+                            String a = authorization.trim();
+                            String preview = a.length() > 12 ? a.substring(0, 8) + "..." : a;
+                            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+                            byte[] digest = md.digest(a.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                            StringBuilder sb = new StringBuilder();
+                            for (int i = 0; i < 4 && i < digest.length; i++) sb.append(String.format("%02x", digest[i]));
+                            xmlLogger.addStep("ChatService", "Authorization preview=" + preview + ", token_sha4=" + sb.toString());
+                        } catch (Exception ignore) { }
+                    }
                     // executeWhitelistedCall normaliza a JSON string
                     profileJsonForPrompt = apiProxy.executeSpecCall(epProfile, "GET", null, null, null, authorization);
                     try {
@@ -112,12 +135,35 @@ public class ChatService {
             if (debug) {
                 System.out.println("[ChatService][DEBUG] Raw OpenAI first response string: " + (rawFirst == null ? "<null>" : (rawFirst.length() > 1000 ? rawFirst.substring(0, 1000) + "..." : rawFirst)));
             }
-            JsonNode first = om.readTree(rawFirst);
+            JsonNode first;
+            try {
+                first = om.readTree(rawFirst == null ? "" : rawFirst);
+            } catch (Exception e) {
+                // If parsing fails, wrap the raw response into a JSON object with property 'text'
+                if (debug) System.out.println("[ChatService][DEBUG] OpenAI response not JSON, wrapping into text: " + (rawFirst == null ? "<null>" : rawFirst));
+                return om.writeValueAsString(Map.of("text", rawFirst == null ? "" : rawFirst));
+            }
             if (debug) {
                 System.out.println("[ChatService][DEBUG] Parsed OpenAI first response into JSON");
             }
-            JsonNode choice = first.path("choices").get(0);
-            JsonNode assistantMsg = choice.path("message");
+            // Defensive: ensure choices array exists and has at least one element
+            JsonNode choicesNode = first.path("choices");
+            if (choicesNode == null || !choicesNode.isArray() || choicesNode.size() == 0) {
+                // If the response already looks like a final content object with 'text', return it
+                if (first.has("text")) {
+                    return first.toString();
+                }
+                // Otherwise, wrap the entire first response into a 'text' property so clients always get JSON
+                if (debug) System.out.println("[ChatService][DEBUG] OpenAI response missing choices, returning wrapped text.");
+                return om.writeValueAsString(Map.of("text", first.toString()));
+            }
+            JsonNode choice = choicesNode.get(0);
+            JsonNode assistantMsg = (choice == null) ? null : choice.path("message");
+            if (assistantMsg == null || assistantMsg.isMissingNode()) {
+                if (first.has("text")) return first.toString();
+                if (debug) System.out.println("[ChatService][DEBUG] choice.message missing, returning wrapped OpenAI response as text.");
+                return om.writeValueAsString(Map.of("text", first.toString()));
+            }
 
             if (!assistantMsg.has("tool_calls")) {
                 String content = assistantMsg.path("content").asText("");
@@ -225,6 +271,20 @@ public class ChatService {
                 JsonNode query         = args.path("query");
                 JsonNode body          = args.path("body");
                 if (xmlLogger != null) xmlLogger.addStep("ApiProxyService", "Llamada a API: " + endpointName + " (" + methodFromModel + ")");
+                // Log masked Authorization preview + short SHA so the generated HTML trace includes
+                // the exact token fingerprint used for this proxied request. This helps detect
+                // whether the token changes between entry and the actual API call.
+                if (xmlLogger != null && authorization != null) {
+                    try {
+                        String a = authorization.trim();
+                        String preview = a.length() > 12 ? a.substring(0, 8) + "..." : a;
+                        java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+                        byte[] digest = md.digest(a.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                        StringBuilder sb = new StringBuilder();
+                        for (int i = 0; i < 4 && i < digest.length; i++) sb.append(String.format("%02x", digest[i]));
+                        xmlLogger.addStep("ApiProxyService", "Authorization preview=" + preview + ", token_sha4=" + sb.toString());
+                    } catch (Exception ignore) { }
+                }
                     if (debug) {
                         System.out.println("[ChatService][DEBUG] Calling ApiProxyService: endpoint=" + endpointName + ", method=" + methodFromModel + ", pathParams=" + pathParams + ", query=" + query + ", body=" + body);
                     }

@@ -92,12 +92,30 @@ public class OpenAICallApiService {
             String desc   = String.valueOf(ep.getOrDefault("description", ""));
             @SuppressWarnings("unchecked") var pathParams = (List<Object>) ep.getOrDefault("pathParams", List.of());
             @SuppressWarnings("unchecked") var query      = (List<Object>) ep.getOrDefault("query", List.of());
+            @SuppressWarnings("unchecked") var queryDetails = (List<Map<String,Object>>) ep.getOrDefault("queryDetails", List.of());
             @SuppressWarnings("unchecked") var body       = (List<Object>) ep.getOrDefault("body", List.of());
             sb.append("- **").append(name).append("** — ").append(desc.isBlank() ? "(sin descripción)" : desc).append("\n")
               .append("  - `").append(method).append(" ").append(path).append("`\n");
             if (!pathParams.isEmpty()) sb.append("  - pathParams: ").append(join(pathParams)).append("\n");
-            if (!query.isEmpty())      sb.append("  - query: ").append(join(query)).append("\n");
+            if (!query.isEmpty()) {
+                sb.append("  - query: ").append(join(query)).append("\n");
+                // include details
+                for (Map<String,Object> qd : queryDetails) {
+                    try {
+                        sb.append("    - ").append(qd.getOrDefault("name","?"));
+                        if (qd.containsKey("type")) sb.append(" (type=").append(qd.get("type")).append(")");
+                        if (qd.containsKey("default")) sb.append(" default=").append(qd.get("default"));
+                        if (qd.containsKey("minimum")) sb.append(" min=").append(qd.get("minimum"));
+                        if (qd.containsKey("maximum")) sb.append(" max=").append(qd.get("maximum"));
+                        if (qd.containsKey("description")) sb.append(" — ").append(qd.get("description"));
+                        sb.append("\n");
+                    } catch (Exception e) { /* ignore */ }
+                }
+            }
             if (!body.isEmpty())       sb.append("  - body: ").append(join(body)).append("\n");
+            if (ep.containsKey("paginated") && Boolean.TRUE.equals(ep.get("paginated"))) {
+                sb.append("  - nota: respuesta paginada (usa parámetros page/size).\n");
+            }
         }
         return sb.toString();
     }
@@ -293,24 +311,194 @@ public class OpenAICallApiService {
             }
             String responseBody;
             if (openaiMock) {
-                // Build a deterministic mock response that contains a single tool_call to call_api
-                if (xmlLogger != null) xmlLogger.addStep("OpenAI", "openai.mock=true -> devolviendo respuesta simulada (tool_call listAcademias)");
-                Map<String,Object> function = new HashMap<>();
-                function.put("name", "call_api");
-                // arguments must be a JSON string as the real OpenAI responses often encode them as string
-                Map<String,Object> args = new HashMap<>();
-                args.put("name", "listAcademias");
-                args.put("method", "GET");
-                args.put("pathParams", Map.of());
-                args.put("query", Map.of());
-                args.put("body", Map.of());
-                function.put("arguments", mapper.writeValueAsString(args));
-                Map<String,Object> toolCall = Map.of("id", "mock-1", "function", function);
-                Map<String,Object> message = Map.of("role", "assistant", "tool_calls", List.of(toolCall));
-                Map<String,Object> choice = Map.of("message", message);
-                Map<String,Object> respMap = Map.of("choices", List.of(choice));
-                responseBody = mapper.writeValueAsString(respMap);
-                if (debug) System.out.println("[OpenAICallApiService][DEBUG] Mock OpenAI response: " + responseBody);
+                // If currentMessages already contains tool results, return a final assistant response
+                // instead of another tool_call. This avoids an infinite loop in tests where the mock
+                // keeps returning tool_calls repeatedly.
+                boolean hasToolResult = false;
+                try {
+                    for (Map<String, Object> mmsg : currentMessages) {
+                        Object role = mmsg.get("role");
+                        if (role != null && String.valueOf(role).equals("tool")) {
+                            hasToolResult = true;
+                            break;
+                        }
+                    }
+                } catch (Exception ignore) { }
+
+                if (hasToolResult) {
+                    if (xmlLogger != null) xmlLogger.addStep("OpenAI", "openai.mock=true -> devolviendo respuesta final (sin tool_calls)");
+                    // Build a robust final assistant content based on the last tool result content.
+                    String finalText = "Resultados:";
+                    try {
+                        // find last tool message content
+                        String lastToolContent = null;
+                        for (int i = currentMessages.size() - 1; i >= 0; i--) {
+                            Map<String,Object> mmsg = currentMessages.get(i);
+                            Object role = mmsg.get("role");
+                            if (role != null && String.valueOf(role).equals("tool")) {
+                                Object cont = mmsg.get("content");
+                                if (cont != null) {
+                                    lastToolContent = String.valueOf(cont);
+                                    break;
+                                }
+                            }
+                        }
+                        if (lastToolContent != null) {
+                            // Try several parsing strategies in order of likelihood
+                            boolean parsed = false;
+                            // 1) Try parse as JSON object with 'result'
+                            try {
+                                Map<String,Object> toolResp = mapper.readValue(lastToolContent, new com.fasterxml.jackson.core.type.TypeReference<Map<String,Object>>(){});
+                                if (toolResp.containsKey("result")) {
+                                    Object res = toolResp.get("result");
+                                    if (res instanceof List<?>) {
+                                        List<?> items = (List<?>) res;
+                                        if (!items.isEmpty() && items.get(0) instanceof Map) {
+                                            @SuppressWarnings("unchecked") Map<String,Object> first = (Map<String,Object>) items.get(0);
+                                            if (first.containsKey("nombre")) {
+                                                finalText = "Listado de academias: " + String.valueOf(first.get("nombre"));
+                                            } else if (first.containsKey("email") || first.containsKey("usuario") || first.containsKey("username")) {
+                                                finalText = "Listado de usuarios: " + (first.containsKey("email") ? String.valueOf(first.get("email")) : (first.containsKey("usuario") ? String.valueOf(first.get("usuario")) : String.valueOf(first.get("username"))));
+                                            } else {
+                                                finalText = "Resultados: " + items.toString();
+                                            }
+                                            parsed = true;
+                                        } else {
+                                            finalText = "Resultados: " + items.toString();
+                                            parsed = true;
+                                        }
+                                    } else {
+                                        finalText = "Resultado: " + String.valueOf(res);
+                                        parsed = true;
+                                    }
+                                } else {
+                                    // If object but no 'result', try to inspect common keys
+                                    if (toolResp.containsKey("items") && toolResp.get("items") instanceof List<?>) {
+                                        List<?> items = (List<?>) toolResp.get("items");
+                                        finalText = "Resultados: " + items.toString();
+                                        parsed = true;
+                                    }
+                                }
+                            } catch (Exception e1) {
+                                // ignore and try next strategy
+                                if (debug) System.out.println("[OpenAICallApiService][DEBUG] parse as object failed: " + e1.getMessage());
+                            }
+                            // 2) Try parse as JSON array directly
+                            if (!parsed) {
+                                try {
+                                    List<Object> arr = mapper.readValue(lastToolContent, new com.fasterxml.jackson.core.type.TypeReference<List<Object>>(){});
+                                    finalText = "Resultados: " + arr.toString();
+                                    parsed = true;
+                                } catch (Exception e2) {
+                                    if (debug) System.out.println("[OpenAICallApiService][DEBUG] parse as array failed: " + e2.getMessage());
+                                }
+                            }
+                            // 3) Try to extract a JSON substring (array or object) from the text
+                            if (!parsed) {
+                                try {
+                                    java.util.regex.Pattern p = java.util.regex.Pattern.compile("(\\{.*\\}|\\[.*\\])", java.util.regex.Pattern.DOTALL);
+                                    java.util.regex.Matcher m = p.matcher(lastToolContent);
+                                    if (m.find()) {
+                                        String jsonSub = m.group(1);
+                                        try {
+                                            Object sub = mapper.readValue(jsonSub, Object.class);
+                                            finalText = "Resultados: " + String.valueOf(sub);
+                                            parsed = true;
+                                        } catch (Exception e3) {
+                                            if (debug) System.out.println("[OpenAICallApiService][DEBUG] parse json substring failed: " + e3.getMessage());
+                                        }
+                                    }
+                                } catch (Exception e4) {
+                                    if (debug) System.out.println("[OpenAICallApiService][DEBUG] json substring search failed: " + e4.getMessage());
+                                }
+                            }
+                            // 4) Heuristic: look for resource keywords in raw HTML/text and use them in the final text
+                            if (!parsed) {
+                                String lc = lastToolContent.toLowerCase();
+                                if (lc.contains("usuario") || lc.contains("usuarios") || lc.contains("user")) {
+                                    finalText = "Listado de usuarios: (respuesta en bruto)";
+                                    parsed = true;
+                                } else if (lc.contains("academia") || lc.contains("academias") || lc.contains("academy")) {
+                                    finalText = "Listado de academias: (respuesta en bruto)";
+                                    parsed = true;
+                                } else if (lc.length() > 0) {
+                                    // last resort: return a short snippet of the response
+                                    finalText = lastToolContent.length() > 200 ? lastToolContent.substring(0, 200) + "..." : lastToolContent;
+                                    parsed = true;
+                                }
+                            }
+                        }
+                    } catch (Exception ignore) {
+                        // Very last fallback
+                        finalText = "Resultados: (no se pudo parsear el resultado de la tool)";
+                        if (debug) System.out.println("[OpenAICallApiService][DEBUG] finalText fallback used");
+                    }
+                    Map<String,Object> finalObj = Map.of("text", finalText);
+                    Map<String,Object> message = Map.of("role", "assistant", "content", mapper.writeValueAsString(finalObj));
+                    Map<String,Object> choice = Map.of("message", message);
+                    Map<String,Object> respMap = Map.of("choices", List.of(choice));
+                    responseBody = mapper.writeValueAsString(respMap);
+                    if (debug) System.out.println("[OpenAICallApiService][DEBUG] Mock OpenAI final response: " + responseBody);
+                } else {
+                    // Build a deterministic mock response that contains a single tool_call to call_api
+                    if (xmlLogger != null) xmlLogger.addStep("OpenAI", "openai.mock=true -> devolviendo respuesta simulada (tool_call listAcademias)");
+                    Map<String,Object> function = new HashMap<>();
+                    function.put("name", "call_api");
+                    // arguments must be a JSON string as the real OpenAI responses often encode them as string
+                    Map<String,Object> args = new HashMap<>();
+                    // Choose an endpoint from the whitelist based on user intent (look for keywords in last user message)
+                    String selectedName = "listAcademias";
+                    String selectedMethod = "GET";
+                    try {
+                        // Determine intent by scanning the last user message
+                        String lastUser = null;
+                        for (int i = currentMessages.size() - 1; i >= 0; i--) {
+                            Map<String,Object> mmsg = currentMessages.get(i);
+                            Object role = mmsg.get("role");
+                            if (role != null && String.valueOf(role).equals("user")) {
+                                Object cont = mmsg.get("content");
+                                if (cont != null) { lastUser = String.valueOf(cont).toLowerCase(); break; }
+                            }
+                        }
+                        if (this.whitelist != null) {
+                            // prefer a match that contains both 'listar' and a keyword from the user (usuarios/academias)
+                            String preferred = null;
+                            for (Map<String, Object> ep : this.whitelist) {
+                                Object opId = ep.get("operationId");
+                                String op = opId == null ? "" : String.valueOf(opId).toLowerCase();
+                                if (op.contains("listar")) {
+                                    if (lastUser != null && lastUser.contains("usuario") && op.contains("usuario")) { preferred = String.valueOf(opId); selectedMethod = String.valueOf(ep.getOrDefault("method", ep.getOrDefault("httpMethod", "GET"))); break; }
+                                    if (lastUser != null && lastUser.contains("academia") && op.contains("academia")) { preferred = String.valueOf(opId); selectedMethod = String.valueOf(ep.getOrDefault("method", ep.getOrDefault("httpMethod", "GET"))); break; }
+                                    if (preferred == null) preferred = String.valueOf(opId);
+                                }
+                            }
+                            if (preferred != null) selectedName = preferred;
+                            else {
+                                // fallback: first listar endpoint
+                                for (Map<String, Object> ep : this.whitelist) {
+                                    Object opId = ep.get("operationId");
+                                    if (opId != null && String.valueOf(opId).toLowerCase().contains("listar")) {
+                                        selectedName = String.valueOf(opId);
+                                        selectedMethod = String.valueOf(ep.getOrDefault("method", ep.getOrDefault("httpMethod", "GET")));
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    } catch (Exception ignore) { }
+                    args.put("name", selectedName);
+                    args.put("method", selectedMethod == null ? "GET" : selectedMethod);
+                    args.put("pathParams", Map.of());
+                    args.put("query", Map.of());
+                    args.put("body", Map.of());
+                    function.put("arguments", mapper.writeValueAsString(args));
+                    Map<String,Object> toolCall = Map.of("id", "mock-1", "function", function);
+                    Map<String,Object> message = Map.of("role", "assistant", "tool_calls", List.of(toolCall));
+                    Map<String,Object> choice = Map.of("message", message);
+                    Map<String,Object> respMap = Map.of("choices", List.of(choice));
+                    responseBody = mapper.writeValueAsString(respMap);
+                    if (debug) System.out.println("[OpenAICallApiService][DEBUG] Mock OpenAI response: " + responseBody);
+                }
             } else {
                 try {
                     RestTemplate restTemplate = createRestTemplate();
@@ -340,6 +528,11 @@ public class OpenAICallApiService {
                     logger.error("La llamada a OpenAI devolvió un body nulo o vacío, generando objeto de error");
                     responseBody = mapper.writeValueAsString(Map.of("error", "openai_empty_response", "message", "Empty or null response body"));
                 }
+            }
+            if (debug) {
+                System.out.println("[OpenAICallApiService][DEBUG] About to parse OpenAI response (iteration " + iter + "): length=" + (responseBody == null ? 0 : responseBody.length()));
+                String preview = responseBody == null ? "<null>" : (responseBody.length() > 500 ? responseBody.substring(0, 500) + "..." : responseBody);
+                System.out.println("[OpenAICallApiService][DEBUG] OpenAI response preview: " + preview);
             }
             Map<String, Object> resp = mapper.readValue(responseBody, new TypeReference<Map<String, Object>>(){});
             // Procesar la respuesta de OpenAI usando conversiones seguras
