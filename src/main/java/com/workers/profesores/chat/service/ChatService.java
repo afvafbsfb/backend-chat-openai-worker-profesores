@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.workers.profesores.chat.dto.ChatRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
 import java.util.*;
@@ -13,14 +15,17 @@ public class ChatService {
     private final OpenAICallApiService openai;
     private final ApiProxyService apiProxy;
     private final ObjectMapper om = new ObjectMapper();
+    private final com.workers.profesores.chat.auth.JwtDelegationService jwtDelegationService;
+    private static final Logger logger = LoggerFactory.getLogger(ChatService.class);
 
     @Value("${backend.debug:false}")
     private boolean debug;
     // Note: local welcome handling removed to always delegate to OpenAI
 
-    public ChatService(OpenAICallApiService openai, ApiProxyService apiProxy) {
+    public ChatService(OpenAICallApiService openai, ApiProxyService apiProxy, com.workers.profesores.chat.auth.JwtDelegationService jwtDelegationService) {
         this.openai = openai;
         this.apiProxy = apiProxy;
+        this.jwtDelegationService = jwtDelegationService;
     }
 
 
@@ -42,7 +47,24 @@ public class ChatService {
                 String whitelistTable = openai.renderEndpointsTable();
             // Prefetch user profile (so model has user's name available) and añadir contexto resumido del usuario (UserClaims)
             String profileJsonForPrompt = "{}";
-            String userNameForPrompt = null;
+            // Create delegated token up-front so prefetch calls to ApiProxyService use delegated auth
+            String delegatedAuthUpfront = null;
+            try {
+                delegatedAuthUpfront = jwtDelegationService.createDelegatedAuthorizationHeader(claims);
+                if (delegatedAuthUpfront != null && xmlLogger != null) {
+                    try {
+                        java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+                        byte[] digest = md.digest(delegatedAuthUpfront.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                        StringBuilder sb = new StringBuilder();
+                        for (int i = 0; i < 4 && i < digest.length; i++) sb.append(String.format("%02x", digest[i]));
+                        String preview = delegatedAuthUpfront.length() > 12 ? delegatedAuthUpfront.substring(0, 8) + "..." : delegatedAuthUpfront;
+                        xmlLogger.addStep("ChatService", "Delegated token creado: preview=" + preview + ", token_sha4=" + sb.toString());
+                    } catch (Exception ignore) { }
+                }
+                if (debug) logger.debug("[ChatService] delegatedAuthUpfront present={}", delegatedAuthUpfront != null);
+            } catch (Exception dex) {
+                if (debug) logger.debug("[ChatService] Failed to create delegated token up-front: {}", dex.getMessage());
+            }
             try {
                 // Try canonical friendly name first; if not found try operationId used in the API
                 Map<String, Object> epProfile = openai.getEndpointByName("getMiPerfil");
@@ -59,15 +81,22 @@ public class ChatService {
                             byte[] digest = md.digest(a.getBytes(java.nio.charset.StandardCharsets.UTF_8));
                             StringBuilder sb = new StringBuilder();
                             for (int i = 0; i < 4 && i < digest.length; i++) sb.append(String.format("%02x", digest[i]));
-                            xmlLogger.addStep("ChatService", "Authorization preview=" + preview + ", token_sha4=" + sb.toString());
+                                xmlLogger.addStep("ChatService", "Authorization preview=" + preview + ", token_sha4=" + sb.toString());
                         } catch (Exception ignore) { }
                     }
                     // executeWhitelistedCall normaliza a JSON string
-                    profileJsonForPrompt = apiProxy.executeSpecCall(epProfile, "GET", null, null, null, authorization);
+                    // Use delegated token for prefetch if available
+                    String authForPrefetch = delegatedAuthUpfront != null ? delegatedAuthUpfront : authorization;
+                    // Use empty ObjectNodes instead of null to ensure mocks using Mockito's any() matchers
+                    com.fasterxml.jackson.databind.JsonNode emptyNode = om.createObjectNode();
+                    if (xmlLogger != null) {
+                        profileJsonForPrompt = apiProxy.executeSpecCall(epProfile, "GET", emptyNode, emptyNode, emptyNode, authForPrefetch, xmlLogger);
+                    } else {
+                        profileJsonForPrompt = apiProxy.executeSpecCall(epProfile, "GET", emptyNode, emptyNode, emptyNode, authForPrefetch);
+                    }
                     try {
-                        JsonNode pnode = om.readTree(profileJsonForPrompt);
-                        if (pnode.has("nombre")) userNameForPrompt = pnode.path("nombre").asText(null);
-                        else if (pnode.has("name")) userNameForPrompt = pnode.path("name").asText(null);
+                        // keep profileJsonForPrompt as-is; attempt a quick parse to validate JSON
+                        om.readTree(profileJsonForPrompt);
                     } catch (Exception ex) {
                         // ignore parsing errors, keep raw profileJsonForPrompt
                     }
@@ -127,7 +156,8 @@ public class ChatService {
             // 2) Primer turno al modelo (puede devolver tool_calls)
 
             if (debug) {
-                System.out.println("[ChatService][DEBUG] Calling OpenAI with seed messages...");
+                logger.debug("[ChatService] Calling OpenAI with seed messages (seedSize={})", seed.size());
+                if (xmlLogger != null) xmlLogger.addStep("OpenAIClient", "Primera llamada a OpenAI (seedSize=" + seed.size() + ")");
             }
             if (xmlLogger != null) xmlLogger.addStep("OpenAIClient", "Primera llamada a OpenAI (callChatWithTools)");
             // Pasamos el Authorization (Bearer token) a la llamada a OpenAI service para que las herramientas puedan acceder al token si es necesario
@@ -144,7 +174,8 @@ public class ChatService {
                 return om.writeValueAsString(Map.of("text", rawFirst == null ? "" : rawFirst));
             }
             if (debug) {
-                System.out.println("[ChatService][DEBUG] Parsed OpenAI first response into JSON");
+                logger.debug("[ChatService] Parsed OpenAI first response into JSON");
+                if (xmlLogger != null) xmlLogger.addStep("OpenAIClient", "OpenAI primera respuesta parseada a JSON");
             }
             // Defensive: ensure choices array exists and has at least one element
             JsonNode choicesNode = first.path("choices");
@@ -219,10 +250,27 @@ public class ChatService {
                 }
             }
 
+            // Delegated token: prefer the one created up-front (delegatedAuthUpfront) so we only create it once.
+            String delegatedAuth = delegatedAuthUpfront;
+            if (delegatedAuth == null) {
+                try {
+                    delegatedAuth = jwtDelegationService.createDelegatedAuthorizationHeader(claims);
+                } catch (Exception dex) {
+                    if (debug) System.out.println("[ChatService][DEBUG] Failed to create delegated token up-front: " + dex.getMessage());
+                }
+            }
+            if (delegatedAuth == null) {
+                // If we don't have a delegated token, abort the chat flow when tool_calls are requested.
+                // We choose to return an explicit error JSON so clients/tests can detect the failure.
+                if (xmlLogger != null) xmlLogger.addStep("ChatService", "Delegated token not available - aborting tool_calls");
+                return om.writeValueAsString(Map.of("error", "delegation_disabled", "message", "Delegation disabled or missing delegation secret - cannot proxy API calls"));
+            }
+
             // 3) Resolver tool_calls
 
             List<Map<String, Object>> toolOutputs = new ArrayList<>();
             String singleObjectJson = null; // si la API devuelve un solo objeto, lo devolveremos tal cual en JSON
+            
             for (JsonNode tc : assistantMsg.path("tool_calls")) {
                 String callId   = tc.path("id").asText();
                 String funcName = tc.path("function").path("name").asText();
@@ -274,9 +322,27 @@ public class ChatService {
                 // Log masked Authorization preview + short SHA so the generated HTML trace includes
                 // the exact token fingerprint used for this proxied request. This helps detect
                 // whether the token changes between entry and the actual API call.
+                // Create delegated token once on demand (if not already created)
+                if (delegatedAuth == null) {
+                    try {
+                        delegatedAuth = jwtDelegationService.createDelegatedAuthorizationHeader(claims);
+                        if (debug) {
+                            try {
+                                String usedPreview = delegatedAuth == null ? "<none>" : (delegatedAuth.length() > 12 ? delegatedAuth.substring(0,8) + "..." : delegatedAuth);
+                                java.security.MessageDigest md2 = java.security.MessageDigest.getInstance("SHA-256");
+                                byte[] digest2 = delegatedAuth == null ? new byte[0] : md2.digest(delegatedAuth.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                                StringBuilder sb2 = new StringBuilder();
+                                for (int i = 0; i < 4 && i < digest2.length; i++) sb2.append(String.format("%02x", digest2[i]));
+                                System.out.println("[ChatService][DEBUG] Delegated token produced (masked)=" + usedPreview + ", token_sha4=" + sb2.toString());
+                            } catch (Exception eLog) { System.out.println("[ChatService][DEBUG] Could not compute delegated token fingerprint: " + eLog.getMessage()); }
+                        }
+                    } catch (Exception dex) {
+                        if (debug) System.out.println("[ChatService][DEBUG] Failed to create delegated token: " + dex.getMessage());
+                    }
+                }
                 if (xmlLogger != null && authorization != null) {
                     try {
-                        String a = authorization.trim();
+                        String a = (delegatedAuth != null) ? delegatedAuth : authorization;
                         String preview = a.length() > 12 ? a.substring(0, 8) + "..." : a;
                         java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
                         byte[] digest = md.digest(a.getBytes(java.nio.charset.StandardCharsets.UTF_8));
@@ -285,24 +351,39 @@ public class ChatService {
                         xmlLogger.addStep("ApiProxyService", "Authorization preview=" + preview + ", token_sha4=" + sb.toString());
                     } catch (Exception ignore) { }
                 }
-                    if (debug) {
-                        System.out.println("[ChatService][DEBUG] Calling ApiProxyService: endpoint=" + endpointName + ", method=" + methodFromModel + ", pathParams=" + pathParams + ", query=" + query + ", body=" + body);
-                    }
+                if (debug) {
+                    // Make it explicit in logs whether we're using a delegated token or forwarding the original
+                    try {
+                        String used = (delegatedAuth != null) ? "delegated" : "original";
+                        String a = (delegatedAuth != null) ? delegatedAuth : authorization;
+                        String preview = a == null ? "<none>" : (a.length() > 12 ? a.substring(0, 8) + "..." : a);
+                        java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+                        byte[] digest = a == null ? new byte[0] : md.digest(a.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                        StringBuilder sb = new StringBuilder();
+                        for (int i = 0; i < 4 && i < digest.length; i++) sb.append(String.format("%02x", digest[i]));
+                        System.out.println("[ChatService][DEBUG] About to call ApiProxyService (using " + used + " token). Authorization preview=" + preview + ", token_sha4=" + sb.toString());
+                    } catch (Exception exx) { System.out.println("[ChatService][DEBUG] About to call ApiProxyService (used token), but failed computing fingerprint: " + exx.getMessage()); }
+                    logger.debug("[ChatService] Calling ApiProxyService: endpoint={}, method={}, pathParams={}, query={}, body={}", endpointName, methodFromModel, pathParams, query, body);
+                }
                     String apiResult;
                 try {
                     // Antes de ejecutar, validar permisos y sanitizar parámetros
                     try {
-                        apiResult = apiProxy.executeSpecCall(ep, methodFromModel, pathParams, query, body, authorization);
+                        // Prefer delegated token if available, otherwise forward original authorization
+                        String authToUse = (delegatedAuth != null) ? delegatedAuth : authorization;
+                        if (xmlLogger != null) {
+                            apiResult = apiProxy.executeSpecCall(ep, methodFromModel, pathParams, query, body, authToUse, xmlLogger);
+                        } else {
+                            apiResult = apiProxy.executeSpecCall(ep, methodFromModel, pathParams, query, body, authToUse);
+                        }
                     } catch (Exception exInner) {
                         // Ensure apiResult is always a JSON string describing the error
                         Map<String, Object> errMap = Map.of("error", "authorization_failure", "message", exInner.getMessage() == null ? "" : exInner.getMessage());
                         apiResult = om.writeValueAsString(errMap);
                         if (xmlLogger != null) xmlLogger.addStep("Authorization", "Fallo autorización: " + exInner.getMessage());
                     }
-                    if (xmlLogger != null) xmlLogger.addStep("ApiProxyService", "Respuesta recibida de API: " + endpointName);
-                    if (debug) {
-                        System.out.println("[ChatService][DEBUG] ApiProxyService result: " + apiResult);
-                    }
+                    if (xmlLogger != null) xmlLogger.addStep("ApiProxyService", "Respuesta recibida de API: " + endpointName + " (result_snippet=" + (apiResult == null ? "" : (apiResult.length() > 200 ? apiResult.substring(0, 200) + "..." : apiResult)) + ")");
+                    if (debug) logger.debug("[ChatService] ApiProxyService result snippet: {}", (apiResult == null ? "" : (apiResult.length() > 200 ? apiResult.substring(0,200) + "..." : apiResult)));
                 } catch (Exception ex) {
                     apiResult = "{\"error\":\"Fallo al llamar API: " + ex.getMessage() + "\"}";
                     if (xmlLogger != null) xmlLogger.addStep("ApiProxyService", "Excepción al llamar API: " + ex.getMessage());

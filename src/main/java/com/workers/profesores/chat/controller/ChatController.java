@@ -1,4 +1,3 @@
-
 package com.workers.profesores.chat.controller;
 
 import com.workers.profesores.chat.dto.ChatRequest;
@@ -14,6 +13,8 @@ import org.springframework.beans.factory.annotation.Value;
 import java.time.LocalDateTime;
 import java.security.MessageDigest;
 import java.nio.charset.StandardCharsets;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/chat")
@@ -21,6 +22,7 @@ import java.nio.charset.StandardCharsets;
 public class ChatController {
     private final ChatService chatService;
     private final JwtVerifier jwtVerifier;
+    private static final Logger logger = LoggerFactory.getLogger(ChatController.class);
 
     // Flag para activar/desactivar modo debug global
     @Value("${backend.debug:false}")
@@ -55,8 +57,9 @@ public class ChatController {
                 xmlLogger.addStep("ChatController", "Recibida petición POST /chat" + (userMsg.isEmpty() ? "" : ("<br>" + userMsg)));
             }
             if (debug) {
-                System.out.println("DEBUG " + LocalDateTime.now() + " [ChatController][chat] Recibida petición POST /chat");
-                System.out.println("DEBUG " + LocalDateTime.now() + " [ChatController][chat] Payload recibido: " + (request != null ? request.toString() : "null"));
+                String trace = requestId == null ? "" : (" requestId=" + requestId);
+                logger.debug("[ChatController][chat] Recibida petición POST /chat{}", trace);
+                logger.debug("[ChatController][chat] Payload recibido: {}{}", (request != null ? request.toString() : "null"), trace);
             }
             if (request == null || request.getMessages() == null || request.getMessages().isEmpty()) {
                 if (xmlLogger != null) {
@@ -78,14 +81,41 @@ public class ChatController {
                         byte[] digest = md.digest(a.getBytes(StandardCharsets.UTF_8));
                         StringBuilder sb = new StringBuilder();
                         for (int i = 0; i < 4 && i < digest.length; i++) sb.append(String.format("%02x", digest[i]));
-                        System.out.println("[ChatController][DEBUG] Incoming Authorization preview=" + preview + ", token_sha4=" + sb.toString());
+                        logger.debug("[ChatController][DEBUG] Incoming Authorization preview={} , token_sha4={}", preview, sb.toString());
                     } catch (Exception ignore) { }
                 }
                 claims = jwtVerifier.verify(authorization);
+                // Log claims minimal info and add to html trace
+                if (debug && claims != null) {
+                    String roles = claims.roles == null ? "[]" : claims.roles.toString();
+                    String academia = claims.academiaId == null ? "null" : String.valueOf(claims.academiaId);
+                    String userId = claims.usuarioId == null ? "null" : String.valueOf(claims.usuarioId);
+                    String trace = requestId == null ? "" : (" requestId=" + requestId);
+                    logger.debug("[ChatController][JWT] usuarioId={} roles={} academiaId={}{}", userId, roles, academia, trace);
+                    if (xmlLogger != null) xmlLogger.addStep("ChatController", "JWT válido: usuarioId=" + userId + ", roles=" + roles + ", academiaId=" + academia);
+                }
             } catch (Exception ex) {
                 if (xmlLogger != null) xmlLogger.addStep("ChatController", "JWT inválido: " + ex.getMessage());
                 return ResponseEntity.status(401).body("Token inválido o expirado");
             }
+
+            // Generar y almacenar el token delegado
+                // Do not generate delegated token here. ChatService will create it on-demand
+                // and reuse it for all proxied calls within the chat session.
+            if (debug) {
+                System.out.println("DEBUG: Delegated token generation moved to ChatService (on demand).");
+            }
+
+            // Log para el token delegado
+            if (debug && claims != null) {
+                System.out.println("DEBUG " + LocalDateTime.now() + " [ChatController][chat] Generando token delegado para el usuario: " + claims.usuarioId);
+            }
+
+            // Log para llamada al API de academias
+            if (debug && request.getMessages().stream().anyMatch(msg -> msg.getContent().contains("academia"))) {
+                System.out.println("DEBUG " + LocalDateTime.now() + " [ChatController][chat] Llamando al API de academias con token delegado.");
+            }
+
             result = chatService.runChat(request.getMessages(), xmlLogger, authorization, claims);
             if (xmlLogger != null) {
                 String outputMsg = (result != null && !result.isEmpty()) ? ("<br>Mensaje de salida: " + result) : "";

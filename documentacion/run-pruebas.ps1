@@ -1,12 +1,18 @@
 <#
 Documentación: formas de arrancar el backend (mediador)
-   y las pruebas desde el api-workers-profesores
 
-$env:OPENAI_API_KEY='sk-...TU-CLAVE-AQUI...'
+  y las pruebas desde el api-workers-profesores
 
-# ejecutar el comando siguiente indicando que arranque el backend y que NO haga mock (OpenAI decidirá siempre)
+  Para local development guarda tu OpenAI API key en
+  `src/main/resources/application-local.properties` (fichero git-ignored). Ejemplo:
 
-mvn "-Dopenai.mock=false" "-Dopenai.api.key=$env:OPENAI_API_KEY" "-Dbackend.debug=true" spring-boot:run
+  spring.profiles.active=dev
+  openai.api.key.dev=sk-<TU-OPENAI-KEY>
+
+  El script cargará automáticamente ese fichero y exportará la variable necesaria al arrancar el backend.
+
+  # ejecutar el backend sin pasar argumentos adicionales (el script leerá application-local.properties)
+  # mvn "-Dopenai.mock=false" "-Dopenai.api.key=$env:OPENAI_API_KEY" "-Dbackend.debug=true" spring-boot:run
 
 
 #otra opción (menos recomendable, porque no arranca el backend ni controla parámetros):

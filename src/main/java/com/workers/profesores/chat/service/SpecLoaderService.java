@@ -12,11 +12,14 @@ import java.io.InputStream;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class SpecLoaderService {
     private final ObjectMapper mapper = new ObjectMapper();
     private final RestTemplate rest = new RestTemplate();
+    private static final Logger logger = LoggerFactory.getLogger(SpecLoaderService.class);
 
     @Value("${served.openapi.url:}")
     private String servedOpenapiUrl;
@@ -36,7 +39,7 @@ public class SpecLoaderService {
             if (root == null) return List.of();
             JsonNode paths = root.get("paths");
             if (paths == null || !paths.fieldNames().hasNext()) {
-                System.out.println("[SpecLoader] No paths found in served-openapi.json");
+                logger.warn("[SpecLoader] No paths found in served-openapi.json");
                 if (failOnInvalid) throw new RuntimeException("served-openapi.json has no paths");
                 return List.of();
             }
@@ -158,13 +161,13 @@ public class SpecLoaderService {
                     return p.equals(e.getKey()) && mth.equalsIgnoreCase(e.getValue());
                 });
                 if (!found) {
-                    System.out.println("[SpecLoader] Critical endpoint not found: " + e.getKey() + " " + e.getValue());
+                    logger.warn("[SpecLoader] Critical endpoint not found: {} {}", e.getKey(), e.getValue());
                     if (failOnInvalid) throw new RuntimeException("Critical endpoint missing: " + e.getKey());
                 }
             }
             return out;
         } catch (Exception ex) {
-            System.out.println("[SpecLoader] Error loading spec: " + ex.getMessage());
+            logger.error("[SpecLoader] Error loading spec: {}", ex.getMessage());
             if (failOnInvalid) throw new RuntimeException(ex);
             return List.of();
         }
@@ -173,21 +176,42 @@ public class SpecLoaderService {
     private JsonNode loadSpec() {
         try {
             if (servedOpenapiUrl != null && !servedOpenapiUrl.isBlank()) {
-                System.out.println("[SpecLoader] Loading served-openapi.json from URL: " + servedOpenapiUrl);
+                logger.info("[SpecLoader] Loading served-openapi.json from URL: {}", servedOpenapiUrl);
                 String txt = rest.getForObject(servedOpenapiUrl, String.class);
                 if (txt == null) return null;
-                return mapper.readTree(txt);
+                JsonNode node = mapper.readTree(txt);
+                if (failOnInvalid && node != null) {
+                    try {
+                        java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+                        byte[] digest = md.digest(txt.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                        StringBuilder hs = new StringBuilder();
+                        for (int i = 0; i < 4 && i < digest.length; i++) hs.append(String.format("%02x", digest[i]));
+                        logger.debug("[SpecLoader] loaded spec from URL checksum_sha4={} size_bytes={}", hs.toString(), txt.length());
+                    } catch (Exception ignore) { }
+                }
+                return node;
             }
             ClassPathResource r = new ClassPathResource("served-openapi.json");
             if (r.exists()) {
                 try (InputStream is = r.getInputStream()) {
-                    return mapper.readTree(is);
+                    byte[] all = is.readAllBytes();
+                    String txt = new String(all, java.nio.charset.StandardCharsets.UTF_8);
+                    if (failOnInvalid && txt != null) {
+                        try {
+                            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+                            byte[] digest = md.digest(txt.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                            StringBuilder hs = new StringBuilder();
+                            for (int i = 0; i < 4 && i < digest.length; i++) hs.append(String.format("%02x", digest[i]));
+                            logger.debug("[SpecLoader] loaded spec from classpath checksum_sha4={} size_bytes={}", hs.toString(), all.length);
+                        } catch (Exception ignore) { }
+                    }
+                    return mapper.readTree(txt);
                 }
             }
-            System.out.println("[SpecLoader] No served-openapi.json found on classpath and no URL configured");
+            logger.warn("[SpecLoader] No served-openapi.json found on classpath and no URL configured");
             return null;
         } catch (Exception ex) {
-            System.out.println("[SpecLoader] Exception reading spec: " + ex.getMessage());
+            logger.error("[SpecLoader] Exception reading spec: {}", ex.getMessage());
             if (failOnInvalid) throw new RuntimeException(ex);
             return null;
         }

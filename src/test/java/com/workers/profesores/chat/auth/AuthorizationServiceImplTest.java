@@ -15,21 +15,21 @@ public class AuthorizationServiceImplTest {
 
     @Test
     public void checkAllowed_allows_when_role_present_in_xpermissions() {
-        UserClaims claims = new UserClaims(1L, List.of("Admin_academia"), 10, null);
+    UserClaims claims = new UserClaims(1L, List.of("Admin_academia"), 10, null, null);
         Map<String,Object> endpoint = Map.of("x-permissions", Map.of("allowed_roles", List.of("Admin_academia","Admin_plataforma")));
         assertDoesNotThrow(() -> svc.checkAllowed(claims, endpoint, "GET", null, null));
     }
 
     @Test
     public void checkAllowed_denies_when_role_not_in_xpermissions() {
-        UserClaims claims = new UserClaims(2L, List.of("Profesor_academia"), 5, null);
+    UserClaims claims = new UserClaims(2L, List.of("Profesor_academia"), 5, null, null);
         Map<String,Object> endpoint = Map.of("x-permissions", Map.of("allowed_roles", List.of("Admin_academia","Admin_plataforma")));
         assertThrows(RuntimeException.class, () -> svc.checkAllowed(claims, endpoint, "GET", null, null));
     }
 
     @Test
     public void sanitizeParams_applies_enforced_filters_current_user_academia_id() throws Exception {
-        UserClaims claims = new UserClaims(3L, List.of("Admin_academia"), 77, null);
+    UserClaims claims = new UserClaims(3L, List.of("Admin_academia"), 77, null, null);
         Map<String,Object> endpoint = Map.of("x-permissions", Map.of("enforced_filters", Map.of("academia_id", "current_user.academia_id")));
         JsonNode path = om.createObjectNode();
         JsonNode query = om.createObjectNode();
@@ -43,7 +43,7 @@ public class AuthorizationServiceImplTest {
 
     @Test
     public void transformIfNeeded_transforms_listar_for_admin_academia() {
-        UserClaims claims = new UserClaims(4L, List.of("Admin_academia"), 99, null);
+    UserClaims claims = new UserClaims(4L, List.of("Admin_academia"), 99, null, null);
         Map<String,Object> endpoint = Map.of("operationId", "usuarios.listar_usuarios");
         Map<String,Object> res = svc.transformIfNeeded(claims, endpoint, null, null);
         assertNotNull(res);

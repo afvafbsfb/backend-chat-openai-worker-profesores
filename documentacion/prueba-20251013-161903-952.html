@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Flujo de la prueba: prueba-20251013-161903-952</title>
+<style>body{font-family:sans-serif;} table{border-collapse:collapse;width:100%;margin-top:1em;} th,td{border:1px solid #ccc;padding:8px;text-align:left;} th{background:#f0f0f0;} tr:nth-child(even){background:#fafafa;} .step{margin-bottom:1em;} .timestamp{color:#888;font-size:0.9em;}</style>
+</head><body>
+<h2>Flujo de la prueba: prueba-20251013-161903-952</h2>
+<table>
+<thead><tr><th>Paso</th><th>Descripción</th><th>Timestamp</th></tr></thead>
+<tbody>
+<tr class='step'><td>1. ChatController</td><td>Recibida petición POST /chat&lt;br&gt;Mensaje recibido: [user] Quiero ver el listado de los usuarios que están dados de alta</td><td class='timestamp'>2025-10-13 16:19:03.960</td></tr>
+<tr class='step'><td>2. ChatController</td><td>JWT válido: usuarioId=1349, roles=[Admin_academia], academiaId=287</td><td class='timestamp'>2025-10-13 16:19:03.960</td></tr>
+<tr class='step'><td>3. ChatService</td><td>Inicio de runChat</td><td class='timestamp'>2025-10-13 16:19:03.960</td></tr>
+<tr class='step'><td>4. ChatService</td><td>Delegated token creado: preview=Bearer e..., token_sha4=94d506d2</td><td class='timestamp'>2025-10-13 16:19:04.094</td></tr>
+<tr class='step'><td>5. ChatService</td><td>Authorization preview=Bearer e..., token_sha4=47c102ff</td><td class='timestamp'>2025-10-13 16:19:04.094</td></tr>
+<tr class='step'><td>6. ChatService</td><td>System prompt construido y whitelist añadida</td><td class='timestamp'>2025-10-13 16:19:04.222</td></tr>
+<tr class='step'><td>7. ChatService</td><td>Mensajes de usuario preparados para OpenAI</td><td class='timestamp'>2025-10-13 16:19:04.222</td></tr>
+<tr class='step'><td>8. OpenAIClient</td><td>Primera llamada a OpenAI (seedSize=3)</td><td class='timestamp'>2025-10-13 16:19:04.222</td></tr>
+<tr class='step'><td>9. OpenAIClient</td><td>Primera llamada a OpenAI (callChatWithTools)</td><td class='timestamp'>2025-10-13 16:19:04.222</td></tr>
+<tr class='step'><td>10. OpenAI</td><td>Llamada a OpenAI (iteración 0) - mensajes: [system] Eres un asistente (secretaria) para una plataforma de academias en España. Solo puedes acceder a los recursos de la API ... | [system] Perfil_usuario: {&quot;error&quot;:&quot;http_error&quot;,&quot;status&quot;:401,&quot;body&quot;:&quot;{\n  \&quot;error\&quot;: \&quot;unauthorized\&quot;,\n  \&quot;message\&quot;: \&quot;Signature... | [user] Quiero ver el listado de los usuarios que están dados de alta | </td><td class='timestamp'>2025-10-13 16:19:04.254</td></tr>
+<tr class='step'><td>11. OpenAIClient</td><td>OpenAI primera respuesta parseada a JSON</td><td class='timestamp'>2025-10-13 16:19:06.389</td></tr>
+<tr class='step'><td>12. OpenAIClient</td><td>Procesando tool_call: call_api</td><td class='timestamp'>2025-10-13 16:19:06.389</td></tr>
+<tr class='step'><td>13. ApiProxyService</td><td>Llamada a API: usuarios.listar_usuarios (GET)</td><td class='timestamp'>2025-10-13 16:19:06.389</td></tr>
+<tr class='step'><td>14. ApiProxyService</td><td>Authorization preview=Bearer e..., token_sha4=94d506d2</td><td class='timestamp'>2025-10-13 16:19:06.389</td></tr>
+<tr class='step'><td>15. ApiProxyService</td><td>Respuesta recibida de API: usuarios.listar_usuarios (result_snippet={&quot;error&quot;:&quot;http_error&quot;,&quot;status&quot;:401,&quot;body&quot;:&quot;{\n  \&quot;error\&quot;: \&quot;unauthorized\&quot;,\n  \&quot;message\&quot;: \&quot;Signature verification failed\&quot;,\n  \&quot;ok\&quot;: false\n}\n&quot;})</td><td class='timestamp'>2025-10-13 16:19:06.404</td></tr>
+<tr class='step'><td>16. OpenAIClient</td><td>Segunda llamada a OpenAI (reinyectando resultados de tools)</td><td class='timestamp'>2025-10-13 16:19:06.404</td></tr>
+<tr class='step'><td>17. OpenAI</td><td>Llamada a OpenAI (iteración 0) - mensajes: [system] Eres un asistente (secretaria) para una plataforma de academias en España. Solo puedes acceder a los recursos de la API ... | [system] Perfil_usuario: {&quot;error&quot;:&quot;http_error&quot;,&quot;status&quot;:401,&quot;body&quot;:&quot;{\n  \&quot;error\&quot;: \&quot;unauthorized\&quot;,\n  \&quot;message\&quot;: \&quot;Signature... | [user] Quiero ver el listado de los usuarios que están dados de alta | [assistant]  tool_calls: [{id=call_ZZIdzmbmU6xUFCBRtA73IWmP, type=function, function={name=call_api, arguments={&quot;method&quot;:&quot;GET&quot;,&quot;name&quot;:&quot;usuarios.listar_usuarios&quot;}}}] | [tool] {&quot;error&quot;:&quot;http_error&quot;,&quot;status&quot;:401,&quot;body&quot;:&quot;{\n  \&quot;error\&quot;: \&quot;unauthorized\&quot;,\n  \&quot;message\&quot;: \&quot;Signature verification fa... tool_call_id: call_ZZIdzmbmU6xUFCBRtA73IWmP | </td><td class='timestamp'>2025-10-13 16:19:06.414</td></tr>
+<tr class='step'><td>18. OpenAIClient</td><td>Respuesta final generada por OpenAI</td><td class='timestamp'>2025-10-13 16:19:08.010</td></tr>
+<tr class='step'><td>19. ChatController</td><td>Respuesta generada por ChatService&lt;br&gt;Mensaje de salida: {&quot;text&quot;:&quot;No tengo acceso para obtener el listado de usuarios en este momento. Por favor, asegúrate de estar correctamente autenticado y vuelve a intentarlo.&quot;}</td><td class='timestamp'>2025-10-13 16:19:08.010</td></tr>
+</tbody></table>
+</body></html>

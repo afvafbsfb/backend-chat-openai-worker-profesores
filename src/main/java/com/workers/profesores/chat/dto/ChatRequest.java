@@ -4,6 +4,7 @@ import java.util.List;
 
 public class ChatRequest {
     private List<Message> messages;
+    private String delegatedToken;
 
     public static class Message {
         private String role;
@@ -24,6 +25,17 @@ public class ChatRequest {
     public ChatRequest(List<Message> messages) {
         this.messages = messages;
     }
+    public ChatRequest(List<Message> messages, String delegatedToken) {
+        this.messages = messages;
+        this.delegatedToken = delegatedToken;
+    }
     public List<Message> getMessages() { return messages; }
     public void setMessages(List<Message> messages) { this.messages = messages; }
+    public String getDelegatedToken() {
+        return delegatedToken;
+    }
+
+    public void setDelegatedToken(String delegatedToken) {
+        this.delegatedToken = delegatedToken;
+    }
 }
