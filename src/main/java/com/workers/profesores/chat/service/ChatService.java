@@ -7,6 +7,7 @@ import com.workers.profesores.chat.dto.ChatRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import com.workers.profesores.chat.dto.response.*;
 import org.springframework.beans.factory.annotation.Value;
 import java.util.*;
 
@@ -29,7 +30,7 @@ public class ChatService {
     }
 
 
-    public String runChat(List<ChatRequest.Message> incoming, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization, com.workers.profesores.chat.auth.UserClaims claims) {
+    public ResponseEnvelope runChat(List<ChatRequest.Message> incoming, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization, com.workers.profesores.chat.auth.UserClaims claims) {
         try {
             if (debug) {
                 System.out.println("[ChatService][DEBUG] runChat called with incoming: " + incoming);
@@ -118,7 +119,22 @@ public class ChatService {
             systemPromptSb.append(" Perfil_usuario: ").append(profileJsonForPrompt).append(".");
             // Instrucción explícita: usar call_api para cualquier acceso adicional a endpoints y devolver JSON estructurado
             systemPromptSb.append(" ").append(whitelistTable).append("\n\n");
-            systemPromptSb.append("Reglas de salida: cuando generes la respuesta final para el cliente móvil, devuelve UNICAMENTE un objeto JSON válido (sin texto adicional) con al menos la propiedad 'text' (string). Opcionalmente puedes incluir 'suggestions' (array de strings), 'academia' (objeto) o 'academias' (array). Si necesitas datos adicionales (por ejemplo perfil del usuario o detalles de academias) realiza una tool_call a call_api con el nombre del endpoint correspondiente.\n");
+            systemPromptSb.append(
+                "Reglas de salida (estrictas):\n" +
+                "- Devuelve UNICAMENTE un objeto JSON válido (sin texto adicional).\n" +
+                "- Debe incluir siempre 'text' (string) con un breve resumen.\n" +
+                "- Cuando el usuario pida listados (usuarios, academias, etc.), debes DEVOLVER SIEMPRE un array con la entidad solicitada: \n" +
+                "  - Por ejemplo: 'usuarios': [ ... ] o 'academias': [ ... ].\n" +
+                "  - Si no hay registros en base de datos, devuelve el array vacío [].\n" +
+                "  - Copia los elementos tal cual los devuelve la API (mismos nombres de campos). No re-formatees las propiedades internas.\n" +
+                "- Si el endpoint utilizado está marcado como paginado en la whitelist, añade obligatoriamente un objeto 'pagination' con los metadatos disponibles:\n" +
+                "  { 'page': number, 'size': number, 'returned': number, 'has_more': boolean, 'next_page': number|null, 'prev_page': number|null, 'total': number|null }\n" +
+                "  - Toma estos valores de la respuesta real de la API. No inventes datos; si un campo no viene, usa null o omítelo.\n" +
+                "  - El campo 'returned' debe ser la longitud del array devuelto en la respuesta (p. ej. usuarios.length).\n" +
+                "- Si el endpoint no es paginado pero devuelve una lista (array), incluye el array y omite 'pagination'.\n" +
+                "- Puedes incluir 'suggestions' (array de strings) cuando proceda; por ejemplo, si 'has_more' es true: ['Siguiente página', 'Exportar a CSV', 'Exportar a Excel'].\n" +
+                "- No uses Markdown ni tablas en la salida.\n"
+            );
             String systemPrompt = systemPromptSb.toString();
             if (xmlLogger != null) xmlLogger.addStep("ChatService", "System prompt construido y whitelist añadida");
             if (debug) {
@@ -171,7 +187,7 @@ public class ChatService {
             } catch (Exception e) {
                 // If parsing fails, wrap the raw response into a JSON object with property 'text'
                 if (debug) System.out.println("[ChatService][DEBUG] OpenAI response not JSON, wrapping into text: " + (rawFirst == null ? "<null>" : rawFirst));
-                return om.writeValueAsString(Map.of("text", rawFirst == null ? "" : rawFirst));
+                return ResponseEnvelope.success("Respuesta modelo", DataSection.of("chat", List.of(), null), List.of(), List.of(MessageEntry.of("debug","raw_first_not_json")));
             }
             if (debug) {
                 logger.debug("[ChatService] Parsed OpenAI first response into JSON");
@@ -181,19 +197,15 @@ public class ChatService {
             JsonNode choicesNode = first.path("choices");
             if (choicesNode == null || !choicesNode.isArray() || choicesNode.size() == 0) {
                 // If the response already looks like a final content object with 'text', return it
-                if (first.has("text")) {
-                    return first.toString();
-                }
-                // Otherwise, wrap the entire first response into a 'text' property so clients always get JSON
-                if (debug) System.out.println("[ChatService][DEBUG] OpenAI response missing choices, returning wrapped text.");
-                return om.writeValueAsString(Map.of("text", first.toString()));
+                String msg = first.has("text") ? first.path("text").asText("") : first.toString();
+                return ResponseEnvelope.success(msg, DataSection.of("chat", List.of(), null), List.of(), List.of());
             }
             JsonNode choice = choicesNode.get(0);
             JsonNode assistantMsg = (choice == null) ? null : choice.path("message");
             if (assistantMsg == null || assistantMsg.isMissingNode()) {
-                if (first.has("text")) return first.toString();
-                if (debug) System.out.println("[ChatService][DEBUG] choice.message missing, returning wrapped OpenAI response as text.");
-                return om.writeValueAsString(Map.of("text", first.toString()));
+                String msg = first.has("text") ? first.path("text").asText("") : first.toString();
+                if (debug) System.out.println("[ChatService][DEBUG] choice.message missing, returning envelope.");
+                return ResponseEnvelope.success(msg, DataSection.of("chat", List.of(), null), List.of(), List.of());
             }
 
             if (!assistantMsg.has("tool_calls")) {
@@ -202,10 +214,10 @@ public class ChatService {
                 if (debug) {
                     System.out.println("[ChatService][DEBUG] No tool_calls, initial content: " + content);
                 }
-                // Si el contenido ya es JSON válido, devolverlo tal cual.
+                // Si el contenido ya es JSON válido, procesarlo y convertirlo a envelope.
                 try {
-                    om.readTree(content);
-                    return content;
+                    JsonNode contentNode = om.readTree(content);
+                    return buildEnvelopeFromContentNode(contentNode);
                 } catch (Exception e) {
                     // Intentamos pedir al modelo que convierta la respuesta anterior en JSON válido siguiendo el contrato
                     if (debug) System.out.println("[ChatService][DEBUG] Content not JSON, requesting reformat to JSON from OpenAI");
@@ -230,22 +242,22 @@ public class ChatService {
                             if (rep.has("choices")) {
                                 JsonNode rc = rep.path("choices").get(0).path("message").path("content");
                                 String rcStr = rc.isMissingNode() ? "" : rc.asText("");
-                                try { om.readTree(rcStr); return rcStr; } catch (Exception exx) { /* fall through */ }
+                                try { JsonNode rcNode = om.readTree(rcStr); return buildEnvelopeFromContentNode(rcNode); } catch (Exception exx) { /* fall through */ }
                             }
                         } catch (Exception ignore) {
                         }
                         // Si la respuesta no contenía 'choices' o no devolvió JSON directo, intentamos parsearla como JSON directa
                         try {
-                            om.readTree(reformatted);
-                            return reformatted;
+                            JsonNode reformNode = om.readTree(reformatted);
+                            return buildEnvelopeFromContentNode(reformNode);
                         } catch (Exception ex2) {
                             // Fallback: devolver el texto original envuelto en text
                             if (debug) System.out.println("[ChatService][DEBUG] Reformatting failed, returning fallback text JSON.");
-                            return om.writeValueAsString(Map.of("text", content));
+                            return ResponseEnvelope.success(content, DataSection.of("chat", List.of(), null), List.of(), List.of());
                         }
                     } catch (Exception ex) {
                         if (debug) System.out.println("[ChatService][DEBUG] Exception while reformatting content: " + ex.getMessage());
-                        return om.writeValueAsString(Map.of("text", content));
+                        return ResponseEnvelope.success(content, DataSection.of("chat", List.of(), null), List.of(), List.of());
                     }
                 }
             }
@@ -263,13 +275,14 @@ public class ChatService {
                 // If we don't have a delegated token, abort the chat flow when tool_calls are requested.
                 // We choose to return an explicit error JSON so clients/tests can detect the failure.
                 if (xmlLogger != null) xmlLogger.addStep("ChatService", "Delegated token not available - aborting tool_calls");
-                return om.writeValueAsString(Map.of("error", "delegation_disabled", "message", "Delegation disabled or missing delegation secret - cannot proxy API calls"));
+                return ResponseEnvelope.error("Delegación deshabilitada","delegation_disabled","Delegation disabled or missing delegation secret - cannot proxy API calls", List.of());
             }
 
             // 3) Resolver tool_calls
 
             List<Map<String, Object>> toolOutputs = new ArrayList<>();
-            String singleObjectJson = null; // si la API devuelve un solo objeto, lo devolveremos tal cual en JSON
+            String singleObjectJson = null; // si la API devuelve un solo objeto, lo procesaremos pero siempre convirtiendo a envelope homogéneo
+            String lastEndpointName = null; // para inferir tipo de recurso en single object con result[]
             
             for (JsonNode tc : assistantMsg.path("tool_calls")) {
                 String callId   = tc.path("id").asText();
@@ -301,6 +314,7 @@ public class ChatService {
                     continue;
                 }
                 String endpointName = args.path("name").asText();
+                lastEndpointName = endpointName;
                 Map<String, Object> ep = openai.getEndpointByName(endpointName);
                 if (ep == null) {
                     toolOutputs.add(Map.of(
@@ -446,11 +460,42 @@ public class ChatService {
 
             // Si la respuesta es un solo objeto (no paginada), devolvemos el JSON crudo directamente
             if (singleObjectJson != null) {
-                if (xmlLogger != null) xmlLogger.addStep("ChatService", "Respuesta directa: JSON de un solo objeto");
+                if (xmlLogger != null) xmlLogger.addStep("ChatService", "Procesando singleObjectJson para envelope homogéneo");
                 if (debug) {
-                    System.out.println("[ChatService][DEBUG] Returning singleObjectJson directly.");
+                    System.out.println("[ChatService][DEBUG] Handling singleObjectJson (homogenize).");
                 }
-                return singleObjectJson;
+                try {
+                    JsonNode node = om.readTree(singleObjectJson);
+                    // Caso especial: { ok: true, result: [...] } => listado de recurso inferido
+                    if (node.has("ok") && node.path("ok").isBoolean() && node.path("ok").asBoolean(true) && node.has("result") && node.path("result").isArray()) {
+                        JsonNode arr = node.path("result");
+                        List<JsonNode> items = new ArrayList<>();
+                        for (JsonNode el : arr) items.add(el);
+                        String inferredType = inferTypeFromEndpoint(lastEndpointName);
+                        DataSection data = DataSection.of(inferredType, items, null);
+                        String message = "Listado " + inferredType;
+                        ResponseEnvelope env = ResponseEnvelope.success(message, data, List.of(), List.of());
+                        if (debug) {
+                            try { System.out.println("[ChatService][DEBUG] Envelope(singleObject->list type=" + inferredType + ")=" + om.writeValueAsString(env)); } catch (Exception ignore) {}
+                        }
+                        return env;
+                    }
+                    // Otro objeto simple: devolver como item único dentro de 'object'
+                    List<JsonNode> items = new ArrayList<>();
+                    items.add(node);
+                    DataSection data = DataSection.of("object", items, null);
+                    ResponseEnvelope env = ResponseEnvelope.success("Objeto devuelto", data, List.of(), List.of());
+                    if (debug) {
+                        try { System.out.println("[ChatService][DEBUG] Envelope(singleObjectSimple)=" + om.writeValueAsString(env)); } catch (Exception ignore) {}
+                    }
+                    return env;
+                } catch (Exception ex) {
+                    ResponseEnvelope env = ResponseEnvelope.success(singleObjectJson, DataSection.of("chat", List.of(), null), List.of(), List.of(MessageEntry.of("debug","raw_single_object_unparsed")));
+                    if (debug) {
+                        try { System.out.println("[ChatService][DEBUG] Envelope(singleObjectParseError)=" + om.writeValueAsString(env)); } catch (Exception ignore) {}
+                    }
+                    return env;
+                }
             }
 
 
@@ -480,10 +525,18 @@ public class ChatService {
             }
             // Si finalContent es JSON válido, devolverlo tal cual; si no, envolver en {"text": ...}
             try {
-                om.readTree(finalContent);
-                return finalContent;
+                JsonNode node = om.readTree(finalContent);
+                ResponseEnvelope env = buildEnvelopeFromContentNode(node);
+                if (debug) {
+                    try { System.out.println("[ChatService][DEBUG] Envelope(final_no_toolcalls)=" + om.writeValueAsString(env)); } catch (Exception ignore) {}
+                }
+                return env;
             } catch (Exception e) {
-                return om.writeValueAsString(Map.of("text", finalContent));
+                ResponseEnvelope env = ResponseEnvelope.success(finalContent, DataSection.of("chat", List.of(), null), List.of(), List.of());
+                if (debug) {
+                    try { System.out.println("[ChatService][DEBUG] Envelope(final_plain_text)=" + om.writeValueAsString(env)); } catch (Exception ignore) {}
+                }
+                return env;
             }
 
         } catch (Exception e) {
@@ -492,13 +545,81 @@ public class ChatService {
                 System.out.println("[ChatService][DEBUG] Exception in runChat: " + e.getMessage());
                 e.printStackTrace();
             }
-            return "Error en runChat: " + e.getMessage();
+            return ResponseEnvelope.error("Error en runChat","internal_error", e.getMessage(), List.of());
         }
     }
+    // Nuevo método privado para construir Envelope desde un JsonNode del modelo
+    private ResponseEnvelope buildEnvelopeFromContentNode(JsonNode contentNode) {
+        if (contentNode == null || contentNode.isNull()) {
+            return ResponseEnvelope.success("", DataSection.of("chat", List.of(), null), List.of(), List.of());
+        }
+        // Detect arrays representando recursos
+        List<String> resourceKeys = List.of("usuarios","academias","cursos","alumnos","profesores");
+        String typeDetected = "chat";
+        List<JsonNode> items = new ArrayList<>();
+        PaginationInfo pagination = null;
+        for (String k : resourceKeys) {
+            JsonNode arr = contentNode.get(k);
+            if (arr != null && arr.isArray()) {
+                typeDetected = k;
+                for (JsonNode el : arr) items.add(el);
+                // pagination detection
+                JsonNode pagNode = contentNode.get("pagination");
+                if (pagNode != null && pagNode.isObject()) {
+                    pagination = PaginationInfo.of(
+                        pagNode.path("page").isNumber()? pagNode.get("page").asInt() : null,
+                        pagNode.path("size").isNumber()? pagNode.get("size").asInt() : null,
+                        pagNode.path("returned").isNumber()? pagNode.get("returned").asInt() : (arr.size()),
+                        pagNode.path("has_more").isBoolean()? pagNode.get("has_more").asBoolean() : null,
+                        pagNode.path("next_page").isNumber()? pagNode.get("next_page").asInt() : null,
+                        pagNode.path("prev_page").isNumber()? pagNode.get("prev_page").asInt() : null,
+                        pagNode.path("total").isNumber()? pagNode.get("total").asInt() : null
+                    );
+                }
+                break; // primero encontrado
+            }
+        }
+        // Si no encontró array de recursos pero el nodo es objeto => devolverlo como único item opcionalmente
+        if (items.isEmpty() && contentNode.isObject()) {
+            // Si tiene propiedad 'text' usar solo mensaje
+            if (contentNode.has("text") && contentNode.size() == 1) {
+                String msg = contentNode.get("text").asText("");
+                return ResponseEnvelope.success(msg, DataSection.of("chat", List.of(), null), List.of(), List.of());
+            }
+        }
+        String message = contentNode.path("text").asText("");
+        if (message.isEmpty()) {
+            message = (contentNode.toString().length() > 180) ? contentNode.toString().substring(0,180)+"..." : contentNode.toString();
+        }
+        // suggestions
+        List<String> suggestions = new ArrayList<>();
+        JsonNode sNode = contentNode.get("suggestions");
+        if (sNode != null && sNode.isArray()) {
+            for (JsonNode s : sNode) if (s.isTextual()) suggestions.add(s.asText());
+        }
+        if (suggestions.isEmpty() && pagination != null && Boolean.TRUE.equals(pagination.getHasMore())) {
+            suggestions = List.of("Siguiente página","Exportar a CSV","Exportar a Excel");
+        }
+        DataSection data = DataSection.of(typeDetected, items, pagination);
+        ResponseEnvelope env = ResponseEnvelope.success(message, data, suggestions, List.of());
+        if (debug) {
+            try {
+                System.out.println("[ChatService][DEBUG] buildEnvelopeFromContentNode(type=" + typeDetected + ", items=" + items.size() + ") => " + om.writeValueAsString(env));
+            } catch (Exception ignore) {}
+        }
+        return env;
+    }
 
-    // Backward-compatible overload used by existing tests and callers that don't provide authorization/claims
-    public String runChat(List<ChatRequest.Message> incoming, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger) {
-        return runChat(incoming, xmlLogger, null, null);
+    // Inferir tipo de recurso a partir del nombre del endpoint usado en tool_call
+    private String inferTypeFromEndpoint(String endpointName) {
+        if (endpointName == null) return "object";
+        String e = endpointName.toLowerCase(Locale.ROOT);
+        if (e.contains("usuarios")) return "usuarios";
+        if (e.contains("academias")) return "academias";
+        if (e.contains("cursos")) return "cursos";
+        if (e.contains("alumnos")) return "alumnos";
+        if (e.contains("profesores")) return "profesores";
+        return "object"; // fallback estándar
     }
 
     // Se eliminaron las utilidades de renderizado Markdown/ficha para devolver siempre JSON/texto-encapsulado

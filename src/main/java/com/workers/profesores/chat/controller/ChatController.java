@@ -7,8 +7,11 @@ import com.workers.profesores.chat.auth.UserClaims;
 import com.workers.profesores.chat.util.RequestFlowXmlLogger;
 import com.workers.profesores.chat.util.RequestFlowXmlContext;
 import org.springframework.http.ResponseEntity;
+import com.workers.profesores.chat.dto.response.ResponseEnvelope;
+import java.util.List;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import java.time.LocalDateTime;
 import java.security.MessageDigest;
@@ -34,12 +37,11 @@ public class ChatController {
     }
 
     @PostMapping
-    public ResponseEntity<String> chat(@RequestBody ChatRequest request, @RequestHeader(value = "X-Flow-Diagram", required = false) String flowDiagram,
+    public ResponseEntity<ResponseEnvelope> chat(@RequestBody ChatRequest request, @RequestHeader(value = "X-Flow-Diagram", required = false) String flowDiagram,
                                        @RequestHeader(value = "Authorization", required = false) String authorization) {
         // Solo crear el logger HTML si la cabecera X-Flow-Diagram=true está presente
         RequestFlowXmlLogger xmlLogger = null;
         String requestId = null;
-        String result = null;
         boolean loggerActivo = false;
         try {
             if (flowDiagram != null && flowDiagram.equalsIgnoreCase("true")) {
@@ -68,7 +70,7 @@ public class ChatController {
                 if (debug) {
                     System.out.println("DEBUG " + LocalDateTime.now() + " [ChatController][chat] Request vacío. Se responde 400");
                 }
-                return ResponseEntity.badRequest().body("Request vacío");
+                return ResponseEntity.badRequest().body(ResponseEnvelope.error("Petición inválida","bad_request","Request vacío", List.of()));
             }
             // Verificar JWT y extraer claims
             UserClaims claims = null;
@@ -96,7 +98,7 @@ public class ChatController {
                 }
             } catch (Exception ex) {
                 if (xmlLogger != null) xmlLogger.addStep("ChatController", "JWT inválido: " + ex.getMessage());
-                return ResponseEntity.status(401).body("Token inválido o expirado");
+                return ResponseEntity.status(401).body(ResponseEnvelope.error("No autorizado","unauthorized","Token inválido o expirado", List.of()));
             }
 
             // Generar y almacenar el token delegado
@@ -116,15 +118,24 @@ public class ChatController {
                 System.out.println("DEBUG " + LocalDateTime.now() + " [ChatController][chat] Llamando al API de academias con token delegado.");
             }
 
-            result = chatService.runChat(request.getMessages(), xmlLogger, authorization, claims);
+            ResponseEnvelope envelope = chatService.runChat(request.getMessages(), xmlLogger, authorization, claims);
+            // Serializar envelope para log (truncar si es muy grande)
+            String envelopeJson = "";
+            try {
+                ObjectMapper mapper = new ObjectMapper();
+                envelopeJson = mapper.writeValueAsString(envelope);
+            } catch (Exception serEx) {
+                envelopeJson = "{\"error\":\"No se pudo serializar envelope: " + serEx.getMessage() + "\"}";
+            }
+            String snippet = envelopeJson.length() > 1200 ? envelopeJson.substring(0, 1200) + "..." : envelopeJson;
             if (xmlLogger != null) {
-                String outputMsg = (result != null && !result.isEmpty()) ? ("<br>Mensaje de salida: " + result) : "";
-                xmlLogger.addStep("ChatController", "Respuesta generada por ChatService" + outputMsg);
+                xmlLogger.addStep("ChatController", "Respuesta generada por ChatService (snippet)=" + snippet);
             }
             if (debug) {
-                System.out.println("DEBUG " + LocalDateTime.now() + " [ChatController][chat] Respuesta generada por ChatService: " + (result != null ? result : ""));
+                System.out.println("DEBUG " + LocalDateTime.now() + " [ChatController][chat] Respuesta generada por ChatService (JSON completo): " + snippet);
+                logger.debug("[ChatController][chat] Envelope completo size={} chars", envelopeJson.length());
             }
-            return ResponseEntity.ok(result != null ? result : "");
+            return ResponseEntity.ok(envelope);
         } catch (Exception ex) {
             if (xmlLogger != null) {
                 xmlLogger.addStep("ChatController", "Excepción: " + ex.getClass().getSimpleName() + " - " + ex.getMessage());
@@ -132,7 +143,7 @@ public class ChatController {
             if (debug) {
                 ex.printStackTrace();
             }
-            return ResponseEntity.status(500).body("Error interno del servidor: " + ex.getMessage());
+            return ResponseEntity.status(500).body(ResponseEnvelope.error("Error interno","internal_error", ex.getMessage(), List.of()));
         } finally {
             if (xmlLogger != null && loggerActivo) {
                 try {

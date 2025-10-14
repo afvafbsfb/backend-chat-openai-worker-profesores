@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Flujo de la prueba: prueba-20251014-172017-124</title>
+<style>body{font-family:sans-serif;} table{border-collapse:collapse;width:100%;margin-top:1em;} th,td{border:1px solid #ccc;padding:8px;text-align:left;} th{background:#f0f0f0;} tr:nth-child(even){background:#fafafa;} .step{margin-bottom:1em;} .timestamp{color:#888;font-size:0.9em;}</style>
+</head><body>
+<h2>Flujo de la prueba: prueba-20251014-172017-124</h2>
+<table>
+<thead><tr><th>Paso</th><th>Descripción</th><th>Timestamp</th></tr></thead>
+<tbody>
+<tr class='step'><td>1. ChatController</td><td>Recibida petición POST /chat&lt;br&gt;Mensaje recibido: [Admin_academia] Quiero ver el listado de los usuarios que están dados de alta</td><td class='timestamp'>2025-10-14 17:20:17.124</td></tr>
+<tr class='step'><td>2. ChatController</td><td>JWT válido: usuarioId=1434, roles=[Admin_academia], academiaId=302</td><td class='timestamp'>2025-10-14 17:20:17.124</td></tr>
+<tr class='step'><td>3. ChatService</td><td>Inicio de runChat</td><td class='timestamp'>2025-10-14 17:20:17.124</td></tr>
+<tr class='step'><td>4. ChatService</td><td>Delegated token creado: preview=Bearer e..., token_sha4=7707bf34</td><td class='timestamp'>2025-10-14 17:20:17.124</td></tr>
+<tr class='step'><td>5. ChatService</td><td>Authorization preview=Bearer e..., token_sha4=916b4481</td><td class='timestamp'>2025-10-14 17:20:17.124</td></tr>
+<tr class='step'><td>6. ChatService</td><td>System prompt construido y whitelist añadida</td><td class='timestamp'>2025-10-14 17:20:17.292</td></tr>
+<tr class='step'><td>7. ChatService</td><td>Mensajes de usuario preparados para OpenAI</td><td class='timestamp'>2025-10-14 17:20:17.292</td></tr>
+<tr class='step'><td>8. OpenAIClient</td><td>Primera llamada a OpenAI (seedSize=3)</td><td class='timestamp'>2025-10-14 17:20:17.292</td></tr>
+<tr class='step'><td>9. OpenAIClient</td><td>Primera llamada a OpenAI (callChatWithTools)</td><td class='timestamp'>2025-10-14 17:20:17.292</td></tr>
+<tr class='step'><td>10. OpenAI</td><td>Llamada a OpenAI (iteración 0) - mensajes: [system] Eres un asistente (secretaria) para una plataforma de academias en España. Solo puedes acceder a los recursos de la API ... | [system] Perfil_usuario: {
+  &quot;academia_id&quot;: 302,
+  &quot;email&quot;: &quot;admin_academia@academia.com&quot;,
+  &quot;estado&quot;: &quot;Activo&quot;,
+  &quot;fecha_alta&quot;: ... | [Admin_academia] Quiero ver el listado de los usuarios que están dados de alta | </td><td class='timestamp'>2025-10-14 17:20:17.309</td></tr>
+<tr class='step'><td>11. OpenAIClient</td><td>OpenAI primera respuesta parseada a JSON</td><td class='timestamp'>2025-10-14 17:20:17.866</td></tr>
+<tr class='step'><td>12. ChatController</td><td>Respuesta generada por ChatService&lt;br&gt;Mensaje de salida: {&quot;text&quot;:&quot;{\&quot;error\&quot;:\&quot;openai_empty_response\&quot;,\&quot;message\&quot;:\&quot;Empty or null response body\&quot;}&quot;}</td><td class='timestamp'>2025-10-14 17:20:17.869</td></tr>
+</tbody></table>
+</body></html>
