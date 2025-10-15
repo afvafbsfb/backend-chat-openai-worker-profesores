@@ -119,21 +119,20 @@ public class ChatController {
             }
 
             ResponseEnvelope envelope = chatService.runChat(request.getMessages(), xmlLogger, authorization, claims);
-            // Serializar envelope para log (truncar si es muy grande)
-            String envelopeJson = "";
+            // Serializar envelope para log en pretty-print (no afecta a HTTP)
+            String envelopePretty = "";
             try {
                 ObjectMapper mapper = new ObjectMapper();
-                envelopeJson = mapper.writeValueAsString(envelope);
+                envelopePretty = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(envelope);
             } catch (Exception serEx) {
-                envelopeJson = "{\"error\":\"No se pudo serializar envelope: " + serEx.getMessage() + "\"}";
+                envelopePretty = "{\"error\":\"No se pudo serializar envelope: " + serEx.getMessage() + "\"}";
             }
-            String snippet = envelopeJson.length() > 1200 ? envelopeJson.substring(0, 1200) + "..." : envelopeJson;
             if (xmlLogger != null) {
-                xmlLogger.addStep("ChatController", "Respuesta generada por ChatService (snippet)=" + snippet);
+                xmlLogger.addStep("ChatController", "Respuesta generada por ChatService (pretty)=\n" + envelopePretty);
             }
             if (debug) {
-                System.out.println("DEBUG " + LocalDateTime.now() + " [ChatController][chat] Respuesta generada por ChatService (JSON completo): " + snippet);
-                logger.debug("[ChatController][chat] Envelope completo size={} chars", envelopeJson.length());
+                System.out.println("DEBUG " + LocalDateTime.now() + " [ChatController][chat] Respuesta generada por ChatService (JSON completo, pretty):\n" + envelopePretty);
+                logger.debug("[ChatController][chat] Envelope pretty chars={}", envelopePretty.length());
             }
             return ResponseEntity.ok(envelope);
         } catch (Exception ex) {
