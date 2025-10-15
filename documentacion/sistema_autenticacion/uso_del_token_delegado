@@ -23,12 +23,18 @@ Archivos concretos a revisar y editar (plan)
 
 Cambios a realizar:
 ChatController.java — eliminar llamada a jwtVerifier.generateDelegatedToken(...). Inyectar JwtDelegationService no es necesario aquí si delegamos la creación al ChatService.
+
 ChatService.java — modificar flujo: antes de la primera llamada proxied, crear y guardar (reutilizar) token delegado usando JwtDelegationService.createDelegatedAuthorizationHeader(claims). Pasar ese header a ApiProxyService.executeSpecCall(...). Evitar crear uno por tool_call.
+
 JwtVerifier.java — marcar generateDelegatedToken(...) como deprecated y luego eliminar la función (y sus imports) tras verificar que no existe ninguna llamada remanente.
+
 JwtDelegationService.java — garantizar que devuelve siempre "Bearer <token>" y documentar comportamiento cuando delegationSecret no está configurado (devuelve null).
+
 Buscar y eliminar referencias remanentes a generateDelegatedToken (ya localicé ChatController como uso actual).
+
 Tests a actualizar/añadir:
 Unit: JwtDelegationService (contenido del token, expiración, devuelve prefijo "Bearer ").
+
 Unit: ChatService test que verifique que JwtDelegationService se invoca como máximo una vez por ejecución de runChat(...) y que el mismo token se reutiliza para todas las llamadas proxied.
 Integration: E2E que compruebe que la cabecera Authorization enviada a la API downstream es el delegado generado (o el original si delegation disabled).
 Ejecutar el pytest que mostraba la 401 para validar el beneficio.

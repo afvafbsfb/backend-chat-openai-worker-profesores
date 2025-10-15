@@ -11,6 +11,7 @@ public class DataSection {
     private List<JsonNode> items = new ArrayList<>();
     private PaginationInfo pagination;
     private HierarchyInfo hierarchy;
+    private List<String> summaryFields;
 
     public DataSection() {}
     public DataSection(String type, List<JsonNode> items, PaginationInfo pagination, HierarchyInfo hierarchy) {
@@ -18,6 +19,7 @@ public class DataSection {
         if (items != null) this.items = items; else this.items = new ArrayList<>();
         this.pagination = pagination;
         this.hierarchy = hierarchy;
+        this.summaryFields = null;
     }
     public static DataSection of(String type, List<JsonNode> items, PaginationInfo pagination) { return new DataSection(type, items, pagination, null); }
     public String getType() { return type; }
@@ -28,4 +30,6 @@ public class DataSection {
     public void setPagination(PaginationInfo pagination) { this.pagination = pagination; }
     public HierarchyInfo getHierarchy() { return hierarchy; }
     public void setHierarchy(HierarchyInfo hierarchy) { this.hierarchy = hierarchy; }
+    public List<String> getSummaryFields() { return summaryFields; }
+    public void setSummaryFields(List<String> summaryFields) { this.summaryFields = summaryFields; }
 }

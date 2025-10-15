@@ -121,19 +121,20 @@ public class ChatService {
             systemPromptSb.append(" ").append(whitelistTable).append("\n\n");
             systemPromptSb.append(
                 "Reglas de salida (estrictas):\n" +
-                "- Devuelve UNICAMENTE un objeto JSON válido (sin texto adicional).\n" +
-                "- Debe incluir siempre 'text' (string) con un breve resumen.\n" +
-                "- Cuando el usuario pida listados (usuarios, academias, etc.), debes DEVOLVER SIEMPRE un array con la entidad solicitada: \n" +
-                "  - Por ejemplo: 'usuarios': [ ... ] o 'academias': [ ... ].\n" +
-                "  - Si no hay registros en base de datos, devuelve el array vacío [].\n" +
-                "  - Copia los elementos tal cual los devuelve la API (mismos nombres de campos). No re-formatees las propiedades internas.\n" +
-                "- Si el endpoint utilizado está marcado como paginado en la whitelist, añade obligatoriamente un objeto 'pagination' con los metadatos disponibles:\n" +
-                "  { 'page': number, 'size': number, 'returned': number, 'has_more': boolean, 'next_page': number|null, 'prev_page': number|null, 'total': number|null }\n" +
-                "  - Toma estos valores de la respuesta real de la API. No inventes datos; si un campo no viene, usa null o omítelo.\n" +
-                "  - El campo 'returned' debe ser la longitud del array devuelto en la respuesta (p. ej. usuarios.length).\n" +
-                "- Si el endpoint no es paginado pero devuelve una lista (array), incluye el array y omite 'pagination'.\n" +
-                "- Puedes incluir 'suggestions' (array de strings) cuando proceda; por ejemplo, si 'has_more' es true: ['Siguiente página', 'Exportar a CSV', 'Exportar a Excel'].\n" +
-                "- No uses Markdown ni tablas en la salida.\n"
+                "- Devuelve UNICAMENTE un objeto JSON válido (sin texto adicional, sin Markdown, sin tablas).\n" +
+                "- Estructura esperada:\n" +
+                "  - 'text': string obligatorio con un resumen humano, natural y breve en castellano (España). No describas el JSON ni repitas obviedades; ve al grano.\n" +
+                "  - '[entidad_plural]': cuando el usuario pida listados (usuarios, academias, cursos, alumnos o profesores), DEVUELVE SIEMPRE un array con la entidad solicitada bajo una de estas claves exactas: 'usuarios', 'academias', 'cursos', 'alumnos' o 'profesores'.\n" +
+                "    - Copia cada elemento tal cual lo devuelve la API (mismos nombres de campos). No renombres ni reestructures propiedades internas.\n" +
+                "    - Si no hay registros, devuelve el array vacío [].\n" +
+                "  - 'entidad_singular': si el usuario pide un detalle único, puedes devolver un objeto bajo la clave singular: 'usuario', 'academia', 'curso', 'alumno' o 'profesor'.\n" +
+                "  - 'pagination': incluye este objeto SOLO si el endpoint utilizado es paginado. Rellena con los metadatos reales de la respuesta: { 'page': number|null, 'size': number|null, 'returned': number, 'has_more': boolean|null, 'next_page': number|null, 'prev_page': number|null, 'total': number|null }.\n" +
+                "    - No inventes datos. Si un campo no viene, usa null o elimínalo. 'returned' debe coincidir con la longitud del array devuelto.\n" +
+                "  - 'summary_fields': array de 1–2 strings con los nombres de las claves MÁS RELEVANTES presentes en los ítems devueltos, en el orden en que deban mostrarse en vista compacta. Ejemplos: ['nombre','email'], ['titulo','codigo'], ['nombre','id']. Deben existir en los objetos del array.\n" +
+                "  - 'suggestions': array de 2–5 strings con las próximas acciones recomendadas para el usuario. Inclúyelas incluso si el array de resultados está vacío.\n" +
+                "    - Si hay paginación o muchos resultados, prioriza: 'Siguiente página', 'Anterior', 'Ir a página N', 'Exportar a CSV', 'Exportar a Excel'.\n" +
+                "    - Si no hay resultados, sugiere filtros alternativos, crear un recurso nuevo o revisar permisos/ámbito.\n" +
+                "- Regla de saludos y charla breve: si la intención del usuario es un saludo o pequeña charla (p. ej., 'hola', 'buenas', '¿qué tal?'), NO uses call_api. Devuelve un JSON con: { 'text': 'saludo breve y útil', 'suggestions': [2–5 acciones típicas] }.\n"
             );
             String systemPrompt = systemPromptSb.toString();
             if (xmlLogger != null) xmlLogger.addStep("ChatService", "System prompt construido y whitelist añadida");
@@ -194,7 +195,7 @@ public class ChatService {
             } catch (Exception e) {
                 // Si la respuesta es inválida (no-JSON), no exponer el texto bruto al usuario: devolver mensaje vacío
                 if (debug) System.out.println("[ChatService][DEBUG] OpenAI first response not JSON; returning empty message for user and logging debug.");
-                return ResponseEnvelope.success("", DataSection.of("chat", List.of(), null), List.of(), List.of(MessageEntry.of("debug","raw_first_not_json")));
+                    return applyFinalFallback(ResponseEnvelope.success("", DataSection.of("chat", List.of(), null), List.of(), List.of(MessageEntry.of("debug","raw_first_not_json"))));
             }
             if (debug) {
                 logger.debug("[ChatService] Parsed OpenAI first response into JSON");
@@ -206,11 +207,11 @@ public class ChatService {
                 // Si OpenAI devolvió un objeto con 'error', no mostrarlo al usuario; devolver mensaje vacío
                 if (first.has("error")) {
                     if (debug) System.out.println("[ChatService][DEBUG] OpenAI first response has error; returning empty message to user.");
-                    return ResponseEnvelope.success("", DataSection.of("chat", List.of(), null), List.of(), List.of(MessageEntry.of("debug","openai_first_error")));
+                    return applyFinalFallback(ResponseEnvelope.success("", DataSection.of("chat", List.of(), null), List.of(), List.of(MessageEntry.of("debug","openai_first_error"))));
                 }
                 // Si trae 'text', úsalo; si no, deja vacío (no exponer JSON crudo)
                 String msg = first.has("text") ? first.path("text").asText("") : "";
-                return ResponseEnvelope.success(msg, DataSection.of("chat", List.of(), null), List.of(), List.of());
+                return applyFinalFallback(ResponseEnvelope.success(msg, DataSection.of("chat", List.of(), null), List.of(), List.of()));
             }
             JsonNode choice = choicesNode.get(0);
             JsonNode assistantMsg = (choice == null) ? null : choice.path("message");
@@ -218,11 +219,11 @@ public class ChatService {
                 // Si hubo error, devolver mensaje vacío al usuario
                 if (first.has("error")) {
                     if (debug) System.out.println("[ChatService][DEBUG] choice.message missing and first has error; returning empty message.");
-                    return ResponseEnvelope.success("", DataSection.of("chat", List.of(), null), List.of(), List.of(MessageEntry.of("debug","openai_first_error_no_message")));
+                    return applyFinalFallback(ResponseEnvelope.success("", DataSection.of("chat", List.of(), null), List.of(), List.of(MessageEntry.of("debug","openai_first_error_no_message"))));
                 }
                 String msg = first.has("text") ? first.path("text").asText("") : "";
                 if (debug) System.out.println("[ChatService][DEBUG] choice.message missing, returning envelope.");
-                return ResponseEnvelope.success(msg, DataSection.of("chat", List.of(), null), List.of(), List.of());
+                return applyFinalFallback(ResponseEnvelope.success(msg, DataSection.of("chat", List.of(), null), List.of(), List.of()));
             }
 
             if (!assistantMsg.has("tool_calls")) {
@@ -241,7 +242,7 @@ public class ChatService {
                 // Si el contenido ya es JSON válido, procesarlo y convertirlo a envelope.
                 try {
                     JsonNode contentNode = om.readTree(content);
-                    return buildEnvelopeFromContentNode(contentNode);
+                    return applyFinalFallback(buildEnvelopeFromContentNode(contentNode));
                 } catch (Exception e) {
                     // Intentamos pedir al modelo que convierta la respuesta anterior en JSON válido siguiendo el contrato
                     if (debug) System.out.println("[ChatService][DEBUG] Content not JSON, requesting reformat to JSON from OpenAI");
@@ -253,7 +254,7 @@ public class ChatService {
                         }
                         reformatSeed.add(Map.of("role", "assistant", "content", content));
                         // Instrucción clara y estricta para devolver JSON
-                        String reformatInstruction = "Por favor, devuelve únicamente un objeto JSON válido con al menos la propiedad 'text' (string). Opcionalmente puedes incluir 'suggestions' (array de strings), 'academia' (objeto) o 'academias' (array). No incluyas explicaciones ni texto fuera del JSON. " +
+                        String reformatInstruction = "Por favor, devuelve únicamente un objeto JSON válido con al menos la propiedad 'text' (string). Opcionalmente puedes incluir 'suggestions' (array de strings), 'academia' (objeto) o 'academias' (array), cualquier lista bajo las claves exactas 'usuarios'|'academias'|'cursos'|'alumnos'|'profesores', y 'summary_fields' (array de 1–2 strings con nombres de campos existentes en los ítems). No incluyas explicaciones ni texto fuera del JSON. " +
                             "Si ya había sugerencias inclúyelas en 'suggestions'. Si mencionas el nombre del usuario, ponlo dentro de 'text' o como parte del texto.";
                         reformatSeed.add(Map.of("role", "user", "content", reformatInstruction));
                         String reformatted = openai.callChatWithTools(reformatSeed, xmlLogger, authorization);
@@ -285,11 +286,11 @@ public class ChatService {
                         } catch (Exception ex2) {
                             // Fallback: devolver el texto original envuelto en text
                             if (debug) System.out.println("[ChatService][DEBUG] Reformatting failed, returning fallback text JSON.");
-                            return ResponseEnvelope.success(content, DataSection.of("chat", List.of(), null), List.of(), List.of());
+                            return applyFinalFallback(ResponseEnvelope.success(content, DataSection.of("chat", List.of(), null), List.of(), List.of()));
                         }
                     } catch (Exception ex) {
                         if (debug) System.out.println("[ChatService][DEBUG] Exception while reformatting content: " + ex.getMessage());
-                        return ResponseEnvelope.success(content, DataSection.of("chat", List.of(), null), List.of(), List.of());
+                        return applyFinalFallback(ResponseEnvelope.success(content, DataSection.of("chat", List.of(), null), List.of(), List.of()));
                     }
                 }
             }
@@ -510,7 +511,7 @@ public class ChatService {
                         System.out.println("[ChatService][DEBUG] Envelope(final_no_toolcalls):\n" + prettyEnv);
                     } catch (Exception ignore) {}
                 }
-                return env;
+                return applyFinalFallback(env);
             } catch (Exception e) {
                 ResponseEnvelope env = ResponseEnvelope.success(finalContent, DataSection.of("chat", List.of(), null), List.of(), List.of());
                 if (debug) {
@@ -519,7 +520,7 @@ public class ChatService {
                         System.out.println("[ChatService][DEBUG] Envelope(final_plain_text):\n" + prettyEnv);
                     } catch (Exception ignore) {}
                 }
-                return env;
+                return applyFinalFallback(env);
             }
 
         } catch (Exception e) {
@@ -530,6 +531,28 @@ public class ChatService {
             }
             return ResponseEnvelope.error("Error en runChat","internal_error", e.getMessage(), List.of());
         }
+    }
+    
+    // Fallback final: si el mensaje sale vacío y no hay items, devolvemos un saludo útil y sugerencias por defecto
+    private ResponseEnvelope applyFinalFallback(ResponseEnvelope env) {
+        try {
+            if (env != null && "success".equals(env.getStatus())) {
+                String msg = env.getMessage() == null ? "" : env.getMessage().trim();
+                boolean noItems = (env.getData() == null) || (env.getData().getItems() == null) || env.getData().getItems().isEmpty();
+                if (msg.isEmpty() && noItems) {
+                    env.setMessage("Hola, ¿en qué puedo ayudarte hoy?");
+                    if (env.getSuggestions() == null || env.getSuggestions().isEmpty()) {
+                        env.setSuggestions(List.of(
+                            "Ver academias",
+                            "Buscar profesores",
+                            "Buscar alumnos",
+                            "Ver mis cursos"
+                        ));
+                    }
+                }
+            }
+        } catch (Exception ignore) { }
+        return env;
     }
     // Nuevo método privado para construir Envelope desde un JsonNode del modelo
     private ResponseEnvelope buildEnvelopeFromContentNode(JsonNode contentNode) {
@@ -596,6 +619,15 @@ public class ChatService {
         }
         // No auto-generar suggestions: si la IA no las envía, se quedan vacías
         DataSection data = DataSection.of(typeDetected, items, pagination);
+        // Map optional summary_fields -> data.summaryFields only when items exist
+        try {
+            JsonNode sf = contentNode.get("summary_fields");
+            if (sf != null && sf.isArray() && !items.isEmpty()) {
+                List<String> sfl = new ArrayList<>();
+                for (JsonNode sfi : sf) if (sfi.isTextual()) sfl.add(sfi.asText());
+                if (!sfl.isEmpty()) data.setSummaryFields(sfl);
+            }
+        } catch (Exception ignore) {}
         ResponseEnvelope env = ResponseEnvelope.success(message, data, suggestions, List.of());
         if (debug) {
             try {

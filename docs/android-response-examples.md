@@ -1,141 +1,143 @@
-# Android — Ejemplos y contractos de respuesta del backend-chat
+# Android — Ejemplos y contrato de respuesta unificado (POST /chat)
 
-Propósito
+Este documento está alineado con la versión actual del backend-chat, que devuelve SIEMPRE un envelope JSON unificado en las respuestas de `POST /chat`.
 
-- Este documento recoge los contratos de respuesta que el *backend-chat* devuelve al cliente Android y ejemplos prácticos de parsing/uso en Kotlin.
-- El objetivo es evitar ambigüedades: la app debe esperar siempre JSON (array u objeto) o un objeto que contenga un texto bajo la clave `text`.
+Referencia del contrato: ver `docs/respuesta_chat_envelope_android.md`.
 
-Resumen rápido (contrato)
+Resumen del envelope
 
-- Respuesta tipo list/array: JSON array de objetos -> `[{...}, {...}]`.
-- Respuesta paginada: objeto con metadatos y `items` -> `{"totalElements":123,"items":[...],"page":0,"size":50}`.
-- Objeto único: JSON objeto -> `{"id":42,...}`.
-- Texto plano: el backend envuelve respuestas de texto en `{"text":"..."}`.
-- Errores: el backend normaliza errores como JSON, por ejemplo `{"error":"authorization_failure","message":"..."}`.
+- `status`: "success" | "error"
+- `message`: texto humano breve (lo proporciona la IA). Puede venir vacío.
+- `data`: `{ type, items, pagination?, hierarchy? }`
+- `suggestions`: `["..."]` (opcional, IA)
+- `error`: `{ code, details }` (solo si status=error)
+- `messages`: trazas técnicas opcionales para diagnóstico
 
-Recomendación de contrato para totales
+Ejemplos concretos (unificados)
 
-- Para llamadas que devuelven un total explícito, preferir `{"total":123}` o el patrón de agregador `{"totalElements":123,...}`. Esto facilita tests y parsing en Android.
-
-Ejemplos concretos
-
-1) Listado simple (array)
+1) Bienvenida sin datos
 
 ```json
-[{"id":1,"nombre":"A"},{"id":2,"nombre":"B"}]
+{
+    "status": "success",
+    "message": "Hola Ángel, ¿en qué te ayudo hoy?",
+    "data": { "type": "chat", "items": [] },
+    "suggestions": []
+}
 ```
 
-2) Paginado (agregador)
+2) Listado simple (academias)
 
 ```json
-{"totalElements":123,"items":[{"id":1,"nombre":"A"},{"id":2,"nombre":"B"}],"page":0,"size":50}
+{
+    "status": "success",
+    "message": "Aquí tienes las academias registradas",
+    "data": {
+        "type": "academias",
+        "items": [
+            {"id":1,"nombre":"Academia X"},
+            {"id":2,"nombre":"Academia Y"}
+        ]
+    },
+    "suggestions": []
+}
 ```
 
-3) Objeto único (detalle)
+3) Listado paginado (usuarios)
 
 ```json
-{"id":42,"nombre":"Academia X","direccion":"Calle Falsa 123"}
+{
+    "status": "success",
+    "message": "Usuarios de tu academia (página 1)",
+    "data": {
+        "type": "usuarios",
+        "items": [ {"id":11,"email":"a@a.com"}, {"id":12,"email":"b@b.com"} ],
+        "pagination": {"page":1,"size":20,"returned":2,"has_more":false,"next_page":null,"prev_page":null,"total":2}
+    },
+    "suggestions": ["Exportar a CSV"]
+}
 ```
 
-4) Texto plano envuelto
+4) Objeto singular (normalizado a lista con 1 ítem)
+
+Entrada IA (posible):
 
 ```json
-{"text":"Operación realizada correctamente"}
+{ "academia": { "id": 42, "nombre": "Academia X" } }
 ```
 
-5) Error estructurado
+Salida unificada del backend:
 
 ```json
-{"error":"authorization_failure","message":"Token inválido"}
+{
+    "status": "success",
+    "message": "",
+    "data": {
+        "type": "academias",
+        "items": [ { "id": 42, "nombre": "Academia X" } ]
+    },
+    "suggestions": []
+}
 ```
 
-Kotlin — snippets de parsing (Gson)
+5) Error estructurado (autorización)
 
-- Dependencia recomendada: `com.google.code.gson:gson` o `com.squareup.moshi:moshi` o `kotlinx.serialization`.
-- Ejemplo con Gson (simple y robusto):
+```json
+{
+    "status": "error",
+    "message": "No autorizado",
+    "error": { "code": "unauthorized", "details": "Token inválido o expirado" },
+    "suggestions": []
+}
+```
+
+6) Respuesta de OpenAI vacía (fallback controlado)
+
+```json
+{
+    "status": "success",
+    "message": "",
+    "data": { "type": "chat", "items": [] },
+    "messages": [ { "level": "debug", "text": "raw_first_not_json" } ]
+}
+```
+
+Kotlin — parsing del envelope (Gson)
+
+Puedes usar Gson, Moshi o kotlinx.serialization. Ejemplo minimal con Gson:
 
 ```kotlin
-import com.google.gson.Gson
-import com.google.gson.JsonElement
-import com.google.gson.JsonObject
-import com.google.gson.JsonParser
+data class Pagination(
+        val page: Int?, val size: Int?, val returned: Int?,
+        val has_more: Boolean?, val next_page: Int?, val prev_page: Int?, val total: Int?
+)
 
-sealed class ChatResponse {
-    data class ArrayResponse(val items: List<Map<String, Any>>) : ChatResponse()
-    data class ObjectResponse(val obj: Map<String, Any>) : ChatResponse()
-    data class TextResponse(val text: String) : ChatResponse()
-    data class ErrorResponse(val error: String?, val message: String?) : ChatResponse()
-}
+data class DataSection(
+        val type: String?,
+        val items: List<Map<String, Any?>> = emptyList(),
+        val pagination: Pagination? = null
+)
 
-fun parseChatResponse(raw: String): ChatResponse {
-    val gson = Gson()
-    val parser = JsonParser.parseString(raw)
-    return when {
-        parser.isJsonArray -> {
-            val list = gson.fromJson(parser.asJsonArray, List::class.java) as List<Map<String, Any>>
-            ChatResponse.ArrayResponse(list)
-        }
-        parser.isJsonObject -> {
-            val obj = parser.asJsonObject
-            // Error normalizado
-            if (obj.has("error") || obj.has("message")) {
-                val error = obj.get("error")?.asString
-                val message = obj.get("message")?.asString
-                return ChatResponse.ErrorResponse(error, message)
-            }
-            // Texto envuelto
-            if (obj.has("text") && obj.entrySet().size == 1) {
-                return ChatResponse.TextResponse(obj.get("text").asString)
-            }
-            // Paginado (forma conocida)
-            if (obj.has("items") && obj.has("totalElements")) {
-                val items = gson.fromJson(obj.getAsJsonArray("items"), List::class.java) as List<Map<String, Any>>
-                return ChatResponse.ArrayResponse(items)
-            }
-            // Objeto único
-            val map = gson.fromJson(obj, Map::class.java) as Map<String, Any>
-            ChatResponse.ObjectResponse(map)
-        }
-        else -> ChatResponse.TextResponse(raw)
-    }
-}
+data class ErrorInfo(val code: String?, val details: String?)
+data class MessageEntry(val level: String?, val text: String?)
+
+data class Envelope(
+        val status: String,
+        val message: String?,
+        val data: DataSection?,
+        val suggestions: List<String> = emptyList(),
+        val error: ErrorInfo? = null,
+        val messages: List<MessageEntry> = emptyList()
+)
+
+// Uso: val env = Gson().fromJson(jsonString, Envelope::class.java)
 ```
 
-Uso en UI (ejemplo simplificado)
+Buenas prácticas Android
 
-- Para arrays: alimenta un RecyclerView/Adapter con la lista.
-- Para paginación: si el backend devuelve `totalElements`+`items`, usa esos valores para controlar paginación local o integrar con Paging 3.
-- Para texto: muestra `text` en un Toast o en un TextView.
-- Para errores: mostrar diálogo con `message`.
+- Mostrar `message` si no está vacío y reflejar `suggestions` como acciones.
+- Renderizar `items` según `data.type`. Si es desconocido, fallback genérico.
+- Si `data.pagination.has_more == true`, exponer acción de "siguiente página".
+- Ignorar `messages` en UI (son de diagnóstico).
 
-Pager / rendimiento
-
-- Para grandes listados usa Paging 3 (Android Jetpack). El backend expone `/academias/{resource}` con `mode=paged` y parámetros `page`/`size` — integra esta API con un `PagingSource`.
-- Si el mediador responde `mode=export` y devuelve un enlace, descarga el fichero CSV/Excel en background y muestra un progreso al usuario.
-
-Tests y mocking
-
-- Para pruebas locales/integration tests puedes usar WireMock o stub del backend. En el repo se usan tests con WireMock para simular OpenAI y respuestas del `ApiProxyService`.
-
-Ejemplo rápido con curl (simular petición al mediador local):
-
-```powershell
-# Obtener un detalle (suponiendo el backend corriendo en localhost:8080)
-curl -H "Authorization: Bearer <token>" -X POST http://localhost:8080/chat -d '{"messages":[{"role":"user","content":"Dime la lista de academias"}]}' -H "Content-Type: application/json"
-```
-
-Buenas prácticas para el equipo Android
-
-- Siempre parsear la respuesta como JSON primero; luego decidir si es array/objeto/text.
-- Evitar dependencias en formato libre (Markdown). El backend no devolverá tablas Markdown.
-- Estandarizar totales: preferir `{"total":123}` o `{"totalElements":123}`.
- - Documentar y versionar cualquier cambio en el contrato/openapi: el artifact canónico es `served-openapi.json` (publicado desde el repo de la API). No mantengas un `api-whitelist.yaml` localmente: usa la spec para generar documentación y validaciones.
-
-Si queréis, puedo agregar:
-
-- Un archivo `docs/android-parsing-snippets.kt` con utilidades completas y pruebas unitarias de parsing.
-- Ejemplos con `kotlinx.serialization` o `Moshi` si los preferís sobre Gson.
-
----
-
-Fecha: 2025-10-07
+Fecha: 2025-10-15

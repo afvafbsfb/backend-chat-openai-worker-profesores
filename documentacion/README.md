@@ -1,6 +1,16 @@
 # Documentación de herramientas y scripts
 
 
+#  para compilar el proyecto
+mvn compile
+
+# levantar el backend-chat openai en local
+mvn spring-boot:run -e -X
+
+spring-boot:run: arranca la app directamente desde el código fuente.
+-e: muestra stack traces completos si falla algo.
+-X: modo debug de Maven (muchísima traza). Úsalo solo cuando necesites diagnosticar.
+
 # desde la raíz del repo api-workers-profesores. Levantar API (usa RDS dev: DB_ENV=developmentAWS)
 $env:DB_ENV = 'developmentAWS';
 $env:JWT_SECRET_KEY = 'mi_secret_app_local_larga';
@@ -17,13 +27,15 @@ o bien usar:
 
 
 Levantar backend-chat (apuntar a http://localhost:5000)
+coge las propiedades de los ficheros de properties, ya no es necesario definir antes las vbles de entorno:
+
 
 ademas de tener el ficheor configurado  application-properties en resources del backend-chat --> ((openai.mock=false))
-$env:DEBUG = '1';
-$env:OPENAI_API_KEY = 'sk-proj-8j.....'
-$env:JWT_DELEGATION_SECRET="mi_secret_delegacion_local_larga";
-$env:JWT_DELEGATION_EXPIRATIONMINUTES = '5' 
-$env:DUMP_SECRETS = '1' 
+#$env:DEBUG = '1';
+#$env:OPENAI_API_KEY = 'sk-proj-8j.....'
+#$env:JWT_DELEGATION_SECRET="mi_secret_delegacion_local_larga";
+#$env:JWT_DELEGATION_EXPIRATIONMINUTES = '5' 
+#$env:DUMP_SECRETS = '1' 
 
 PS C:\Users\Angel FV\Desktop\FORMACION\chat_backend_academia\backend-chat-openai-worker-profesores> mvn spring-boot:run -e -X
 ######mvn spring-boot:run -e -X
@@ -31,13 +43,13 @@ PS C:\Users\Angel FV\Desktop\FORMACION\chat_backend_academia\backend-chat-openai
 
 
 
-# fuerza mock para evitar llamadas a OpenAI
+# fuerza mock para evitar llamadas a OpenAI, ponerlo en los ficheros de properties
 .\mvnw.cmd spring-boot:run -Dopenai.mock=true -Dbackend.debug=true
 
 
 
 
-# configura secret y TTL (temporal en la sesión de PowerShell)
+# configura secret y TTL (temporal en la sesión de PowerShell). en los ficheros de properties
 
 
 $env:DEBUG = '1'
