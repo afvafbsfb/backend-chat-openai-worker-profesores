@@ -56,53 +56,6 @@
         },
         "type": "object"
       },
-      "PaginatedEnvelope": {
-        "properties": {
-          "has_more": {
-            "type": "boolean"
-          },
-          "items": {
-            "items": {
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "meta": {
-            "type": [
-              "object",
-              "null"
-            ]
-          },
-          "next_page": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "page": {
-            "type": "integer"
-          },
-          "prev_page": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "returned": {
-            "type": "integer"
-          },
-          "size": {
-            "type": "integer"
-          },
-          "total": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          }
-        },
-        "type": "object"
-      },
       "RefreshRequest": {
         "additionalProperties": false,
         "properties": {
@@ -251,7 +204,7 @@
             "name": "size",
             "required": false,
             "schema": {
-              "default": 25,
+              "default": 20,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -301,7 +254,7 @@
             "Profesor_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-14T13:25:08.056824+00:00"
+          "generated_at": "2025-10-16T07:40:40.345872+00:00"
         }
       },
       "post": {
@@ -350,7 +303,7 @@
           ],
           "scope": "global",
           "source": "permissions_map",
-          "generated_at": "2025-10-14T13:25:08.056824+00:00"
+          "generated_at": "2025-10-16T07:40:40.345872+00:00"
         }
       }
     },
@@ -401,7 +354,7 @@
           ],
           "scope": "global",
           "source": "permissions_map",
-          "generated_at": "2025-10-14T13:25:08.056824+00:00"
+          "generated_at": "2025-10-16T07:40:40.345872+00:00"
         }
       },
       "get": {
@@ -457,7 +410,7 @@
             "Profesor_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-14T13:25:08.056824+00:00"
+          "generated_at": "2025-10-16T07:40:40.345872+00:00"
         }
       },
       "patch": {
@@ -520,7 +473,7 @@
             "Admin_plataforma": "global"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-14T13:25:08.056824+00:00"
+          "generated_at": "2025-10-16T07:40:40.345872+00:00"
         }
       }
     },
@@ -562,7 +515,7 @@
           "note": "Login público (no requiere rol)",
           "scope": "public",
           "source": "permissions_map",
-          "generated_at": "2025-10-14T13:25:08.056824+00:00"
+          "generated_at": "2025-10-16T07:40:40.345872+00:00"
         },
         "security": []
       }
@@ -610,7 +563,7 @@
           "note": "Logout para usuarios autenticados",
           "scope": "own_user",
           "source": "permissions_map",
-          "generated_at": "2025-10-14T13:25:08.056824+00:00"
+          "generated_at": "2025-10-16T07:40:40.345872+00:00"
         }
       }
     },
@@ -647,7 +600,7 @@
           "note": "Refresh de tokens para usuarios autenticados",
           "scope": "own_user",
           "source": "permissions_map",
-          "generated_at": "2025-10-14T13:25:08.056824+00:00"
+          "generated_at": "2025-10-16T07:40:40.345872+00:00"
         }
       }
     },
@@ -686,7 +639,7 @@
             "Admin_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-14T13:25:08.056824+00:00"
+          "generated_at": "2025-10-16T07:40:40.345872+00:00"
         }
       }
     },
@@ -805,10 +758,34 @@
             "name": "size",
             "required": false,
             "schema": {
-              "default": 25,
+              "default": 20,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "with_total",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order_by",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order_dir",
+            "required": false,
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -855,7 +832,7 @@
             "Profesor_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-14T13:25:08.056824+00:00"
+          "generated_at": "2025-10-16T07:40:40.345872+00:00"
         }
       },
       "post": {
@@ -917,58 +894,30 @@
             ]
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-14T13:25:08.056824+00:00"
+          "generated_at": "2025-10-16T07:40:40.345872+00:00"
         }
       }
     },
     "/usuarios/export": {
       "get": {
-        "description": "Exportar usuarios (CSV/XLSX)",
+        "description": "Auto-generated operation for usuarios.exportar_usuarios",
         "operationId": "usuarios.exportar_usuarios",
-        "parameters": [
-          {
-            "description": "Formato de export",
-            "in": "query",
-            "name": "format",
-            "schema": {
-              "enum": [
-                "csv",
-                "xlsx"
-              ],
-              "type": "string"
-            }
-          },
-          {
-            "description": "Filtrar por academia_id",
-            "in": "query",
-            "name": "academia_id",
-            "schema": {
-              "type": "integer"
-            }
-          },
-          {
-            "description": "Filtrar por rol",
-            "in": "query",
-            "name": "rol",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Buscar por parte del nombre (ilike)",
-            "in": "query",
-            "name": "nombre",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
         "responses": {
           "200": {
-            "description": "File attachment or stream"
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Usuario"
+                }
+              }
+            }
           },
-          "202": {
-            "description": "Export accepted and processing (async)"
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "security": [
@@ -977,6 +926,9 @@
           }
         ],
         "summary": "GET /usuarios/export",
+        "tags": [
+          "Usuarios"
+        ],
         "x-permissions": {
           "allowed_roles": [
             "Admin_academia",
@@ -993,7 +945,7 @@
             "Profesor_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-14T13:25:08.056824+00:00"
+          "generated_at": "2025-10-16T07:40:40.345872+00:00"
         }
       }
     },
@@ -1037,7 +989,7 @@
           "note": "Cada usuario puede ver su propio perfil; admins pueden verlo según su scope",
           "scope": "own_user",
           "source": "permissions_map",
-          "generated_at": "2025-10-14T13:25:08.056824+00:00"
+          "generated_at": "2025-10-16T07:40:40.345872+00:00"
         }
       }
     },
@@ -1077,7 +1029,7 @@
           "note": "Recuperación de credenciales: la operación puede iniciarse sin sesión (por ejemplo 'forgot password'), pero solo debe permitir recuperar las credenciales del propio usuario. Los admins pueden tener flujos separados para administrar credenciales de otros usuarios.",
           "scope": "own_user",
           "source": "permissions_map",
-          "generated_at": "2025-10-14T13:25:08.056824+00:00"
+          "generated_at": "2025-10-16T07:40:40.345872+00:00"
         }
       }
     },
@@ -1133,7 +1085,7 @@
             "Admin_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-14T13:25:08.056824+00:00"
+          "generated_at": "2025-10-16T07:40:40.345872+00:00"
         }
       },
       "get": {
@@ -1189,7 +1141,7 @@
             "Profesor_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-14T13:25:08.056824+00:00"
+          "generated_at": "2025-10-16T07:40:40.345872+00:00"
         }
       },
       "patch": {
@@ -1273,7 +1225,7 @@
             ]
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-14T13:25:08.056824+00:00"
+          "generated_at": "2025-10-16T07:40:40.345872+00:00"
         }
       },
       "put": {
@@ -1357,7 +1309,7 @@
             ]
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-14T13:25:08.056824+00:00"
+          "generated_at": "2025-10-16T07:40:40.345872+00:00"
         }
       }
     },
@@ -1448,7 +1400,7 @@
             ]
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-14T13:25:08.056824+00:00"
+          "generated_at": "2025-10-16T07:40:40.345872+00:00"
         }
       }
     },
@@ -1514,7 +1466,7 @@
             "Admin_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-14T13:25:08.056824+00:00"
+          "generated_at": "2025-10-16T07:40:40.345872+00:00"
         }
       }
     },
@@ -1580,7 +1532,7 @@
             "Admin_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-14T13:25:08.056824+00:00"
+          "generated_at": "2025-10-16T07:40:40.345872+00:00"
         }
       }
     }

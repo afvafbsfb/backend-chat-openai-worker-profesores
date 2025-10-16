@@ -2,6 +2,7 @@
 
 
 #  para compilar el proyecto
+mvn -v
 mvn compile
 
 # levantar el backend-chat openai en local

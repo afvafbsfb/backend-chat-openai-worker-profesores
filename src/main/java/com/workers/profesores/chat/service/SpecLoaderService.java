@@ -175,22 +175,34 @@ public class SpecLoaderService {
 
     private JsonNode loadSpec() {
         try {
+            // 1) Try URL if configured; on failure or empty response, fallback to classpath resource
             if (servedOpenapiUrl != null && !servedOpenapiUrl.isBlank()) {
-                logger.info("[SpecLoader] Loading served-openapi.json from URL: {}", servedOpenapiUrl);
-                String txt = rest.getForObject(servedOpenapiUrl, String.class);
-                if (txt == null) return null;
-                JsonNode node = mapper.readTree(txt);
-                if (failOnInvalid && node != null) {
-                    try {
-                        java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
-                        byte[] digest = md.digest(txt.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-                        StringBuilder hs = new StringBuilder();
-                        for (int i = 0; i < 4 && i < digest.length; i++) hs.append(String.format("%02x", digest[i]));
-                        logger.debug("[SpecLoader] loaded spec from URL checksum_sha4={} size_bytes={}", hs.toString(), txt.length());
-                    } catch (Exception ignore) { }
+                try {
+                    logger.info("[SpecLoader] Loading served-openapi.json from URL: {}", servedOpenapiUrl);
+                    String txt = rest.getForObject(servedOpenapiUrl, String.class);
+                    if (txt != null) {
+                        JsonNode node = mapper.readTree(txt);
+                        if (failOnInvalid && node != null) {
+                            try {
+                                java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+                                byte[] digest = md.digest(txt.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                                StringBuilder hs = new StringBuilder();
+                                for (int i = 0; i < 4 && i < digest.length; i++) hs.append(String.format("%02x", digest[i]));
+                                logger.debug("[SpecLoader] loaded spec from URL checksum_sha4={} size_bytes={}", hs.toString(), txt.length());
+                            } catch (Exception ignore) { }
+                        }
+                        if (node != null) return node;
+                        logger.warn("[SpecLoader] URL returned empty/invalid body, falling back to classpath served-openapi.json");
+                    } else {
+                        logger.warn("[SpecLoader] URL returned null body, falling back to classpath served-openapi.json");
+                    }
+                } catch (Exception e) {
+                    logger.warn("[SpecLoader] Failed to load from URL ({}). Falling back to classpath. reason={}", servedOpenapiUrl, e.getMessage());
+                    // continue to classpath fallback
                 }
-                return node;
             }
+
+            // 2) Strict classpath fallback: only look for served-openapi.json on classpath
             ClassPathResource r = new ClassPathResource("served-openapi.json");
             if (r.exists()) {
                 try (InputStream is = r.getInputStream()) {

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Field;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -57,5 +58,44 @@ public class SpecLoaderServiceTest {
         assertNotNull(items);
         assertTrue(items.has("properties"));
         assertTrue(items.get("properties").has("id"));
+    }
+
+    @Test
+    public void loadSpec_shouldLoadFromClasspath_whenNoUrl() throws Exception {
+        // Arrange: create service with no URL configured
+        SpecLoaderService svc = new SpecLoaderService();
+        try {
+            Field fUrl = SpecLoaderService.class.getDeclaredField("servedOpenapiUrl");
+            fUrl.setAccessible(true);
+            fUrl.set(svc, "");
+        } catch (NoSuchFieldException ignore) { /* field injection may be absent in plain instantiation */ }
+
+        // Act: invoke private loadSpec() via reflection
+        Method m = SpecLoaderService.class.getDeclaredMethod("loadSpec");
+        m.setAccessible(true);
+        com.fasterxml.jackson.databind.JsonNode root = (com.fasterxml.jackson.databind.JsonNode) m.invoke(svc);
+
+        // Assert: spec is loaded from classpath and has expected structure
+        assertNotNull(root, "El spec debe cargarse desde classpath cuando no hay URL");
+        assertTrue(root.has("openapi"), "El spec debe contener el campo 'openapi'");
+        com.fasterxml.jackson.databind.JsonNode paths = root.get("paths");
+        assertNotNull(paths, "Debe existir la sección 'paths'");
+        assertTrue(paths.has("/academias"), "Debe existir el path /academias en el spec");
+
+        // Comprobar que /academias GET tiene parámetros de paginación con default/min/max esperados
+        com.fasterxml.jackson.databind.JsonNode getAcademias = paths.path("/academias").path("get");
+        assertTrue(getAcademias.has("parameters"), "GET /academias debe definir parámetros");
+        boolean foundSize = false;
+        for (com.fasterxml.jackson.databind.JsonNode p : getAcademias.get("parameters")) {
+            if (p.has("name") && "size".equals(p.get("name").asText())) {
+                com.fasterxml.jackson.databind.JsonNode schema = p.get("schema");
+                assertNotNull(schema, "El parámetro 'size' debe tener 'schema'");
+                assertEquals(20, schema.path("default").asInt(), "size.default debe ser 20");
+                assertEquals(1, schema.path("minimum").asInt(), "size.minimum debe ser 1");
+                assertEquals(100, schema.path("maximum").asInt(), "size.maximum debe ser 100");
+                foundSize = true;
+            }
+        }
+        assertTrue(foundSize, "Debe existir el parámetro de query 'size' en GET /academias");
     }
 }
