@@ -56,6 +56,53 @@
         },
         "type": "object"
       },
+      "PaginatedEnvelope": {
+        "properties": {
+          "has_more": {
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "meta": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "next_page": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "page": {
+            "type": "integer"
+          },
+          "prev_page": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "returned": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "total": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
       "RefreshRequest": {
         "additionalProperties": false,
         "properties": {
@@ -191,6 +238,14 @@
           },
           {
             "in": "query",
+            "name": "nombre_contains",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "page",
             "required": false,
             "schema": {
@@ -254,7 +309,7 @@
             "Profesor_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-16T07:40:40.345872+00:00"
+          "generated_at": "2025-10-17T14:28:52.709008+00:00"
         }
       },
       "post": {
@@ -303,7 +358,7 @@
           ],
           "scope": "global",
           "source": "permissions_map",
-          "generated_at": "2025-10-16T07:40:40.345872+00:00"
+          "generated_at": "2025-10-17T14:28:52.709008+00:00"
         }
       }
     },
@@ -354,7 +409,7 @@
           ],
           "scope": "global",
           "source": "permissions_map",
-          "generated_at": "2025-10-16T07:40:40.345872+00:00"
+          "generated_at": "2025-10-17T14:28:52.709008+00:00"
         }
       },
       "get": {
@@ -410,7 +465,7 @@
             "Profesor_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-16T07:40:40.345872+00:00"
+          "generated_at": "2025-10-17T14:28:52.709008+00:00"
         }
       },
       "patch": {
@@ -473,7 +528,7 @@
             "Admin_plataforma": "global"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-16T07:40:40.345872+00:00"
+          "generated_at": "2025-10-17T14:28:52.709008+00:00"
         }
       }
     },
@@ -515,7 +570,7 @@
           "note": "Login público (no requiere rol)",
           "scope": "public",
           "source": "permissions_map",
-          "generated_at": "2025-10-16T07:40:40.345872+00:00"
+          "generated_at": "2025-10-17T14:28:52.709008+00:00"
         },
         "security": []
       }
@@ -563,7 +618,7 @@
           "note": "Logout para usuarios autenticados",
           "scope": "own_user",
           "source": "permissions_map",
-          "generated_at": "2025-10-16T07:40:40.345872+00:00"
+          "generated_at": "2025-10-17T14:28:52.709008+00:00"
         }
       }
     },
@@ -600,7 +655,7 @@
           "note": "Refresh de tokens para usuarios autenticados",
           "scope": "own_user",
           "source": "permissions_map",
-          "generated_at": "2025-10-16T07:40:40.345872+00:00"
+          "generated_at": "2025-10-17T14:28:52.709008+00:00"
         }
       }
     },
@@ -639,7 +694,7 @@
             "Admin_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-16T07:40:40.345872+00:00"
+          "generated_at": "2025-10-17T14:28:52.709008+00:00"
         }
       }
     },
@@ -737,6 +792,46 @@
           },
           {
             "in": "query",
+            "name": "nombre_contains",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "email",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "email_contains",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "estado",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "rol_id",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
             "name": "id",
             "required": false,
             "schema": {
@@ -787,6 +882,54 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "fecha_alta_gte",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fecha_alta_lte",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fecha_baja_gte",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fecha_baja_lte",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fecha_ultima_modificacion_gte",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fecha_ultima_modificacion_lte",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -832,7 +975,7 @@
             "Profesor_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-16T07:40:40.345872+00:00"
+          "generated_at": "2025-10-17T14:28:52.709008+00:00"
         }
       },
       "post": {
@@ -894,7 +1037,7 @@
             ]
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-16T07:40:40.345872+00:00"
+          "generated_at": "2025-10-17T14:28:52.709008+00:00"
         }
       }
     },
@@ -945,7 +1088,7 @@
             "Profesor_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-16T07:40:40.345872+00:00"
+          "generated_at": "2025-10-17T14:28:52.709008+00:00"
         }
       }
     },
@@ -989,7 +1132,7 @@
           "note": "Cada usuario puede ver su propio perfil; admins pueden verlo según su scope",
           "scope": "own_user",
           "source": "permissions_map",
-          "generated_at": "2025-10-16T07:40:40.345872+00:00"
+          "generated_at": "2025-10-17T14:28:52.709008+00:00"
         }
       }
     },
@@ -1029,7 +1172,7 @@
           "note": "Recuperación de credenciales: la operación puede iniciarse sin sesión (por ejemplo 'forgot password'), pero solo debe permitir recuperar las credenciales del propio usuario. Los admins pueden tener flujos separados para administrar credenciales de otros usuarios.",
           "scope": "own_user",
           "source": "permissions_map",
-          "generated_at": "2025-10-16T07:40:40.345872+00:00"
+          "generated_at": "2025-10-17T14:28:52.709008+00:00"
         }
       }
     },
@@ -1085,7 +1228,7 @@
             "Admin_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-16T07:40:40.345872+00:00"
+          "generated_at": "2025-10-17T14:28:52.709008+00:00"
         }
       },
       "get": {
@@ -1141,7 +1284,7 @@
             "Profesor_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-16T07:40:40.345872+00:00"
+          "generated_at": "2025-10-17T14:28:52.709008+00:00"
         }
       },
       "patch": {
@@ -1225,7 +1368,7 @@
             ]
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-16T07:40:40.345872+00:00"
+          "generated_at": "2025-10-17T14:28:52.709008+00:00"
         }
       },
       "put": {
@@ -1309,7 +1452,7 @@
             ]
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-16T07:40:40.345872+00:00"
+          "generated_at": "2025-10-17T14:28:52.709008+00:00"
         }
       }
     },
@@ -1400,7 +1543,7 @@
             ]
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-16T07:40:40.345872+00:00"
+          "generated_at": "2025-10-17T14:28:52.709008+00:00"
         }
       }
     },
@@ -1466,7 +1609,7 @@
             "Admin_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-16T07:40:40.345872+00:00"
+          "generated_at": "2025-10-17T14:28:52.709008+00:00"
         }
       }
     },
@@ -1532,7 +1675,7 @@
             "Admin_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-16T07:40:40.345872+00:00"
+          "generated_at": "2025-10-17T14:28:52.709008+00:00"
         }
       }
     }

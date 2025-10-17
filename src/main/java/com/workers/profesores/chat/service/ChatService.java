@@ -26,9 +26,8 @@ public class ChatService {
 
     @Value("${backend.debug:false}")
     private boolean debug;
-    @Value("${chat.fastpath.enabled:true}")
+    // Flags se obtienen desde ParametrosArbolDecision2CallOpenAI para evitar duplicidad de fuentes
     private boolean fastpathEnabled;
-    @Value("${chat.secondTurnLite.enabled:true}")
     private boolean secondTurnLiteEnabled;
     // Note: local welcome handling removed to always delegate to OpenAI
 
@@ -69,9 +68,21 @@ public class ChatService {
     }
 
     @Autowired
-    public ChatService(OpenAICallApiService openai, ApiProxyService apiProxy, com.workers.profesores.chat.auth.JwtDelegationService jwtDelegationService) {
+    public ChatService(OpenAICallApiService openai,
+                       ApiProxyService apiProxy,
+                       com.workers.profesores.chat.auth.JwtDelegationService jwtDelegationService,
+                       ParametrosArbolDecision2CallOpenAI parametros) {
+        this(openai, apiProxy, jwtDelegationService, parametros, new ParametrosPresentacionSegundoTurno());
+    }
+
+    // Convenience constructor for unit tests that don't wire Spring configuration properties
+    public ChatService(OpenAICallApiService openai,
+                       ApiProxyService apiProxy,
+                       com.workers.profesores.chat.auth.JwtDelegationService jwtDelegationService) {
         this(openai, apiProxy, jwtDelegationService, new ParametrosArbolDecision2CallOpenAI(), new ParametrosPresentacionSegundoTurno());
     }
+
+    
 
     public ChatService(OpenAICallApiService openai, ApiProxyService apiProxy, com.workers.profesores.chat.auth.JwtDelegationService jwtDelegationService,
                        ParametrosArbolDecision2CallOpenAI parametros,
@@ -81,9 +92,9 @@ public class ChatService {
         this.jwtDelegationService = jwtDelegationService;
         this.parametros = parametros == null ? new ParametrosArbolDecision2CallOpenAI() : parametros;
         this.presentacion = presentacion == null ? new ParametrosPresentacionSegundoTurno() : presentacion;
-        // inicializa flags desde parámetros para evitar hardcodeos
-        this.fastpathEnabled = this.parametros.isFastpathEnabled();
-        this.secondTurnLiteEnabled = this.parametros.isSecondTurnLiteEnabled();
+    // Inicializa flags desde parámetros (ConfigurationProperties)
+    this.fastpathEnabled = this.parametros.isFastpathEnabled();
+    this.secondTurnLiteEnabled = this.parametros.isSecondTurnLiteEnabled();
     }
 
 
@@ -187,42 +198,55 @@ public class ChatService {
             systemPromptSb.append(" Perfil_usuario: ").append(profileJsonForPrompt).append(".");
             // Instrucción explícita: usar call_api para cualquier acceso adicional a endpoints y devolver JSON estructurado
             systemPromptSb.append(" ").append(whitelistTable).append("\n\n");
+            // Reglas concisas de salida: priorizamos que el modelo haga el formateo humano
             systemPromptSb.append(
-                "Reglas de salida (estrictas):\n" +
-                "- Devuelve UNICAMENTE un objeto JSON válido (sin texto adicional, sin Markdown, sin tablas).\n" +
-                "- Estructura esperada:\n" +
-                "  - 'text': string obligatorio con un resumen humano, natural y breve en castellano (España). No describas el JSON ni repitas obviedades; ve al grano.\n" +
-                "  - '[entidad_plural]': cuando el usuario pida listados (usuarios, academias, cursos, alumnos o profesores), DEVUELVE SIEMPRE un array con la entidad solicitada bajo una de estas claves exactas: 'usuarios', 'academias', 'cursos', 'alumnos' o 'profesores'.\n" +
-                "    - Copia cada elemento tal cual lo devuelve la API (mismos nombres de campos). No renombres ni reestructures propiedades internas.\n" +
-                "    - Si no hay registros, devuelve el array vacío [].\n" +
-                "  - 'entidad_singular': si el usuario pide un detalle único, puedes devolver un objeto bajo la clave singular: 'usuario', 'academia', 'curso', 'alumno' o 'profesor'.\n" +
-                "  - 'pagination': incluye este objeto SOLO si el endpoint utilizado es paginado. Rellena con los metadatos reales de la respuesta: { 'page': number|null, 'size': number|null, 'returned': number, 'has_more': boolean|null, 'next_page': number|null, 'prev_page': number|null, 'total': number|null }.\n" +
-                "    - No inventes datos. Si un campo no viene, usa null o elimínalo. 'returned' debe coincidir con la longitud del array devuelto.\n" +
-                "  - 'summary_fields': array de 1–2 strings con los nombres de las claves MÁS RELEVANTES presentes en los ítems devueltos, en el orden en que deban mostrarse en vista compacta. Ejemplos: ['nombre','email'], ['titulo','codigo'], ['nombre','id']. Deben existir en los objetos del array.\n" +
-                "  - 'suggestions': array de 2–5 strings con las próximas acciones recomendadas para el usuario. Inclúyelas incluso si el array de resultados está vacío.\n" +
-                "    - Si hay paginación o muchos resultados, prioriza: 'Siguiente página', 'Anterior', 'Ir a página N', 'Exportar a CSV', 'Exportar a Excel'.\n" +
-                "    - Si no hay resultados, sugiere filtros alternativos, crear un recurso nuevo o revisar permisos/ámbito.\n" +
-                "- Regla de saludos y charla breve: si la intención del usuario es un saludo o pequeña charla (p. ej., 'hola', 'buenas', '¿qué tal?'), NO uses call_api. Devuelve un JSON con: { 'text': 'saludo breve y útil', 'suggestions': [2–5 acciones típicas] }.\n"
+                "Reglas de salida (estrictas y concisas):\n" +
+                "- Devuelve SOLO un objeto JSON válido (sin texto fuera del JSON).\n" +
+                "- 'text': resumen breve y natural en castellano (España).\n" +
+                "- Listados: devuelve SIEMPRE un array bajo la clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores').\n" +
+                "  - Copia tal cual las propiedades originales de la API.\n" +
+                "  - Si calculas campos derivados (p.ej., conteos), AÑÁDELOS con nombres en castellano y amigables (ej.: 'numero_usuarios'), sin sobrescribir los originales ni usar '*_count' ni inglés.\n" +
+                "  - 'summary_fields': incluye 2 claves RELEVANTES existentes en los ítems (p.ej., ['nombre','email'] o ['id','nombre']).\n" +
+                "  - 'pagination': inclúyelo sólo si el endpoint es paginado, con los valores reales (no inventes).\n" +
+                "- 'suggestions': 2–5 próximas acciones útiles (paginación, filtros, exportación, ver detalle, etc.).\n" +
+                "- Saludos/charla: si es un saludo, NO uses call_api. Devuelve { 'text': ..., 'suggestions': [...] }.\n"
             );
-            // Reglas explícitas de navegación/paginación controlada por IA
+            // Regla para consultas con agregaciones: encadenar tool_calls en el primer turno
             systemPromptSb.append(
-                "\nNavegación y paginación (reglas estrictas, decide la IA):\n" +
-                "- Si ves en el historial un mensaje con el prefijo 'Contexto_paginacion:' seguido de un JSON, úsalo como estado previo: contiene 'type', 'page', 'size', 'next_page', 'prev_page', 'total' y opcionalmente 'filters'.\n" +
-                "- Cuando el usuario pida 'Siguiente', debes llamar al MISMO endpoint y reusar filtros y 'size' del estado previo, fijando query.page = next_page (si existe) o page+1.\n" +
-                "- Cuando pida 'Anterior', fijar query.page = prev_page (si existe) o page-1 (no menos de 1).\n" +
-                "- Cuando pida 'Ir a página N', fijar query.page = N (entero >= 1).\n" +
-                "- Si no existe next_page o prev_page según el caso, no propongas esa acción y sugiere alternativas (filtros o exportación).\n" +
-                "- Mantén method=GET y conserva pathParams/query originales salvo 'page'. No inventes ni cambies otros parámetros.\n" +
-                "- Si cambian los filtros, pídelo explícito o confirma antes de alterar el query.\n"
+                "\nAgregaciones (\"para cada\", \"por\", \"agrupar\", \"cuántos por...\"):\n" +
+                "- Si la intención requiere calcular algo por elemento (p.ej., 'para cada academia cuántos usuarios tiene'), EMITE en tu PRIMER mensaje TODAS las tool_calls necesarias para completar la tarea, sin detenerte tras la primera.\n" +
+                "  Ejemplo de plan: (1) listar academias; (2) para cada academia del resultado, llamar a 'usuarios.listar_usuarios' filtrando por 'academia_id=ID'.\n" +
+                "- No devuelvas una respuesta parcial solo con el listado base cuando falten llamadas adicionales para responder.\n" +
+                "- Si necesitas varias llamadas, usa 'call_api_batch' con un array 'calls'. Si la lista es larga, limita a N (p.ej., 3) y sugiere 'continuar' en 'suggestions'.\n"
             );
-            // Pequeño few-shot para reforzar la navegación determinista
+            // Navegación mínima
             systemPromptSb.append(
-                "\nEjemplo breve de navegación (guía):\n" +
-                "Historial:\n" +
-                "assistant: 'Mostrando usuarios página 1'\n" +
-                "assistant: 'Contexto_paginacion: {\"type\":\"usuarios\",\"page\":1,\"size\":20,\"next_page\":2}'\n" +
-                "user: 'Siguiente'\n" +
-                "Qué debes hacer: emitir un tool_call a call_api usando el mismo endpoint de listados de usuarios (por ejemplo 'usuarios.listar') con method=GET y query.page=2 (manteniendo size=20 y mismos filtros).\n"
+                "\nNavegación mínima:\n" +
+                "- Usa 'Contexto_paginacion' del historial si existe.\n" +
+                "- 'Siguiente' => mismo endpoint y filtros, query.page = next_page o page+1. 'Anterior' => prev_page o page-1 (>=1). 'Ir a página N' => page=N.\n"
+            );
+            // Mini-ejemplo de salida para reforzar nombres en castellano y summary_fields
+            systemPromptSb.append(
+                "\nEjemplo breve de salida (guía):\n" +
+                "Entrada: 'para cada academia, cuántos usuarios tiene'\n" +
+                "Salida (solo estructura): {\n" +
+                "  'text': 'He obtenido el número de usuarios por academia.',\n" +
+                "  'academias': [ { 'id': 1, 'nombre': 'Academia A', 'numero_usuarios': 12 } ],\n" +
+                "  'summary_fields': ['nombre','id'],\n" +
+                "  'suggestions': ['Ver detalles de una academia','Listar usuarios de una academia']\n" +
+                "}\n"
+            );
+            // Micro-ejemplo de tool_call batch (guía para el primer turno)
+            systemPromptSb.append(
+                "\nEjemplo call_api_batch (solo estructura):\n" +
+                "assistant.tool_call => name: 'call_api_batch', arguments: {\n" +
+                "  'calls': [\n" +
+                "    { 'name': 'academias.listar_academias', 'method': 'GET' },\n" +
+                "    { 'name': 'usuarios.listar_usuarios', 'method': 'GET', 'query': { 'academia_id': 308 } },\n" +
+                "    { 'name': 'usuarios.listar_usuarios', 'method': 'GET', 'query': { 'academia_id': 309 } }\n" +
+                "  ]\n" +
+                "}\n" +
+                "(Si hay muchas academias, limita a 3 y sugiere 'continuar' en 'suggestions').\n"
             );
             String systemPrompt = systemPromptSb.toString();
             if (xmlLogger != null) xmlLogger.addStep("ChatService", "System prompt construido y whitelist añadida");
@@ -425,7 +449,7 @@ public class ChatService {
                 if (debug) {
                     System.out.println("[ChatService][DEBUG] Processing tool_call: callId=" + callId + ", funcName=" + funcName + ", args=" + args);
                 }
-                if (!"call_api".equals(funcName)) {
+                if (!"call_api".equals(funcName) && !"call_api_batch".equals(funcName)) {
                     toolOutputs.add(Map.of(
                         "role", "tool",
                         "tool_call_id", callId,
@@ -435,6 +459,65 @@ public class ChatService {
                     if (debug) {
                         System.out.println("[ChatService][DEBUG] Tool not allowed: " + funcName);
                     }
+                    continue;
+                }
+                if ("call_api_batch".equals(funcName)) {
+                    // Ejecutar múltiples llamadas dentro de un único tool_call y devolver un resultado agregado
+                    List<Map<String,Object>> batchResults = new ArrayList<>();
+                    try {
+                        JsonNode calls = args.path("calls");
+                        if (calls != null && calls.isArray()) {
+                            for (JsonNode c : calls) {
+                                String endpointNameB = c.path("name").asText();
+                                String methodB = c.path("method").asText("GET");
+                                JsonNode pathParamsB = c.path("pathParams");
+                                JsonNode queryB = c.path("query");
+                                JsonNode bodyB = c.path("body");
+                                Map<String, Object> epB = openai.getEndpointByName(endpointNameB);
+                                String apiResB;
+                                if (epB == null) {
+                                    apiResB = "{\"error\":\"Endpoint no permitido: " + endpointNameB + "\"}";
+                                } else {
+                                    try {
+                                        String authToUseB = (delegatedAuth != null) ? delegatedAuth : authorization;
+                                        if (xmlLogger != null) {
+                                            apiResB = apiProxy.executeSpecCall(epB, methodB, pathParamsB, queryB, bodyB, authToUseB, xmlLogger);
+                                        } else {
+                                            apiResB = apiProxy.executeSpecCall(epB, methodB, pathParamsB, queryB, bodyB, authToUseB);
+                                        }
+                                    } catch (Exception exInnerB) {
+                                        Map<String, Object> errMapB = Map.of("error", "authorization_failure", "message", exInnerB.getMessage() == null ? "" : exInnerB.getMessage());
+                                        apiResB = om.writeValueAsString(errMapB);
+                                        if (xmlLogger != null) xmlLogger.addStep("Authorization", "Fallo autorización (batch): " + exInnerB.getMessage());
+                                    }
+                                }
+                                // track executed meta por call individual
+                                try {
+                                    JsonNode parsedB = om.readTree(apiResB);
+                                    ExecMeta metaB = new ExecMeta();
+                                    metaB.endpointName = endpointNameB;
+                                    metaB.method = methodB;
+                                    metaB.apiResultNode = parsedB;
+                                    metaB.raw = apiResB;
+                                    executed.add(metaB);
+                                    boolean okB = !(parsedB.has("error") || (parsedB.has("ok") && !parsedB.path("ok").asBoolean(true)));
+                                    batchResults.add(Map.of("ok", okB, "result", parsedB));
+                                } catch (Exception ignore) {
+                                    batchResults.add(Map.of("ok", false, "result", apiResB));
+                                }
+                            }
+                        } else {
+                            batchResults.add(Map.of("ok", false, "result", Map.of("error","bad_arguments","message","'calls' debe ser un array")));
+                        }
+                    } catch (Exception exBatch) {
+                        batchResults.add(Map.of("ok", false, "result", Map.of("error","exception","message", String.valueOf(exBatch.getMessage()))));
+                    }
+                    String contentBatch = om.writeValueAsString(Map.of("ok", true, "results", batchResults));
+                    toolOutputs.add(Map.of(
+                        "role", "tool",
+                        "tool_call_id", callId,
+                        "content", contentBatch
+                    ));
                     continue;
                 }
                 String endpointName = args.path("name").asText();
@@ -621,19 +704,34 @@ public class ChatService {
                 }
             }
 
-            // 5) Fast-path opcional (solo si aceptas copy neutro de backend) cuando no aplica el LITE
-            if (fastpathEnabled && !executed.isEmpty()) {
+            // 5) Fast-path pre-2º turno configurable (por defecto desactivado para no decidir intenciones en backend)
+            if (parametros.isPreSecondFastpathEnabled() && fastpathEnabled && !executed.isEmpty()) {
                 try {
                     ResponseEnvelope fastEnv = buildFastEnvelopeFromApi(executed);
                     if (fastEnv != null) {
-                        if (xmlLogger != null) xmlLogger.addStep("ChatService", "Fast-path aplicado: sin segunda llamada a OpenAI");
-                        if (debug) logger.debug("[ChatService] Fast-path applied (skip second OpenAI call)");
+                        if (xmlLogger != null) xmlLogger.addStep("ChatService", "Fast-path PRE-2º turno aplicado (flag ON)");
+                        if (debug) logger.debug("[ChatService] Pre-second fast-path applied (flag)");
                         return applyFinalFallback(fastEnv);
                     }
                 } catch (Exception fastEx) {
-                    if (debug) logger.debug("[ChatService] Fast-path failed: {}", fastEx.getMessage());
+                    if (debug) logger.debug("[ChatService] Pre-second fast-path failed: {}", fastEx.getMessage());
                 }
             }
+
+            // 6) Segundo turno normal: antes de llamar, aplica time-budget fallback a fast-path si ya excedimos el umbral
+            try {
+                long elapsedBeforeSecond = System.currentTimeMillis() - t0;
+                long budget = parametros.getSecondTurnBudgetMs();
+                // Si ya llevamos >budget y podemos construir fast-path, evitar la segunda llamada al LLM
+                if (fastpathEnabled && elapsedBeforeSecond > budget) {
+                    ResponseEnvelope fastBudget = buildFastEnvelopeFromApi(executed);
+                    if (fastBudget != null) {
+                        if (xmlLogger != null) xmlLogger.addStep("ChatService", "Time-budget alcanzado antes del 2º turno: aplicando fast-path");
+                        if (debug) logger.debug("[ChatService] Time-budget exceeded ({} ms > {}). Returning fast-path envelope.", elapsedBeforeSecond, budget);
+                        return applyFinalFallback(fastBudget);
+                    }
+                }
+            } catch (Exception ignore) { /* best-effort budget check */ }
 
             // 6) Segundo turno normal: reinyectamos el assistant con sus tool_calls + los outputs
             List<Map<String, Object>> followup = new ArrayList<>(seed);
@@ -644,15 +742,48 @@ public class ChatService {
             );
             assistantEcho.put("tool_calls", om.convertValue(assistantMsg.path("tool_calls"), List.class));
             followup.add(assistantEcho);
-            followup.addAll(toolOutputs);
+            // Eco recortado: limitar arrays en toolOutputs a una muestra pequeña + metadatos
+            int sampleN = Math.max(0, parametros.getModelEchoSampleSize());
+            for (Map<String,Object> to : toolOutputs) {
+                try {
+                    Object contentObj = to.get("content");
+                    String contentStr = contentObj == null ? null : String.valueOf(contentObj);
+                    JsonNode cnode = contentStr == null ? null : om.readTree(contentStr);
+                    if (sampleN > 0 && cnode != null && cnode.isObject()) {
+                        JsonNode items = null;
+                        // buscar clave de array conocida o 'items'
+                        for (String k : parametros.getAllowedTargetsPlural()) {
+                            if (cnode.has(k) && cnode.get(k).isArray()) { items = cnode.get(k); break; }
+                        }
+                        if (items == null && cnode.has("items") && cnode.get("items").isArray()) items = cnode.get("items");
+                        if (items != null && items.size() > sampleN) {
+                            com.fasterxml.jackson.databind.node.ObjectNode trimmed = (com.fasterxml.jackson.databind.node.ObjectNode) cnode.deepCopy();
+                            com.fasterxml.jackson.databind.node.ArrayNode arr = om.createArrayNode();
+                            for (int i=0;i<sampleN;i++) arr.add(items.get(i));
+                            // reemplazar array original por la muestra
+                            boolean replaced = false;
+                            for (String k : parametros.getAllowedTargetsPlural()) {
+                                if (trimmed.has(k) && trimmed.get(k).isArray()) { trimmed.set(k, arr); replaced = true; break; }
+                            }
+                            if (!replaced && trimmed.has("items") && trimmed.get("items").isArray()) trimmed.set("items", arr);
+                            // añadir metadatos returned/sample_of para que el modelo comprenda que hay más
+                            trimmed.put("returned", items.size());
+                            trimmed.put("sample_of", sampleN);
+                            to = new HashMap<>(to);
+                            to.put("content", om.writeValueAsString(trimmed));
+                        }
+                    }
+                } catch (Exception ignore) {}
+                followup.add(to);
+            }
             if (xmlLogger != null) xmlLogger.addStep("OpenAIClient", "Segunda llamada a OpenAI (reinyectando resultados de tools)");
                 if (debug) {
                     System.out.println("[ChatService][DEBUG] Calling OpenAI with followup messages: " + followup);
                 }
             JsonNode second = om.readTree(openai.callChatWithTools(followup, xmlLogger, authorization));
-            // Telemetría: fin de decisión/tool-calls
-            if (xmlLogger != null) xmlLogger.addStep("Telemetry", "decision_ms=" + (System.currentTimeMillis() - t0));
-            if (debug) logger.debug("[Telemetry] decision_ms={} (since start)", (System.currentTimeMillis() - t0));
+            // Telemetría: fin de la primera llamada del segundo turno
+            if (xmlLogger != null) xmlLogger.addStep("Telemetry", "decision_ms_first_second_turn=" + (System.currentTimeMillis() - t0));
+            if (debug) logger.debug("[Telemetry] decision_ms_first_second_turn={} (since start)", (System.currentTimeMillis() - t0));
             if (debug) {
                 try {
                     String prettySecond = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(second);
@@ -662,7 +793,207 @@ public class ChatService {
                 }
             }
             JsonNode finalMsg = second.path("choices").get(0).path("message");
-            String finalContent = finalMsg.path("content").asText("");
+            // Bucle limitado: si el 2º turno devuelve tool_calls, ejecútalos y vuelve a llamar (máx 2 iteraciones o 8s presupuesto)
+            int extraIters = 0;
+            final long iterationBudgetMs = parametros.getSecondTurnBudgetMs();
+            final int maxIters = Math.max(0, parametros.getSecondTurnMaxExtraIterations());
+            while (finalMsg != null && finalMsg.has("tool_calls") && extraIters < maxIters && (System.currentTimeMillis() - t0) < iterationBudgetMs) {
+                if (xmlLogger != null) xmlLogger.addStep("ChatService", "Segundo turno - iteración extra " + (extraIters+1) + ": procesando tool_calls");
+                // Ejecutar tool_calls devueltos por el 2º turno
+                List<Map<String, Object>> iterToolOutputs = new ArrayList<>();
+                for (JsonNode tc : finalMsg.path("tool_calls")) {
+                    String callId   = tc.path("id").asText();
+                    String funcName = tc.path("function").path("name").asText();
+                    String argsStr  = tc.path("function").path("arguments").asText("{}");
+                    JsonNode args;
+                    try { args = om.readTree(argsStr); } catch (Exception eArgs) {
+                        args = om.createObjectNode();
+                        ((com.fasterxml.jackson.databind.node.ObjectNode) args).put("_raw_arguments", argsStr);
+                    }
+                    if (!"call_api".equals(funcName) && !"call_api_batch".equals(funcName)) {
+                        iterToolOutputs.add(Map.of(
+                            "role", "tool",
+                            "tool_call_id", callId,
+                            "content", "{\"error\":\"Tool no permitida: " + funcName + "\"}"
+                        ));
+                        if (xmlLogger != null) xmlLogger.addStep("ChatService", "Tool no permitida (iter): " + funcName);
+                        continue;
+                    }
+                    if ("call_api_batch".equals(funcName)) {
+                        List<Map<String,Object>> batchResults = new ArrayList<>();
+                        try {
+                            JsonNode calls = args.path("calls");
+                            if (calls != null && calls.isArray()) {
+                                for (JsonNode c : calls) {
+                                    String endpointNameB = c.path("name").asText();
+                                    String methodB = c.path("method").asText("GET");
+                                    JsonNode pathParamsB = c.path("pathParams");
+                                    JsonNode queryB = c.path("query");
+                                    JsonNode bodyB = c.path("body");
+                                    Map<String, Object> epB = openai.getEndpointByName(endpointNameB);
+                                    String apiResB;
+                                    if (epB == null) {
+                                        apiResB = "{\"error\":\"Endpoint no permitido: " + endpointNameB + "\"}";
+                                    } else {
+                                        try {
+                                            String authToUseB = (delegatedAuth != null) ? delegatedAuth : authorization;
+                                            if (xmlLogger != null) {
+                                                apiResB = apiProxy.executeSpecCall(epB, methodB, pathParamsB, queryB, bodyB, authToUseB, xmlLogger);
+                                            } else {
+                                                apiResB = apiProxy.executeSpecCall(epB, methodB, pathParamsB, queryB, bodyB, authToUseB);
+                                            }
+                                        } catch (Exception exInnerB) {
+                                            Map<String, Object> errMapB = Map.of("error", "authorization_failure", "message", exInnerB.getMessage() == null ? "" : exInnerB.getMessage());
+                                            apiResB = om.writeValueAsString(errMapB);
+                                            if (xmlLogger != null) xmlLogger.addStep("Authorization", "[iter] Fallo autorización (batch): " + exInnerB.getMessage());
+                                        }
+                                    }
+                                    try {
+                                        JsonNode parsedB = om.readTree(apiResB);
+                                        ExecMeta metaB = new ExecMeta();
+                                        metaB.endpointName = endpointNameB;
+                                        metaB.method = methodB;
+                                        metaB.apiResultNode = parsedB;
+                                        metaB.raw = apiResB;
+                                        executed.add(metaB);
+                                        boolean okB = !(parsedB.has("error") || (parsedB.has("ok") && !parsedB.path("ok").asBoolean(true)));
+                                        batchResults.add(Map.of("ok", okB, "result", parsedB));
+                                    } catch (Exception ignore) {
+                                        batchResults.add(Map.of("ok", false, "result", apiResB));
+                                    }
+                                }
+                            } else {
+                                batchResults.add(Map.of("ok", false, "result", Map.of("error","bad_arguments","message","'calls' debe ser un array")));
+                            }
+                        } catch (Exception exBatch) {
+                            batchResults.add(Map.of("ok", false, "result", Map.of("error","exception","message", String.valueOf(exBatch.getMessage()))));
+                        }
+                        String contentBatch = om.writeValueAsString(Map.of("ok", true, "results", batchResults));
+                        iterToolOutputs.add(Map.of(
+                            "role", "tool",
+                            "tool_call_id", callId,
+                            "content", contentBatch
+                        ));
+                        continue;
+                    }
+                    String endpointName = args.path("name").asText();
+                    Map<String, Object> ep = openai.getEndpointByName(endpointName);
+                    if (ep == null) {
+                        iterToolOutputs.add(Map.of(
+                            "role", "tool",
+                            "tool_call_id", callId,
+                            "content", "{\"error\":\"Endpoint no permitido: " + endpointName + "\"}"
+                        ));
+                        if (xmlLogger != null) xmlLogger.addStep("ChatService", "Endpoint no permitido (iter): " + endpointName);
+                        continue;
+                    }
+                    String methodFromModel = args.path("method").asText("GET");
+                    JsonNode pathParams    = args.path("pathParams");
+                    JsonNode query         = args.path("query");
+                    JsonNode body          = args.path("body");
+                    if (xmlLogger != null) {
+                        try {
+                            String qp = (query == null) ? "null" : query.toString();
+                            String pp = (pathParams == null) ? "null" : pathParams.toString();
+                            String bd = (body == null) ? "null" : body.toString();
+                            xmlLogger.addStep("ApiProxyService", "[iter] Llamada a API: " + endpointName + " (" + methodFromModel + ")" +
+                                    "<br>pathParams=" + pp + "<br>query=" + qp + "<br>body=" + bd);
+                        } catch (Exception _ignore) {
+                            xmlLogger.addStep("ApiProxyService", "[iter] Llamada a API: " + endpointName + " (" + methodFromModel + ")");
+                        }
+                    }
+                    if (delegatedAuth == null) {
+                        try { delegatedAuth = jwtDelegationService.createDelegatedAuthorizationHeader(claims); } catch (Exception ignore) {}
+                    }
+                    String apiResult;
+                    try {
+                        String authToUse = (delegatedAuth != null) ? delegatedAuth : authorization;
+                        if (xmlLogger != null) {
+                            apiResult = apiProxy.executeSpecCall(ep, methodFromModel, pathParams, query, body, authToUse, xmlLogger);
+                        } else {
+                            apiResult = apiProxy.executeSpecCall(ep, methodFromModel, pathParams, query, body, authToUse);
+                        }
+                    } catch (Exception exInner) {
+                        Map<String, Object> errMap = Map.of("error", "authorization_failure", "message", exInner.getMessage() == null ? "" : exInner.getMessage());
+                        apiResult = om.writeValueAsString(errMap);
+                        if (xmlLogger != null) xmlLogger.addStep("Authorization", "[iter] Fallo autorización: " + exInner.getMessage());
+                    }
+                    // Parse/normalize apiResult a JSON
+                    JsonNode parsedApiNode;
+                    try { parsedApiNode = om.readTree(apiResult); } catch (Exception parseEx) {
+                        try {
+                            Map<String, String> err = Map.of("error", apiResult == null ? "" : apiResult);
+                            apiResult = om.writeValueAsString(err);
+                            parsedApiNode = om.readTree(apiResult);
+                        } catch (Exception wrapEx) {
+                            String safe = apiResult == null ? "" : apiResult.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n");
+                            apiResult = "{\"error\":\"" + safe + "\"}";
+                            parsedApiNode = om.readTree(apiResult);
+                        }
+                    }
+                    iterToolOutputs.add(Map.of(
+                        "role", "tool",
+                        "tool_call_id", callId,
+                        "content", apiResult
+                    ));
+                    // Añadir a ejecutados para enriquecer al final si procede
+                    ExecMeta meta = new ExecMeta();
+                    meta.endpointName = endpointName;
+                    meta.method = methodFromModel;
+                    meta.apiResultNode = parsedApiNode;
+                    meta.raw = apiResult;
+                    executed.add(meta);
+                }
+                // Construir nuevo followup para la siguiente iteración (aplicando también eco recortado)
+                Map<String, Object> iterAssistantEcho = new HashMap<>();
+                iterAssistantEcho.put("role", "assistant");
+                iterAssistantEcho.put("content", finalMsg.path("content").isMissingNode() ? "" : finalMsg.path("content").asText(""));
+                iterAssistantEcho.put("tool_calls", om.convertValue(finalMsg.path("tool_calls"), List.class));
+                followup.add(iterAssistantEcho);
+                int sampleN2 = Math.max(0, parametros.getModelEchoSampleSize());
+                for (Map<String,Object> to2 : iterToolOutputs) {
+                    try {
+                        Object contentObj = to2.get("content");
+                        String contentStr = contentObj == null ? null : String.valueOf(contentObj);
+                        JsonNode cnode = contentStr == null ? null : om.readTree(contentStr);
+                        if (sampleN2 > 0 && cnode != null && cnode.isObject()) {
+                            JsonNode items = null;
+                            for (String k : parametros.getAllowedTargetsPlural()) {
+                                if (cnode.has(k) && cnode.get(k).isArray()) { items = cnode.get(k); break; }
+                            }
+                            if (items == null && cnode.has("items") && cnode.get("items").isArray()) items = cnode.get("items");
+                            if (items != null && items.size() > sampleN2) {
+                                com.fasterxml.jackson.databind.node.ObjectNode trimmed = (com.fasterxml.jackson.databind.node.ObjectNode) cnode.deepCopy();
+                                com.fasterxml.jackson.databind.node.ArrayNode arr = om.createArrayNode();
+                                for (int i=0;i<sampleN2;i++) arr.add(items.get(i));
+                                boolean replaced = false;
+                                for (String k : parametros.getAllowedTargetsPlural()) {
+                                    if (trimmed.has(k) && trimmed.get(k).isArray()) { trimmed.set(k, arr); replaced = true; break; }
+                                }
+                                if (!replaced && trimmed.has("items") && trimmed.get("items").isArray()) trimmed.set("items", arr);
+                                trimmed.put("returned", items.size());
+                                trimmed.put("sample_of", sampleN2);
+                                to2 = new HashMap<>(to2);
+                                to2.put("content", om.writeValueAsString(trimmed));
+                            }
+                        }
+                    } catch (Exception ignore) {}
+                    followup.add(to2);
+                }
+                // Nueva llamada a OpenAI con los nuevos tool outputs
+                second = om.readTree(openai.callChatWithTools(followup, xmlLogger, authorization));
+                if (debug) {
+                    try {
+                        String prettySecondIter = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(second);
+                        System.out.println("[ChatService][DEBUG] OpenAI second response (iter " + (extraIters+1) + "):\n" + prettySecondIter);
+                    } catch (Exception ignore) {}
+                }
+                finalMsg = second.path("choices").get(0).path("message");
+                extraIters++;
+            }
+            if (xmlLogger != null) xmlLogger.addStep("Telemetry", "decision_ms=" + (System.currentTimeMillis() - t0));
+            if (debug) logger.debug("[Telemetry] decision_ms={} (since start)", (System.currentTimeMillis() - t0));
+            String finalContent = (finalMsg == null || finalMsg.isMissingNode()) ? "" : finalMsg.path("content").asText("");
             if (xmlLogger != null) xmlLogger.addStep("OpenAIClient", "Respuesta final generada por OpenAI");
             if (debug) {
                 try {
@@ -678,6 +1009,10 @@ public class ChatService {
                 JsonNode node = om.readTree(finalContent);
                 JsonNode enriched = maybeEnrichWithExecutedItems(node, executed);
                 ResponseEnvelope env = buildEnvelopeFromContentNode(enriched);
+                // Enriquecimiento ligero de presentación solo si está habilitado vía configuración
+                if (parametros.isPresentationEnrichmentEnabled()) {
+                    try { applyPresentationEnrichment(env); } catch (Exception ignore) {}
+                }
                 // Telemetría: render final
                 if (xmlLogger != null) xmlLogger.addStep("Telemetry", "render_ms=" + (System.currentTimeMillis() - t0));
                 if (debug) logger.debug("[Telemetry] render_ms={} (since start)", (System.currentTimeMillis() - t0));
@@ -789,6 +1124,8 @@ public class ChatService {
         } catch (Exception ignore) { }
         return null;
     }
+
+    // (Eliminado) Lógica de detección de intención de agregación: el backend es un orquestador puro.
 
     // Intenta aplicar el segundo turno ligero; devuelve null si no procede
     private ResponseEnvelope trySecondTurnLite(List<ExecMeta> executed, List<Map<String,Object>> seed, JsonNode assistantMsg,
@@ -1172,6 +1509,42 @@ public class ChatService {
             }
         } catch (Exception ignore) { }
         return env;
+    }
+
+    // Enriquecimiento ligero de presentación: renombra claves de conteo a labels amigables y rellena summary_fields si faltan
+    private void applyPresentationEnrichment(ResponseEnvelope env) {
+        if (env == null || env.getData() == null) return;
+        DataSection data = env.getData();
+        // 1) Relleno de summary_fields si no viene del modelo
+        if ((data.getSummaryFields() == null || data.getSummaryFields().isEmpty()) && data.getItems() != null && !data.getItems().isEmpty()) {
+            try {
+                JsonNode first = data.getItems().get(0);
+                java.util.List<String> sfs = new java.util.ArrayList<>();
+                if (first.has("nombre")) sfs.add("nombre");
+                if (first.has("email")) sfs.add("email");
+                if (sfs.isEmpty() && first.has("id")) sfs.add("id");
+                if (!sfs.isEmpty()) data.setSummaryFields(sfs);
+            } catch (Exception ignore) {}
+        }
+        // 2) Alias de *_count a etiqueta más amigable (no cambiamos la clave, añadimos display_label si procede en messages)
+        // Mantener datos tal cual, pero podemos añadir un mensaje informativo si detectamos campos *_count
+        if (data.getItems() != null && !data.getItems().isEmpty()) {
+            try {
+                JsonNode first = data.getItems().get(0);
+                java.util.Iterator<String> it = first.fieldNames();
+                boolean hasCount = false;
+                while (it.hasNext()) {
+                    String fn = it.next();
+                    if (fn.endsWith("_count")) { hasCount = true; break; }
+                }
+                if (hasCount) {
+                    // Añadimos una nota sutil en messages para que el cliente pueda mostrar un label mejor
+                    java.util.List<MessageEntry> msgs = env.getMessages() == null ? new java.util.ArrayList<>() : new java.util.ArrayList<>(env.getMessages());
+                    msgs.add(MessageEntry.of("hint","Campos *_count representan conteos (p.ej., 'usuarios_count' = 'número de usuarios')."));
+                    env.setMessages(msgs);
+                }
+            } catch (Exception ignore) {}
+        }
     }
     // Nuevo método privado para construir Envelope desde un JsonNode del modelo
     private ResponseEnvelope buildEnvelopeFromContentNode(JsonNode contentNode) {

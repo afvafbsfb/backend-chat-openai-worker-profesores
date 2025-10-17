@@ -240,11 +240,12 @@ public class OpenAICallApiService {
         // Cargar la whitelist desde served-openapi.json
         loadWhitelistFromOpenApi();
 
-        // Crear la herramienta call_api
-        Map<String, Object> callApiTool = createCallApiTool();
+    // Crear herramientas call_api y call_api_batch
+    Map<String, Object> callApiTool = createCallApiTool();
+    Map<String, Object> callApiBatchTool = createCallApiBatchTool();
 
         // Procesar mensajes iterativamente
-        return processMessages(messages, callApiTool, xmlLogger, authorization);
+    return processMessages(messages, List.of(callApiTool, callApiBatchTool), xmlLogger, authorization);
     }
 
     // Variant: allow passing extra request body properties (e.g., response_format).
@@ -253,8 +254,9 @@ public class OpenAICallApiService {
             logger.debug("[OpenAICallApiService] callChatWithToolsWithExtras called messagesCount={} extrasKeys={} authorizationPresent={}", messages == null ? 0 : messages.size(), (extraBodyProps==null?0:extraBodyProps.keySet()), authorization != null);
         }
         loadWhitelistFromOpenApi();
-        Map<String, Object> callApiTool = createCallApiTool();
-        return processMessagesWithExtras(messages, callApiTool, extraBodyProps, xmlLogger, authorization);
+    Map<String, Object> callApiTool = createCallApiTool();
+    Map<String, Object> callApiBatchTool = createCallApiBatchTool();
+    return processMessagesWithExtras(messages, List.of(callApiTool, callApiBatchTool), extraBodyProps, xmlLogger, authorization);
     }
 
     private void loadWhitelistFromOpenApi() {
@@ -413,7 +415,7 @@ public class OpenAICallApiService {
         );
     }
 
-    private String processMessages(List<Map<String, Object>> messages, Map<String, Object> callApiTool, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) throws Exception {
+    private String processMessages(List<Map<String, Object>> messages, List<Map<String, Object>> tools, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) throws Exception {
         List<Map<String, Object>> currentMessages = new ArrayList<>(messages);
         int maxIterations = 10;
 
@@ -422,7 +424,7 @@ public class OpenAICallApiService {
                 xmlLogger.addStep("OpenAI", "Llamada a OpenAI (iteración " + iter + ") - mensajes: " + messagesToLogString(currentMessages));
             }
 
-            Map<String, Object> requestBody = buildRequestBody(currentMessages, callApiTool);
+            Map<String, Object> requestBody = buildRequestBody(currentMessages, tools);
             String responseBody = sendRequestToOpenAi(requestBody, authorization);
 
             if (responseBody == null || responseBody.isBlank()) {
@@ -453,7 +455,7 @@ public class OpenAICallApiService {
         return mapper.writeValueAsString(Map.of("error", "too_many_iterations", "message", "Demasiadas iteraciones de tool calling (posible bucle infinito)"));
     }
 
-    private String processMessagesWithExtras(List<Map<String, Object>> messages, Map<String, Object> callApiTool, Map<String,Object> extraBodyProps, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) throws Exception {
+    private String processMessagesWithExtras(List<Map<String, Object>> messages, List<Map<String, Object>> tools, Map<String,Object> extraBodyProps, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) throws Exception {
         List<Map<String, Object>> currentMessages = new ArrayList<>(messages);
         int maxIterations = 10;
 
@@ -462,7 +464,7 @@ public class OpenAICallApiService {
                 xmlLogger.addStep("OpenAI", "Llamada a OpenAI (iteración " + iter + ") - mensajes: " + messagesToLogString(currentMessages));
             }
 
-            Map<String, Object> requestBody = buildRequestBody(currentMessages, callApiTool, extraBodyProps);
+            Map<String, Object> requestBody = buildRequestBody(currentMessages, tools, extraBodyProps);
             String responseBody = sendRequestToOpenAi(requestBody, authorization);
 
             if (responseBody == null || responseBody.isBlank()) {
@@ -492,20 +494,20 @@ public class OpenAICallApiService {
         return mapper.writeValueAsString(Map.of("error", "too_many_iterations", "message", "Demasiadas iteraciones de tool calling (posible bucle infinito)"));
     }
 
-    private Map<String, Object> buildRequestBody(List<Map<String, Object>> messages, Map<String, Object> callApiTool) {
+    private Map<String, Object> buildRequestBody(List<Map<String, Object>> messages, List<Map<String, Object>> tools) {
         return Map.of(
             "model", openaiApiModel,
             "messages", messages,
-            "tools", List.of(callApiTool),
+            "tools", tools,
             "temperature", openaiApiTemperature
         );
     }
 
-    private Map<String, Object> buildRequestBody(List<Map<String, Object>> messages, Map<String, Object> callApiTool, Map<String,Object> extras) {
+    private Map<String, Object> buildRequestBody(List<Map<String, Object>> messages, List<Map<String, Object>> tools, Map<String,Object> extras) {
         Map<String,Object> body = new HashMap<>();
         body.put("model", openaiApiModel);
         body.put("messages", messages);
-        body.put("tools", List.of(callApiTool));
+        body.put("tools", tools);
         body.put("temperature", openaiApiTemperature);
         if (extras != null) {
             body.putAll(extras);
@@ -572,8 +574,12 @@ public class OpenAICallApiService {
     // New signature used internally (accepts xmlLogger). Keep a backward-compatible wrapper for tests.
     private String executeToolCall(Map<String, Object> toolCall, String authorization, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger) {
         String toolName = (String) toolCall.get("name");
-        if (!"call_api".equals(toolName)) {
+        if (!"call_api".equals(toolName) && !"call_api_batch".equals(toolName)) {
             return "{\"error\":\"tool_not_supported\",\"message\":\"Tool no soportada: " + toolName + "\"}";
+        }
+
+        if ("call_api_batch".equals(toolName)) {
+            return executeToolCallBatch(toolCall, authorization, xmlLogger);
         }
 
         Object argumentsObj = toolCall.get("arguments");
@@ -625,6 +631,76 @@ public class OpenAICallApiService {
         String endpoint = openaiApiEndpointCompletions == null ? "/chat/completions" : openaiApiEndpointCompletions.trim();
         if (!base.endsWith("/") && !endpoint.startsWith("/")) base = base + "/";
         return base.endsWith("/") ? base.replaceAll("/+$", "") + endpoint : base + endpoint;
+    }
+
+    private Map<String, Object> createCallApiBatchTool() {
+        return Map.of(
+            "type", "function",
+            "function", Map.of(
+                "name", "call_api_batch",
+                "description", "Ejecuta varias llamadas a la API en un único tool_call; el modelo proporciona un array de calls.",
+                "parameters", Map.of(
+                    "type", "object",
+                    "properties", Map.of(
+                        "calls", Map.of(
+                            "type", "array",
+                            "items", Map.of(
+                                "type", "object",
+                                "properties", Map.of(
+                                    "name", Map.of("type", "string"),
+                                    "method", Map.of("type", "string", "enum", List.of("GET","POST","PUT","DELETE")),
+                                    "pathParams", Map.of("type", "object"),
+                                    "query", Map.of("type", "object"),
+                                    "body", Map.of("type", "object")
+                                ),
+                                "required", List.of("name","method")
+                            )
+                        )
+                    ),
+                    "required", List.of("calls")
+                )
+            )
+        );
+    }
+
+    private String executeToolCallBatch(Map<String, Object> toolCall, String authorization, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger) {
+        Object argumentsObj = toolCall.get("arguments");
+        Map<String, Object> args;
+        try {
+            args = mapper.convertValue(argumentsObj, new TypeReference<Map<String, Object>>() {});
+        } catch (IllegalArgumentException e) {
+            return "{\"error\":\"bad_arguments\",\"message\":\"Invalid arguments for call_api_batch\"}";
+        }
+        Object callsObj = args.get("calls");
+        if (!(callsObj instanceof List<?>)) {
+            return "{\"error\":\"bad_arguments\",\"message\":\"'calls' debe ser un array\"}";
+        }
+        List<?> calls = (List<?>) callsObj;
+        List<Map<String, Object>> results = new ArrayList<>();
+        for (Object c : calls) {
+            if (!(c instanceof Map<?, ?>)) continue;
+            Map<String, Object> call = mapper.convertValue(c, new TypeReference<Map<String, Object>>() {});
+            String single = executeToolCall(Map.of(
+                "name", "call_api",
+                "arguments", call
+            ), authorization, xmlLogger);
+            // wrap each result as { ok: true/false, result: <json or error> }
+            Map<String, Object> wrapped = new HashMap<>();
+            try {
+                JsonNode node = mapper.readTree(single);
+                wrapped.put("ok", !(node.has("error") || (node.has("ok") && !node.path("ok").asBoolean(true))));
+                wrapped.put("result", node);
+            } catch (Exception e) {
+                wrapped.put("ok", false);
+                wrapped.put("result", single);
+            }
+            results.add(wrapped);
+        }
+        try {
+            return mapper.writeValueAsString(Map.of("ok", true, "results", results));
+        } catch (Exception e) {
+            return "{\"ok\":false,\"error\":\"batch_serialize_failed\"}";
+        }
     }
     // Utilidad para loggear los mensajes de OpenAI de forma legible
     // Utilidad para loggear los mensajes de OpenAI de forma legible

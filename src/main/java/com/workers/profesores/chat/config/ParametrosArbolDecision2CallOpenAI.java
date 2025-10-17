@@ -1,12 +1,15 @@
 package com.workers.profesores.chat.config;
 
 import java.util.*;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
 
 /**
  * Centraliza TODOS los parámetros/constantes del árbol de decisión del 2º turno (OpenAI).
- * Evita hardcodeo disperso en el código. Valores por defecto razonables; se pueden exponer
- * a futuro vía @ConfigurationProperties si se desea externalizar.
+ * Bean de configuración enlazado a application.properties bajo el prefijo "chat".
  */
+@Component
+@ConfigurationProperties(prefix = "chat")
 public class ParametrosArbolDecision2CallOpenAI {
 
     public static class HeuristicRule {
@@ -28,7 +31,7 @@ public class ParametrosArbolDecision2CallOpenAI {
     }
 
     // Flags/prerrequisitos del modo LITE y fast-path (DECISIÓN)
-    private boolean secondTurnLiteEnabled = true;
+    private boolean secondTurnLiteEnabled = false;
     private boolean fastpathEnabled = true;
     private boolean requireSingleToolCall = true;
     private List<String> allowedMethodsForLite = List.of("GET");
@@ -70,6 +73,16 @@ public class ParametrosArbolDecision2CallOpenAI {
     // Targets con fast-path permitido (DECISIÓN)
     private List<String> fastpathTargetsAllowed = List.of("usuarios","academias");
 
+    // Presupuesto y límites del segundo turno (CONFIG)
+    private long secondTurnBudgetMs = 15000L; // antes 8000
+    private int secondTurnMaxExtraIterations = 3; // antes 2
+    // Fast-path previo al 2º turno bajo flag explícito (CONFIG)
+    private boolean preSecondFastpathEnabled = false;
+    // Enriquecimiento de presentación (backend) por defecto desactivado
+    private boolean presentationEnrichmentEnabled = false;
+    // Muestra máxima de ítems a reinyectar al 2º turno (eco recortado)
+    private int modelEchoSampleSize = 5;
+
     // Getters
     public boolean isSecondTurnLiteEnabled() { return secondTurnLiteEnabled; }
     public boolean isFastpathEnabled() { return fastpathEnabled; }
@@ -83,6 +96,11 @@ public class ParametrosArbolDecision2CallOpenAI {
     public String getDefaultType() { return defaultType; }
     public Map<String, String> getSingularToPlural() { return singularToPlural; }
     public List<String> getFastpathTargetsAllowed() { return fastpathTargetsAllowed; }
+    public long getSecondTurnBudgetMs() { return secondTurnBudgetMs; }
+    public int getSecondTurnMaxExtraIterations() { return secondTurnMaxExtraIterations; }
+    public boolean isPreSecondFastpathEnabled() { return preSecondFastpathEnabled; }
+    public boolean isPresentationEnrichmentEnabled() { return presentationEnrichmentEnabled; }
+    public int getModelEchoSampleSize() { return modelEchoSampleSize; }
 
     // Setters opcionales para tests o configuración programática
     public ParametrosArbolDecision2CallOpenAI setSecondTurnLiteEnabled(boolean v) { this.secondTurnLiteEnabled = v; return this; }
@@ -97,4 +115,9 @@ public class ParametrosArbolDecision2CallOpenAI {
     public ParametrosArbolDecision2CallOpenAI setDefaultType(String v) { this.defaultType = v; return this; }
     public ParametrosArbolDecision2CallOpenAI setSingularToPlural(Map<String,String> v) { this.singularToPlural = Map.copyOf(v); return this; }
     public ParametrosArbolDecision2CallOpenAI setFastpathTargetsAllowed(List<String> v) { this.fastpathTargetsAllowed = List.copyOf(v); return this; }
+    public ParametrosArbolDecision2CallOpenAI setSecondTurnBudgetMs(long v) { this.secondTurnBudgetMs = v; return this; }
+    public ParametrosArbolDecision2CallOpenAI setSecondTurnMaxExtraIterations(int v) { this.secondTurnMaxExtraIterations = v; return this; }
+    public ParametrosArbolDecision2CallOpenAI setPreSecondFastpathEnabled(boolean v) { this.preSecondFastpathEnabled = v; return this; }
+    public ParametrosArbolDecision2CallOpenAI setPresentationEnrichmentEnabled(boolean v) { this.presentationEnrichmentEnabled = v; return this; }
+    public ParametrosArbolDecision2CallOpenAI setModelEchoSampleSize(int v) { this.modelEchoSampleSize = v; return this; }
 }

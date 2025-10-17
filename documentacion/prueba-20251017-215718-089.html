@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Flujo de la prueba: prueba-20251017-215718-089</title>
+<style>body{font-family:sans-serif;} table{border-collapse:collapse;width:100%;margin-top:1em;} th,td{border:1px solid #ccc;padding:8px;text-align:left;} th{background:#f0f0f0;} tr:nth-child(even){background:#fafafa;} .step{margin-bottom:1em;} .timestamp{color:#888;font-size:0.9em;} td.desc{white-space:pre-wrap;}</style>
+</head><body>
+<h2>Flujo de la prueba: prueba-20251017-215718-089</h2>
+<table>
+<thead><tr><th>Paso</th><th>Descripción</th><th>Timestamp</th></tr></thead>
+<tbody>
+<tr class='step'><td>1. ChatController</td><td class='desc'>Recibida petición POST /chat - Mensajes recibidos (1):
+[1] user: ahora para cada academia quiero saber cuantos usuarios tiene
+</td><td class='timestamp'>2025-10-17 21:57:18.089</td></tr>
+<tr class='step'><td>2. ChatController</td><td class='desc'>JWT válido: usuarioId=1475, roles=[Admin_plataforma], academiaId=null</td><td class='timestamp'>2025-10-17 21:57:18.089</td></tr>
+<tr class='step'><td>3. ChatService</td><td class='desc'>Inicio de runChat</td><td class='timestamp'>2025-10-17 21:57:18.090</td></tr>
+<tr class='step'><td>4. ChatService</td><td class='desc'>Delegated token creado: preview=Bearer e..., token_sha4=b3cf8cbb</td><td class='timestamp'>2025-10-17 21:57:18.093</td></tr>
+<tr class='step'><td>5. ChatService</td><td class='desc'>System prompt construido y whitelist añadida</td><td class='timestamp'>2025-10-17 21:57:18.093</td></tr>
+<tr class='step'><td>6. ChatService</td><td class='desc'>Mensajes de usuario preparados para OpenAI</td><td class='timestamp'>2025-10-17 21:57:18.093</td></tr>
+<tr class='step'><td>7. OpenAIClient</td><td class='desc'>Primera llamada a OpenAI (seedSize=3)</td><td class='timestamp'>2025-10-17 21:57:18.094</td></tr>
+<tr class='step'><td>8. OpenAIClient</td><td class='desc'>Primera llamada a OpenAI (callChatWithTools)</td><td class='timestamp'>2025-10-17 21:57:18.094</td></tr>
+<tr class='step'><td>9. OpenAI</td><td class='desc'>Llamada a OpenAI (iteración 0) - mensajes: [system] Eres un asistente (secretaria) para una plataforma de academias en España. Solo puedes acceder a los recursos de la API ... | [system] Perfil_usuario: {&quot;nombre&quot;:&quot;Admin Plataforma&quot;,&quot;id&quot;:1475} | [user] ahora para cada academia quiero saber cuantos usuarios tiene | </td><td class='timestamp'>2025-10-17 21:57:18.095</td></tr>
+<tr class='step'><td>10. OpenAIClient</td><td class='desc'>OpenAI primera respuesta parseada a JSON</td><td class='timestamp'>2025-10-17 21:57:20.373</td></tr>
+<tr class='step'><td>11. Telemetry</td><td class='desc'>parse_ms=2283</td><td class='timestamp'>2025-10-17 21:57:20.373</td></tr>
+<tr class='step'><td>12. OpenAIClient</td><td class='desc'>Procesando tool_call: call_api_batch</td><td class='timestamp'>2025-10-17 21:57:20.373</td></tr>
+<tr class='step'><td>13. OpenAIClient</td><td class='desc'>Segunda llamada a OpenAI (reinyectando resultados de tools)</td><td class='timestamp'>2025-10-17 21:57:21.206</td></tr>
+<tr class='step'><td>14. OpenAI</td><td class='desc'>Llamada a OpenAI (iteración 0) - mensajes: [system] Eres un asistente (secretaria) para una plataforma de academias en España. Solo puedes acceder a los recursos de la API ... | [system] Perfil_usuario: {&quot;nombre&quot;:&quot;Admin Plataforma&quot;,&quot;id&quot;:1475} | [user] ahora para cada academia quiero saber cuantos usuarios tiene | [assistant]  tool_calls: [{id=call_jqaSoGH2GxUFZ0Mkf6IyNL9g, type=function, function={name=call_api_batch, arguments={&quot;calls&quot;:[{&quot;name&quot;:&quot;academias.listar_academias&quot;,&quot;method&quot;:&quot;GET&quot;},{&quot;name&quot;:&quot;usuarios.listar_usuarios&quot;,&quot;method&quot;:&quot;GET&quot;,&quot;query&quot;:{&quot;page&quot;:1,&quot;size&quot;:100}},{&quot;name&quot;:&quot;usuarios.listar_usuarios&quot;,&quot;method&quot;:&quot;GET&quot;,&quot;query&quot;:{&quot;page&quot;:1,&quot;size&quot;:100}}]}}}] | [tool] {&quot;ok&quot;:true,&quot;results&quot;:[{&quot;ok&quot;:true,&quot;result&quot;:{&quot;ok&quot;:true,&quot;result&quot;:[{&quot;id&quot;:308,&quot;nombre&quot;:&quot;Academia Central&quot;},{&quot;id&quot;:309,&quot;nombre&quot;... tool_call_id: call_jqaSoGH2GxUFZ0Mkf6IyNL9g | </td><td class='timestamp'>2025-10-17 21:57:21.215</td></tr>
+<tr class='step'><td>15. Telemetry</td><td class='desc'>decision_ms_first_second_turn=6245</td><td class='timestamp'>2025-10-17 21:57:24.335</td></tr>
+<tr class='step'><td>16. ChatService</td><td class='desc'>Segundo turno - iteración extra 1: procesando tool_calls</td><td class='timestamp'>2025-10-17 21:57:24.336</td></tr>
+<tr class='step'><td>17. ApiProxyService</td><td class='desc'>[iter] Llamada a API: usuarios.listar_usuarios (GET)&lt;br&gt;pathParams=&lt;br&gt;query={&quot;academia_id&quot;:308,&quot;page&quot;:1,&quot;size&quot;:100}&lt;br&gt;body=</td><td class='timestamp'>2025-10-17 21:57:24.336</td></tr>
+<tr class='step'><td>18. ApiProxyService</td><td class='desc'>[iter] Llamada a API: usuarios.listar_usuarios (GET)&lt;br&gt;pathParams=&lt;br&gt;query={&quot;academia_id&quot;:309,&quot;page&quot;:1,&quot;size&quot;:100}&lt;br&gt;body=</td><td class='timestamp'>2025-10-17 21:57:24.939</td></tr>
+<tr class='step'><td>19. ApiProxyService</td><td class='desc'>[iter] Llamada a API: usuarios.listar_usuarios (GET)&lt;br&gt;pathParams=&lt;br&gt;query={&quot;academia_id&quot;:310,&quot;page&quot;:1,&quot;size&quot;:100}&lt;br&gt;body=</td><td class='timestamp'>2025-10-17 21:57:25.468</td></tr>
+<tr class='step'><td>20. OpenAI</td><td class='desc'>Llamada a OpenAI (iteración 0) - mensajes: [system] Eres un asistente (secretaria) para una plataforma de academias en España. Solo puedes acceder a los recursos de la API ... | [system] Perfil_usuario: {&quot;nombre&quot;:&quot;Admin Plataforma&quot;,&quot;id&quot;:1475} | [user] ahora para cada academia quiero saber cuantos usuarios tiene | [assistant]  tool_calls: [{id=call_jqaSoGH2GxUFZ0Mkf6IyNL9g, type=function, function={name=call_api_batch, arguments={&quot;calls&quot;:[{&quot;name&quot;:&quot;academias.listar_academias&quot;,&quot;method&quot;:&quot;GET&quot;},{&quot;name&quot;:&quot;usuarios.listar_usuarios&quot;,&quot;method&quot;:&quot;GET&quot;,&quot;query&quot;:{&quot;page&quot;:1,&quot;size&quot;:100}},{&quot;name&quot;:&quot;usuarios.listar_usuarios&quot;,&quot;method&quot;:&quot;GET&quot;,&quot;query&quot;:{&quot;page&quot;:1,&quot;size&quot;:100}}]}}}] | [tool] {&quot;ok&quot;:true,&quot;results&quot;:[{&quot;ok&quot;:true,&quot;result&quot;:{&quot;ok&quot;:true,&quot;result&quot;:[{&quot;id&quot;:308,&quot;nombre&quot;:&quot;Academia Central&quot;},{&quot;id&quot;:309,&quot;nombre&quot;... tool_call_id: call_jqaSoGH2GxUFZ0Mkf6IyNL9g | [assistant]  tool_calls: [{id=call_E1hvXDYNo0rvnaxugHfneYAy, type=function, function={name=call_api, arguments={&quot;name&quot;: &quot;usuarios.listar_usuarios&quot;, &quot;method&quot;: &quot;GET&quot;, &quot;query&quot;: {&quot;academia_id&quot;: 308, &quot;page&quot;: 1, &quot;size&quot;: 100}}}}, {id=call_7VdEsziwuS6wd2MHL4bK8hSN, type=function, function={name=call_api, arguments={&quot;name&quot;: &quot;usuarios.listar_usuarios&quot;, &quot;method&quot;: &quot;GET&quot;, &quot;query&quot;: {&quot;academia_id&quot;: 309, &quot;page&quot;: 1, &quot;size&quot;: 100}}}}, {id=call_ZKFl2ddUNi8qXGCu0gYMuCPM, type=function, function={name=call_api, arguments={&quot;name&quot;: &quot;usuarios.listar_usuarios&quot;, &quot;method&quot;: &quot;GET&quot;, &quot;query&quot;: {&quot;academia_id&quot;: 310, &quot;page&quot;: 1, &quot;size&quot;: 100}}}}] | [tool] {
+  &quot;has_more&quot;: false,
+  &quot;items&quot;: [
+    {
+      &quot;academia_id&quot;: 308,
+      &quot;email&quot;: &quot;activo@academia.com&quot;,
+      &quot;estado&quot;... tool_call_id: call_E1hvXDYNo0rvnaxugHfneYAy | [tool] {&quot;has_more&quot;:false,&quot;items&quot;:[{&quot;academia_id&quot;:309,&quot;email&quot;:&quot;admin_academia_1@academia.com&quot;,&quot;estado&quot;:&quot;Activo&quot;,&quot;fecha_alta&quot;:&quot;20... tool_call_id: call_7VdEsziwuS6wd2MHL4bK8hSN | [tool] {
+  &quot;has_more&quot;: false,
+  &quot;items&quot;: [
+    {
+      &quot;academia_id&quot;: 310,
+      &quot;email&quot;: &quot;admin_academia_2@academia.com&quot;,
+    ... tool_call_id: call_ZKFl2ddUNi8qXGCu0gYMuCPM | </td><td class='timestamp'>2025-10-17 21:57:25.857</td></tr>
+<tr class='step'><td>21. Telemetry</td><td class='desc'>decision_ms=11340</td><td class='timestamp'>2025-10-17 21:57:29.430</td></tr>
+<tr class='step'><td>22. OpenAIClient</td><td class='desc'>Respuesta final generada por OpenAI</td><td class='timestamp'>2025-10-17 21:57:29.430</td></tr>
+<tr class='step'><td>23. Telemetry</td><td class='desc'>render_ms=11343</td><td class='timestamp'>2025-10-17 21:57:29.433</td></tr>
+<tr class='step'><td>24. ChatController</td><td class='desc'>runChat() completado (controller_ms_desde_inicio=11345, run_ms=11344)</td><td class='timestamp'>2025-10-17 21:57:29.434</td></tr>
+<tr class='step'><td>25. ChatController</td><td class='desc'>Respuesta generada por ChatService (pretty)=
+{
+  &quot;status&quot; : &quot;success&quot;,
+  &quot;message&quot; : &quot;He obtenido el número de usuarios por academia.&quot;,
+  &quot;data&quot; : {
+    &quot;type&quot; : &quot;academias&quot;,
+    &quot;items&quot; : [ {
+      &quot;id&quot; : 308,
+      &quot;nombre&quot; : &quot;Academia Central&quot;,
+      &quot;numero_usuarios&quot; : 4
+    }, {
+      &quot;id&quot; : 309,
+      &quot;nombre&quot; : &quot;Academia 1&quot;,
+      &quot;numero_usuarios&quot; : 6
+    }, {
+      &quot;id&quot; : 310,
+      &quot;nombre&quot; : &quot;Academia 2&quot;,
+      &quot;numero_usuarios&quot; : 5
+    } ],
+    &quot;summaryFields&quot; : [ &quot;nombre&quot;, &quot;numero_usuarios&quot; ]
+  },
+  &quot;suggestions&quot; : [ &quot;Ver detalles de una academia&quot;, &quot;Listar usuarios de una academia&quot; ],
+  &quot;messages&quot; : [ ]
+}</td><td class='timestamp'>2025-10-17 21:57:29.435</td></tr>
+<tr class='step'><td>26. ChatController</td><td class='desc'>HTTP listo (server_total_ms=11346, serialize_ms=1, items=3, type=&#39;academias&#39;, envelope_chars=602, envelope_bytes=603)</td><td class='timestamp'>2025-10-17 21:57:29.435</td></tr>
+</tbody></table>
+</body></html>

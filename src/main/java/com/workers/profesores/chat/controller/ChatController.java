@@ -39,6 +39,7 @@ public class ChatController {
     @PostMapping
     public ResponseEntity<ResponseEnvelope> chat(@RequestBody ChatRequest request, @RequestHeader(value = "X-Flow-Diagram", required = false) String flowDiagram,
                                        @RequestHeader(value = "Authorization", required = false) String authorization) {
+        final long ctrlStart = System.currentTimeMillis();
         // Solo crear el logger HTML si la cabecera X-Flow-Diagram=true está presente
         RequestFlowXmlLogger xmlLogger = null;
         String requestId = null;
@@ -127,17 +128,46 @@ public class ChatController {
                 System.out.println("DEBUG " + LocalDateTime.now() + " [ChatController][chat] Llamando al API de academias con token delegado.");
             }
 
+            // Ejecutar servicio principal y medir tiempo
+            long beforeRun = System.currentTimeMillis();
             ResponseEnvelope envelope = chatService.runChat(request.getMessages(), xmlLogger, authorization, claims);
+            long afterRun = System.currentTimeMillis();
+            if (xmlLogger != null) {
+                xmlLogger.addStep("ChatController", "runChat() completado (controller_ms_desde_inicio=" + (afterRun - ctrlStart) + ", run_ms=" + (afterRun - beforeRun) + ")");
+            }
             // Serializar envelope para log en pretty-print (no afecta a HTTP)
             String envelopePretty = "";
+            long serStart = System.currentTimeMillis();
             try {
                 ObjectMapper mapper = new ObjectMapper();
                 envelopePretty = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(envelope);
             } catch (Exception serEx) {
                 envelopePretty = "{\"error\":\"No se pudo serializar envelope: " + serEx.getMessage() + "\"}";
             }
+            long serEnd = System.currentTimeMillis();
             if (xmlLogger != null) {
                 xmlLogger.addStep("ChatController", "Respuesta generada por ChatService (pretty)=\n" + envelopePretty);
+                // Métricas adicionales del lado servidor justo antes de responder
+                try {
+                    int itemsCount = 0;
+                    String type = "";
+                    if (envelope != null && envelope.getData() != null) {
+                        if (envelope.getData().getItems() != null) itemsCount = envelope.getData().getItems().size();
+                        if (envelope.getData().getType() != null) type = envelope.getData().getType();
+                    }
+                    int prettyChars = envelopePretty == null ? 0 : envelopePretty.length();
+                    int prettyBytes = envelopePretty == null ? 0 : envelopePretty.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+                    long now = System.currentTimeMillis();
+                    xmlLogger.addStep(
+                        "ChatController",
+                        "HTTP listo (server_total_ms=" + (now - ctrlStart) + 
+                        ", serialize_ms=" + (serEnd - serStart) + 
+                        ", items=" + itemsCount + 
+                        ", type='" + type + "'" +
+                        ", envelope_chars=" + prettyChars + 
+                        ", envelope_bytes=" + prettyBytes + ")"
+                    );
+                } catch (Exception ignore) { /* métricas best-effort */ }
             }
             if (debug) {
                 System.out.println("DEBUG " + LocalDateTime.now() + " [ChatController][chat] Respuesta generada por ChatService (JSON completo, pretty):\n" + envelopePretty);

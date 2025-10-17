@@ -7,9 +7,9 @@ package com.workers.profesores.chat.config;
  */
 public class ParametrosPresentacionSegundoTurno {
     // Descriptor (muestras, truncado)
-    private int fieldsScanLimit = 20;
-    private int sampleItemsMax = 3;
-    private int truncateStringLength = 50;
+    private int fieldsScanLimit = 6;
+    private int sampleItemsMax = 1;
+    private int truncateStringLength = 30;
     private boolean obfuscateEmails = true;
 
     // Schema LITE (response_format)
