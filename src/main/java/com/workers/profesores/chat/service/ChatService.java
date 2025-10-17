@@ -4,10 +4,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.workers.profesores.chat.dto.ChatRequest;
+import com.workers.profesores.chat.config.ParametrosArbolDecision2CallOpenAI;
+import com.workers.profesores.chat.config.ParametrosPresentacionSegundoTurno;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import com.workers.profesores.chat.dto.response.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import java.util.*;
 
@@ -17,21 +20,76 @@ public class ChatService {
     private final ApiProxyService apiProxy;
     private final ObjectMapper om = new ObjectMapper();
     private final com.workers.profesores.chat.auth.JwtDelegationService jwtDelegationService;
+    private final ParametrosArbolDecision2CallOpenAI parametros;
+    private final ParametrosPresentacionSegundoTurno presentacion;
     private static final Logger logger = LoggerFactory.getLogger(ChatService.class);
 
     @Value("${backend.debug:false}")
     private boolean debug;
+    @Value("${chat.fastpath.enabled:true}")
+    private boolean fastpathEnabled;
+    @Value("${chat.secondTurnLite.enabled:true}")
+    private boolean secondTurnLiteEnabled;
     // Note: local welcome handling removed to always delegate to OpenAI
 
+    // Exec metadata to support fast-path without a second OpenAI round-trip
+    @SuppressWarnings("unused")
+    private static class ExecMeta {
+        String endpointName;
+        String method;
+        JsonNode apiResultNode;
+        String raw;
+    }
+
+    // Si el segundo turno normal devolvió solo {text,...} sin arrays de recursos, añadimos los items/paginación reales del tool_call ejecutado
+    private JsonNode maybeEnrichWithExecutedItems(JsonNode modelNode, List<ExecMeta> executed) {
+        try {
+            if (modelNode == null || !modelNode.isObject()) return modelNode;
+            if (executed == null || executed.size() != 1) return modelNode;
+            ExecMeta meta = executed.get(0);
+            ItemsAndPagination ip = findItemsArray(meta.apiResultNode, extractTargetFromEndpointName(meta.endpointName));
+            if (ip == null || ip.items == null) return modelNode;
+            // ¿El modelo ya devolvió algún array conocido? Si sí, no tocamos.
+            boolean hasKnownArray = false;
+            for (String k : parametros.getAllowedTargetsPlural()) {
+                JsonNode arr = modelNode.get(k);
+                if (arr != null && arr.isArray()) { hasKnownArray = true; break; }
+            }
+            if (hasKnownArray) return modelNode;
+            // Clonamos el objeto y metemos items bajo una clave inferida
+            com.fasterxml.jackson.databind.node.ObjectNode out = modelNode.deepCopy();
+            String target = extractTargetFromEndpointName(meta.endpointName);
+            if (target == null) target = guessTargetFromItems(ip.items);
+            com.fasterxml.jackson.databind.node.ArrayNode arr = om.createArrayNode();
+            for (JsonNode it : ip.items) arr.add(it);
+            if (target != null) out.set(target, arr); else out.set("items", arr);
+            if (ip.pagination != null) out.set("pagination", ip.pagination);
+            return out;
+        } catch (Exception ignore) { return modelNode; }
+    }
+
+    @Autowired
     public ChatService(OpenAICallApiService openai, ApiProxyService apiProxy, com.workers.profesores.chat.auth.JwtDelegationService jwtDelegationService) {
+        this(openai, apiProxy, jwtDelegationService, new ParametrosArbolDecision2CallOpenAI(), new ParametrosPresentacionSegundoTurno());
+    }
+
+    public ChatService(OpenAICallApiService openai, ApiProxyService apiProxy, com.workers.profesores.chat.auth.JwtDelegationService jwtDelegationService,
+                       ParametrosArbolDecision2CallOpenAI parametros,
+                       ParametrosPresentacionSegundoTurno presentacion) {
         this.openai = openai;
         this.apiProxy = apiProxy;
         this.jwtDelegationService = jwtDelegationService;
+        this.parametros = parametros == null ? new ParametrosArbolDecision2CallOpenAI() : parametros;
+        this.presentacion = presentacion == null ? new ParametrosPresentacionSegundoTurno() : presentacion;
+        // inicializa flags desde parámetros para evitar hardcodeos
+        this.fastpathEnabled = this.parametros.isFastpathEnabled();
+        this.secondTurnLiteEnabled = this.parametros.isSecondTurnLiteEnabled();
     }
 
 
     public ResponseEnvelope runChat(List<ChatRequest.Message> incoming, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization, com.workers.profesores.chat.auth.UserClaims claims) {
         try {
+            long t0 = System.currentTimeMillis();
             if (debug) {
                 System.out.println("[ChatService][DEBUG] runChat called with incoming: " + incoming);
             }
@@ -46,7 +104,7 @@ public class ChatService {
             // 0) System prompt base + whitelist dinámica
             String promptBase = "Eres un asistente (secretaria) para una plataforma de academias en España. Solo puedes acceder a los recursos de la API mediante la función call_api y siempre bajo las condiciones de autorizacion que tenga el rol del usuario logueado. Cuando necesites datos, usa exclusivamente call_api con los endpoints permitidos. Responde en castellano, de forma breve y clara. Si necesitas confirmar una operación destructiva, pide confirmación explícita antes de ejecutar. Cuando pidas listados grandes, sugiere exportar a CSV/Excel en lugar de mostrar miles de filas. No uses tablas Markdown en el system prompt ni en las instrucciones del sistema.";
                 String whitelistTable = openai.renderEndpointsTable();
-            // Prefetch user profile (so model has user's name available) and añadir contexto resumido del usuario (UserClaims)
+            // Perfil del usuario para personalización: si el JWT trae displayName, no hagas prefetch.
             String profileJsonForPrompt = "{}";
             // Create delegated token up-front so prefetch calls to ApiProxyService use delegated auth
             String delegatedAuthUpfront = null;
@@ -66,12 +124,13 @@ public class ChatService {
             } catch (Exception dex) {
                 if (debug) logger.debug("[ChatService] Failed to create delegated token up-front: {}", dex.getMessage());
             }
+            boolean hasDisplayName = (claims != null && claims.displayName != null && !claims.displayName.isBlank());
             try {
                 // Try canonical friendly name first; if not found try operationId used in the API
-                Map<String, Object> epProfile = openai.getEndpointByName("getMiPerfil");
+                Map<String, Object> epProfile = hasDisplayName ? null : openai.getEndpointByName("getMiPerfil");
                 if (epProfile == null) {
                     // The served-openapi often exposes operationId like 'usuarios.obtener_mi_perfil'
-                    epProfile = openai.getEndpointByName("usuarios.obtener_mi_perfil");
+                    epProfile = hasDisplayName ? null : openai.getEndpointByName("usuarios.obtener_mi_perfil");
                 }
                 if (epProfile != null) {
                     if (xmlLogger != null && authorization != null) {
@@ -101,6 +160,15 @@ public class ChatService {
                     } catch (Exception ex) {
                         // ignore parsing errors, keep raw profileJsonForPrompt
                     }
+                } else if (hasDisplayName) {
+                    // Synthesize a minimal profile JSON from claims to feed the prompt
+                    try {
+                        com.fasterxml.jackson.databind.node.ObjectNode p = om.createObjectNode();
+                        if (claims != null && claims.displayName != null) p.put("nombre", claims.displayName);
+                        if (claims != null && claims.usuarioId != null) p.put("id", claims.usuarioId);
+                        if (claims != null && claims.academiaId != null) p.put("academia_id", claims.academiaId);
+                        profileJsonForPrompt = p.toString();
+                    } catch (Exception ignore) { /* keep {} */ }
                 }
             } catch (Exception e) {
                 if (debug) System.out.println("[ChatService][DEBUG] getMiPerfil failed while building prompt: " + e.getMessage());
@@ -135,6 +203,26 @@ public class ChatService {
                 "    - Si hay paginación o muchos resultados, prioriza: 'Siguiente página', 'Anterior', 'Ir a página N', 'Exportar a CSV', 'Exportar a Excel'.\n" +
                 "    - Si no hay resultados, sugiere filtros alternativos, crear un recurso nuevo o revisar permisos/ámbito.\n" +
                 "- Regla de saludos y charla breve: si la intención del usuario es un saludo o pequeña charla (p. ej., 'hola', 'buenas', '¿qué tal?'), NO uses call_api. Devuelve un JSON con: { 'text': 'saludo breve y útil', 'suggestions': [2–5 acciones típicas] }.\n"
+            );
+            // Reglas explícitas de navegación/paginación controlada por IA
+            systemPromptSb.append(
+                "\nNavegación y paginación (reglas estrictas, decide la IA):\n" +
+                "- Si ves en el historial un mensaje con el prefijo 'Contexto_paginacion:' seguido de un JSON, úsalo como estado previo: contiene 'type', 'page', 'size', 'next_page', 'prev_page', 'total' y opcionalmente 'filters'.\n" +
+                "- Cuando el usuario pida 'Siguiente', debes llamar al MISMO endpoint y reusar filtros y 'size' del estado previo, fijando query.page = next_page (si existe) o page+1.\n" +
+                "- Cuando pida 'Anterior', fijar query.page = prev_page (si existe) o page-1 (no menos de 1).\n" +
+                "- Cuando pida 'Ir a página N', fijar query.page = N (entero >= 1).\n" +
+                "- Si no existe next_page o prev_page según el caso, no propongas esa acción y sugiere alternativas (filtros o exportación).\n" +
+                "- Mantén method=GET y conserva pathParams/query originales salvo 'page'. No inventes ni cambies otros parámetros.\n" +
+                "- Si cambian los filtros, pídelo explícito o confirma antes de alterar el query.\n"
+            );
+            // Pequeño few-shot para reforzar la navegación determinista
+            systemPromptSb.append(
+                "\nEjemplo breve de navegación (guía):\n" +
+                "Historial:\n" +
+                "assistant: 'Mostrando usuarios página 1'\n" +
+                "assistant: 'Contexto_paginacion: {\"type\":\"usuarios\",\"page\":1,\"size\":20,\"next_page\":2}'\n" +
+                "user: 'Siguiente'\n" +
+                "Qué debes hacer: emitir un tool_call a call_api usando el mismo endpoint de listados de usuarios (por ejemplo 'usuarios.listar') con method=GET y query.page=2 (manteniendo size=20 y mismos filtros).\n"
             );
             String systemPrompt = systemPromptSb.toString();
             if (xmlLogger != null) xmlLogger.addStep("ChatService", "System prompt construido y whitelist añadida");
@@ -201,6 +289,9 @@ public class ChatService {
                 logger.debug("[ChatService] Parsed OpenAI first response into JSON");
                 if (xmlLogger != null) xmlLogger.addStep("OpenAIClient", "OpenAI primera respuesta parseada a JSON");
             }
+            // Telemetría: fin de parseo inicial
+            if (xmlLogger != null) xmlLogger.addStep("Telemetry", "parse_ms=" + (System.currentTimeMillis() - t0));
+            if (debug) logger.debug("[Telemetry] parse_ms={}", (System.currentTimeMillis() - t0));
             // Defensive: ensure choices array exists and has at least one element
             JsonNode choicesNode = first.path("choices");
             if (choicesNode == null || !choicesNode.isArray() || choicesNode.size() == 0) {
@@ -314,6 +405,8 @@ public class ChatService {
             // 3) Resolver tool_calls
 
             List<Map<String, Object>> toolOutputs = new ArrayList<>();
+            // Keep metadata of executed tools to enable fast-path without a second OpenAI round-trip
+            List<ExecMeta> executed = new ArrayList<>();
             
             for (JsonNode tc : assistantMsg.path("tool_calls")) {
                 String callId   = tc.path("id").asText();
@@ -362,7 +455,45 @@ public class ChatService {
                 JsonNode pathParams    = args.path("pathParams");
                 JsonNode query         = args.path("query");
                 JsonNode body          = args.path("body");
-                if (xmlLogger != null) xmlLogger.addStep("ApiProxyService", "Llamada a API: " + endpointName + " (" + methodFromModel + ")");
+                // Fallback mínimo: si el modelo omite query.page en navegación y tenemos Contexto_paginacion, completar page/size
+                try {
+                    // Construir objeto mutable para query
+                    com.fasterxml.jackson.databind.node.ObjectNode q = (query != null && query.isObject()) ? (com.fasterxml.jackson.databind.node.ObjectNode) query.deepCopy() : om.createObjectNode();
+                    boolean hasPage = q.has("page") && q.get("page").canConvertToInt();
+                    // Extraer último comando del usuario y contexto de paginación del historial de entrada
+                    String lastUser = getLastUserUtterance(incoming);
+                    com.fasterxml.jackson.databind.node.ObjectNode ctx = extractPaginationContext(incoming);
+                    if (!hasPage && ctx != null && lastUser != null) {
+                        int curPage = ctx.has("page") && ctx.get("page").canConvertToInt() ? Math.max(1, ctx.get("page").asInt()) : 1;
+                        Integer next = ctx.has("next_page") && ctx.get("next_page").canConvertToInt() ? ctx.get("next_page").asInt() : null;
+                        Integer prev = ctx.has("prev_page") && ctx.get("prev_page").canConvertToInt() ? ctx.get("prev_page").asInt() : null;
+                        Integer size = ctx.has("size") && ctx.get("size").canConvertToInt() ? ctx.get("size").asInt() : null;
+                        Integer gotoN = extractGotoPage(lastUser);
+                        String lu = lastUser.toLowerCase(java.util.Locale.ROOT);
+                        if (gotoN != null && gotoN >= 1) {
+                            q.put("page", gotoN);
+                        } else if (lu.contains("siguiente")) {
+                            if (next != null) q.put("page", next);
+                            else q.put("page", curPage + 1);
+                        } else if (lu.contains("anterior")) {
+                            if (prev != null) q.put("page", Math.max(1, prev));
+                            else q.put("page", Math.max(1, curPage - 1));
+                        }
+                        if (size != null && !q.has("size")) q.put("size", size);
+                        query = q; // sustituimos por la versión enriquecida
+                    }
+                } catch (Exception ignore) { /* fallback best-effort */ }
+                if (xmlLogger != null) {
+                    try {
+                        String qp = (query == null) ? "null" : query.toString();
+                        String pp = (pathParams == null) ? "null" : pathParams.toString();
+                        String bd = (body == null) ? "null" : body.toString();
+                        xmlLogger.addStep("ApiProxyService", "Llamada a API: " + endpointName + " (" + methodFromModel + ")" +
+                                "<br>pathParams=" + pp + "<br>query=" + qp + "<br>body=" + bd);
+                    } catch (Exception _ignore) {
+                        xmlLogger.addStep("ApiProxyService", "Llamada a API: " + endpointName + " (" + methodFromModel + ")");
+                    }
+                }
                 // Log masked Authorization preview + short SHA so the generated HTML trace includes
                 // the exact token fingerprint used for this proxied request. This helps detect
                 // whether the token changes between entry and the actual API call.
@@ -440,18 +571,21 @@ public class ChatService {
                 // when downstream logic tries to parse the API result.
                 // Ensure apiResult is valid JSON; ApiProxyService should already return JSON on errors,
                 // but be defensive and normalize anything unexpected.
+                JsonNode parsedApiNode;
                 try {
-                    om.readTree(apiResult);
+                    parsedApiNode = om.readTree(apiResult);
                 } catch (Exception parseEx) {
                     try {
                         Map<String, String> err = Map.of("error", apiResult == null ? "" : apiResult);
                         apiResult = om.writeValueAsString(err);
                         if (debug) System.out.println("[ChatService][DEBUG] Normalized non-JSON API result into JSON error object.");
                         if (xmlLogger != null) xmlLogger.addStep("ChatService", "Normalized non-JSON API result into JSON error object");
+                        parsedApiNode = om.readTree(apiResult);
                     } catch (Exception wrapEx) {
                         String safe = apiResult == null ? "" : apiResult.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n");
                         apiResult = "{\"error\":\"" + safe + "\"}";
                         if (debug) System.out.println("[ChatService][DEBUG] Fallback normalization applied to API result.");
+                        parsedApiNode = om.readTree(apiResult);
                     }
                 }
 
@@ -462,11 +596,46 @@ public class ChatService {
                     "tool_call_id", callId,
                     "content", apiResult
                 ));
+
+                // Save execution metadata for optional fast-path
+                ExecMeta meta = new ExecMeta();
+                meta.endpointName = endpointName;
+                meta.method = methodFromModel;
+                meta.apiResultNode = parsedApiNode;
+                meta.raw = apiResult;
+                executed.add(meta);
             }
 
 
+            // 4) Segundo turno ligero (preferido si procede): exactamente 1 tool_call, GET listado conocido, sin error y con returned/paginación
+            if (secondTurnLiteEnabled) {
+                try {
+                    ResponseEnvelope liteEnv = trySecondTurnLite(executed, seed, assistantMsg, xmlLogger, authorization);
+                    if (liteEnv != null) {
+                        if (xmlLogger != null) xmlLogger.addStep("ChatService", "Segundo turno ligero aplicado");
+                        if (debug) logger.debug("[ChatService] Second-turn LITE applied");
+                        return applyFinalFallback(liteEnv);
+                    }
+                } catch (Exception liteEx) {
+                    if (debug) logger.debug("[ChatService] Second-turn LITE failed: {}", liteEx.getMessage());
+                }
+            }
 
-            // 4) Segundo turno: reinyectamos el assistant con sus tool_calls + los outputs
+            // 5) Fast-path opcional (solo si aceptas copy neutro de backend) cuando no aplica el LITE
+            if (fastpathEnabled && !executed.isEmpty()) {
+                try {
+                    ResponseEnvelope fastEnv = buildFastEnvelopeFromApi(executed);
+                    if (fastEnv != null) {
+                        if (xmlLogger != null) xmlLogger.addStep("ChatService", "Fast-path aplicado: sin segunda llamada a OpenAI");
+                        if (debug) logger.debug("[ChatService] Fast-path applied (skip second OpenAI call)");
+                        return applyFinalFallback(fastEnv);
+                    }
+                } catch (Exception fastEx) {
+                    if (debug) logger.debug("[ChatService] Fast-path failed: {}", fastEx.getMessage());
+                }
+            }
+
+            // 6) Segundo turno normal: reinyectamos el assistant con sus tool_calls + los outputs
             List<Map<String, Object>> followup = new ArrayList<>(seed);
             Map<String, Object> assistantEcho = new HashMap<>();
             assistantEcho.put("role", "assistant");
@@ -481,6 +650,9 @@ public class ChatService {
                     System.out.println("[ChatService][DEBUG] Calling OpenAI with followup messages: " + followup);
                 }
             JsonNode second = om.readTree(openai.callChatWithTools(followup, xmlLogger, authorization));
+            // Telemetría: fin de decisión/tool-calls
+            if (xmlLogger != null) xmlLogger.addStep("Telemetry", "decision_ms=" + (System.currentTimeMillis() - t0));
+            if (debug) logger.debug("[Telemetry] decision_ms={} (since start)", (System.currentTimeMillis() - t0));
             if (debug) {
                 try {
                     String prettySecond = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(second);
@@ -501,10 +673,14 @@ public class ChatService {
                     System.out.println("[ChatService][DEBUG] Final content before returning: " + finalContent);
                 }
             }
-            // Si finalContent es JSON válido, devolverlo tal cual; si no, envolver en {"text": ...}
+            // Si finalContent es JSON válido, lo enriquecemos con items/paginación reales si procede
             try {
                 JsonNode node = om.readTree(finalContent);
-                ResponseEnvelope env = buildEnvelopeFromContentNode(node);
+                JsonNode enriched = maybeEnrichWithExecutedItems(node, executed);
+                ResponseEnvelope env = buildEnvelopeFromContentNode(enriched);
+                // Telemetría: render final
+                if (xmlLogger != null) xmlLogger.addStep("Telemetry", "render_ms=" + (System.currentTimeMillis() - t0));
+                if (debug) logger.debug("[Telemetry] render_ms={} (since start)", (System.currentTimeMillis() - t0));
                 if (debug) {
                     try {
                         String prettyEnv = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(env);
@@ -514,6 +690,8 @@ public class ChatService {
                 return applyFinalFallback(env);
             } catch (Exception e) {
                 ResponseEnvelope env = ResponseEnvelope.success(finalContent, DataSection.of("chat", List.of(), null), List.of(), List.of());
+                if (xmlLogger != null) xmlLogger.addStep("Telemetry", "render_ms=" + (System.currentTimeMillis() - t0));
+                if (debug) logger.debug("[Telemetry] render_ms={} (since start)", (System.currentTimeMillis() - t0));
                 if (debug) {
                     try {
                         String prettyEnv = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(env);
@@ -532,6 +710,437 @@ public class ChatService {
             return ResponseEnvelope.error("Error en runChat","internal_error", e.getMessage(), List.of());
         }
     }
+
+    // Extrae el último mensaje del usuario (role="user") del historial; devuelve null si no existe
+    private String getLastUserUtterance(List<ChatRequest.Message> incoming) {
+        if (incoming == null || incoming.isEmpty()) return null;
+        for (int i = incoming.size() - 1; i >= 0; i--) {
+            ChatRequest.Message m = incoming.get(i);
+            try {
+                if (m != null && "user".equalsIgnoreCase(m.getRole())) {
+                    String c = m.getContent();
+                    if (c != null && !c.isBlank()) return c;
+                }
+            } catch (Exception ignore) { /* best-effort */ }
+        }
+        return null;
+    }
+
+    // Busca en el historial un assistant con prefijo "Contexto_paginacion: { ... }" y devuelve el JSON como ObjectNode
+    private com.fasterxml.jackson.databind.node.ObjectNode extractPaginationContext(List<ChatRequest.Message> incoming) {
+        if (incoming == null || incoming.isEmpty()) return null;
+        String marker = "Contexto_paginacion:";
+        // buscamos el último que aparezca para que tenga prioridad el más reciente
+        for (int i = incoming.size() - 1; i >= 0; i--) {
+            ChatRequest.Message m = incoming.get(i);
+            try {
+                if (m == null) continue;
+                String role = m.getRole();
+                if (!"assistant".equalsIgnoreCase(role)) continue;
+                String content = m.getContent();
+                if (content == null) continue;
+                int idx = content.indexOf(marker);
+                if (idx < 0) continue;
+                String after = content.substring(idx + marker.length()).trim();
+                // si viene entrecomillado, intenta quitar comillas exteriores
+                if (after.startsWith("\"") && after.endsWith("\"")) {
+                    after = after.substring(1, after.length() - 1);
+                }
+                // intenta localizar el bloque JSON desde la primera '{' hasta la última '}'
+                int open = after.indexOf('{');
+                int close = after.lastIndexOf('}');
+                String json = (open >= 0 && close > open) ? after.substring(open, close + 1) : after;
+                JsonNode parsed = om.readTree(json);
+                if (parsed != null && parsed.isObject()) {
+                    return (com.fasterxml.jackson.databind.node.ObjectNode) parsed;
+                }
+            } catch (Exception ignore) { /* si falla el parse, sigue buscando */ }
+        }
+        return null;
+    }
+
+    // Intenta extraer un número de página de instrucciones tipo "Ir a página N" (admite variantes con/ sin acento y "pag")
+    private Integer extractGotoPage(String text) {
+        if (text == null) return null;
+        String t = text.trim();
+        if (t.isEmpty()) return null;
+        try {
+            // Patrones comunes en castellano
+            java.util.regex.Pattern p1 = java.util.regex.Pattern.compile("(?i)\\b(?:ir\\s+a(?:\\s+la)?)?\\s*(?:p[áa]g(?:ina)?|pag\\.?|pagina|página)\\s*(\\d+)\\b");
+            java.util.regex.Matcher m1 = p1.matcher(t);
+            if (m1.find()) {
+                int n = Integer.parseInt(m1.group(1));
+                return n >= 1 ? n : 1;
+            }
+            // También admitir mensajes del tipo "página 3" sin el "ir a"
+            java.util.regex.Pattern p2 = java.util.regex.Pattern.compile("(?i)\\b(?:p[áa]gina|pagina|pag)\\s*(\\d+)\\b");
+            java.util.regex.Matcher m2 = p2.matcher(t);
+            if (m2.find()) {
+                int n = Integer.parseInt(m2.group(1));
+                return n >= 1 ? n : 1;
+            }
+            // Como último recurso, si el mensaje es solo un número
+            java.util.regex.Pattern p3 = java.util.regex.Pattern.compile("^\\s*(\\d+)\\s*$");
+            java.util.regex.Matcher m3 = p3.matcher(t);
+            if (m3.find()) {
+                int n = Integer.parseInt(m3.group(1));
+                return n >= 1 ? n : 1;
+            }
+        } catch (Exception ignore) { }
+        return null;
+    }
+
+    // Intenta aplicar el segundo turno ligero; devuelve null si no procede
+    private ResponseEnvelope trySecondTurnLite(List<ExecMeta> executed, List<Map<String,Object>> seed, JsonNode assistantMsg,
+                                               com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) throws Exception {
+        if (executed == null) return null;
+        if (parametros.isRequireSingleToolCall() && executed.size() != 1) return null;
+        ExecMeta meta = executed.isEmpty() ? null : executed.get(0);
+        if (meta == null || meta.apiResultNode == null) return null;
+        // Método GET y sin error
+        if (meta.method == null || parametros.getAllowedMethodsForLite().stream().noneMatch(m -> m.equalsIgnoreCase(meta.method))) return null;
+        if (isErrorResponse(meta.apiResultNode)) return null;
+        // Detectar target e items
+        String target = extractTargetFromEndpointName(meta.endpointName);
+        ItemsAndPagination ip = findItemsArray(meta.apiResultNode, target);
+        if (ip == null || ip.items == null) return null;
+        // Debe ser listado (0+ items) y elementos objeto o vacío
+        if (ip.items.size() > 0 && !ip.items.get(0).isObject()) return null;
+        // Fallback: si no pudimos extraer target del nombre del endpoint, intenta inferirlo por los campos de los ítems
+        if (target == null) {
+            String guessed = guessTargetFromItems(ip.items);
+            if (guessed != null) target = guessed;
+        }
+        // Podemos determinar returned
+        int returned = ip.items.size();
+        // Construir descriptor compacto
+        com.fasterxml.jackson.databind.node.ObjectNode descriptor = buildCompactDescriptor(target, returned, ip, meta.apiResultNode);
+        // Mensajes followup: seed + assistant echo + user con instrucción + descriptor
+        List<Map<String,Object>> followup = new ArrayList<>(seed);
+        Map<String, Object> assistantEcho = new HashMap<>();
+        assistantEcho.put("role", "assistant");
+        assistantEcho.put("content", assistantMsg.path("content").isMissingNode() ? "" : assistantMsg.path("content").asText(""));
+        assistantEcho.put("tool_calls", om.convertValue(assistantMsg.path("tool_calls"), List.class));
+        followup.add(assistantEcho);
+        String instruction = "Usa únicamente el descriptor anterior para redactar: 'text' (breve), 'suggestions' (2–5), 'summary_fields' (1–2). No repitas ni inventes la lista ni devuelvas arrays. Devuelve solo un objeto JSON válido con esas claves. Descriptor:";
+        followup.add(Map.of("role","user","content", instruction + "\n" + descriptor.toString()));
+    // response_format json_schema (parametrizado)
+    Map<String,Object> schema = Map.of(
+            "type","object",
+            "additionalProperties", false,
+            "properties", Map.of(
+        "text", Map.of("type","string","maxLength", presentacion.getTextMaxLength()),
+        "suggestions", Map.of(
+            "type","array",
+            "items", Map.of("type","string","maxLength", presentacion.getSuggestionItemMaxLen()),
+            "minItems", presentacion.getSuggestionsMin(),
+            "maxItems", presentacion.getSuggestionsMax()
+        ),
+        "summary_fields", Map.of(
+            "type","array",
+            "items", Map.of("type","string"),
+            "minItems", presentacion.getSummaryFieldsMin(),
+            "maxItems", presentacion.getSummaryFieldsMax()
+        )
+            ),
+            "required", List.of("text")
+        );
+        Map<String,Object> extras = Map.of(
+            "response_format", Map.of(
+                "type","json_schema",
+                "json_schema", Map.of("name","lite_second_turn","schema", schema)
+            )
+        );
+        String raw = openai.callChatWithToolsWithExtras(followup, extras, xmlLogger, authorization);
+        JsonNode second = om.readTree(raw == null ? "" : raw);
+        JsonNode finalMsg = second.path("choices").get(0).path("message");
+        String finalContent = finalMsg.path("content").asText("");
+        JsonNode liteNode;
+        try { liteNode = om.readTree(finalContent); } catch (Exception ex) { return null; }
+        // Construir directamente el envelope: usamos items/paginación reales y el copy del 2º turno
+        // Mensaje
+        String msg = liteNode.has("text") && liteNode.get("text").isTextual() ? liteNode.get("text").asText("") : "";
+        // Sugerencias
+        List<String> sugg = new ArrayList<>();
+        try {
+            JsonNode sNode = liteNode.get("suggestions");
+            if (sNode != null && sNode.isArray())
+                for (JsonNode s : sNode) if (s.isTextual()) sugg.add(s.asText());
+        } catch (Exception ignore) {}
+        // Paginación
+        PaginationInfo pagination = null;
+        if (ip.pagination != null && ip.pagination.isObject()) {
+            JsonNode p = ip.pagination;
+            pagination = PaginationInfo.of(
+                p.path("page").isNumber()? p.get("page").asInt() : null,
+                p.path("size").isNumber()? p.get("size").asInt() : null,
+                p.path("returned").isNumber()? p.get("returned").asInt() : ip.items.size(),
+                p.path("has_more").isBoolean()? p.get("has_more").asBoolean() : null,
+                p.path("next_page").isNumber()? p.get("next_page").asInt() : null,
+                p.path("prev_page").isNumber()? p.get("prev_page").asInt() : null,
+                p.path("total").isNumber()? p.get("total").asInt() : null
+            );
+        }
+        if (target == null) target = guessTargetFromItems(ip.items);
+        String type = (target != null) ? target : "chat";
+        DataSection data = DataSection.of(type, ip.items, pagination);
+        // summary_fields
+        try {
+            JsonNode sf = liteNode.get("summary_fields");
+            if (sf != null && sf.isArray() && !ip.items.isEmpty()) {
+                List<String> sfl = new ArrayList<>();
+                for (JsonNode sfi : sf) if (sfi.isTextual()) sfl.add(sfi.asText());
+                if (!sfl.isEmpty()) data.setSummaryFields(sfl);
+            }
+        } catch (Exception ignore) {}
+        return ResponseEnvelope.success(msg, data, sugg, List.of());
+    }
+
+    // Heurística simple para inferir el tipo de recurso a partir de los campos presentes en los ítems
+    private String guessTargetFromItems(List<JsonNode> items) {
+        if (items == null || items.isEmpty()) return null;
+        try {
+            // Recolecta conjunto de campos presentes en hasta N items
+            Set<String> fields = new HashSet<>();
+            int limit = Math.min(parametros.getHeuristicScanLimit(), items.size());
+            for (int i = 0; i < limit; i++) {
+                JsonNode it = items.get(i);
+                if (it == null || !it.isObject()) continue;
+                it.fieldNames().forEachRemaining(fields::add);
+            }
+            // Evalúa reglas ordenadas por prioridad
+            List<ParametrosArbolDecision2CallOpenAI.HeuristicRule> rules = new ArrayList<>(parametros.getHeuristicRules());
+            rules.sort(Comparator.comparingInt(ParametrosArbolDecision2CallOpenAI.HeuristicRule::getPriority));
+            for (ParametrosArbolDecision2CallOpenAI.HeuristicRule r : rules) {
+                boolean allOk = r.getAllOf().isEmpty() || fields.containsAll(r.getAllOf());
+                boolean anyOk = r.getAnyOf().isEmpty() || r.getAnyOf().stream().anyMatch(fields::contains);
+                if (allOk && anyOk) return r.getTarget();
+            }
+        } catch (Exception ignore) { }
+        return null;
+    }
+
+    // Detecta errores comunes en la respuesta
+    private boolean isErrorResponse(JsonNode node) {
+        if (node == null || node.isNull()) return true;
+        if (node.has("error")) return true;
+        if (node.has("ok") && !node.path("ok").asBoolean(true)) return true;
+        return false;
+    }
+
+    // Extrae el target por nombre de endpoint (último match)
+    private String extractTargetFromEndpointName(String endpointName) {
+        if (endpointName == null) return null;
+        String e = endpointName.toLowerCase(Locale.ROOT);
+        String found = null;
+        for (String k : parametros.getAllowedTargetsPlural()) if (e.contains(k)) found = k;
+        return found;
+    }
+
+    private static class ItemsAndPagination {
+        List<JsonNode> items; // array plano
+        com.fasterxml.jackson.databind.node.ObjectNode pagination; // puede ser null
+        ItemsAndPagination(List<JsonNode> items, com.fasterxml.jackson.databind.node.ObjectNode pagination) { this.items = items; this.pagination = pagination; }
+    }
+
+    // Busca el array de items con prioridad: node[target] -> node[items] -> (target==academias && node[result])
+    private ItemsAndPagination findItemsArray(JsonNode node, String target) {
+        if (node == null || node.isNull()) return null;
+        JsonNode arr = null;
+        if (target != null && node.has(target) && node.get(target).isArray()) arr = node.get(target);
+        if (arr == null) {
+            for (String gk : parametros.getGenericArrayKeys()) {
+                if (node.has(gk) && node.get(gk).isArray()) { arr = node.get(gk); break; }
+            }
+        }
+        if (arr == null && target != null) {
+            List<String> tks = parametros.getTargetSpecificArrayKeys().getOrDefault(target, List.of());
+            for (String tk : tks) {
+                if (node.has(tk) && node.get(tk).isArray()) { arr = node.get(tk); break; }
+            }
+        }
+        if (arr == null || !arr.isArray()) return null;
+        List<JsonNode> list = new ArrayList<>();
+        for (JsonNode it : arr) list.add(it);
+        // Construir pagination si existen metadatos
+        com.fasterxml.jackson.databind.node.ObjectNode pag = om.createObjectNode();
+        boolean any = false;
+        if (node.has("page")) { pag.set("page", node.get("page")); any = true; }
+        if (node.has("size")) { pag.set("size", node.get("size")); any = true; }
+        pag.put("returned", list.size()); any = true;
+        if (node.has("has_more")) { pag.set("has_more", node.get("has_more")); any = true; }
+        if (node.has("next_page")) { pag.set("next_page", node.get("next_page")); any = true; }
+        if (node.has("prev_page")) { pag.set("prev_page", node.get("prev_page")); any = true; }
+        if (node.has("total")) { pag.set("total", node.get("total")); any = true; }
+        if (!any) pag = null;
+        return new ItemsAndPagination(list, pag);
+    }
+
+    // Construye el descriptor compacto siguiendo el documento
+    private com.fasterxml.jackson.databind.node.ObjectNode buildCompactDescriptor(String target, int returned, ItemsAndPagination ip, JsonNode fullNode) {
+        com.fasterxml.jackson.databind.node.ObjectNode d = om.createObjectNode();
+        if (target != null) d.put("target", target);
+        d.put("count", returned);
+        // fields_present
+        Set<String> keys = new LinkedHashSet<>();
+    int scan = Math.min(ip.items.size(), presentacion.getFieldsScanLimit());
+        for (int i=0;i<scan;i++) {
+            JsonNode it = ip.items.get(i);
+            if (it != null && it.isObject()) it.fieldNames().forEachRemaining(keys::add);
+        }
+        com.fasterxml.jackson.databind.node.ArrayNode fp = om.createArrayNode();
+        for (String k : keys) fp.add(k);
+        d.set("fields_present", fp);
+        // sample_items (2–3, primitivas y truncado)
+        com.fasterxml.jackson.databind.node.ArrayNode samples = om.createArrayNode();
+    int sampleCount = Math.min(presentacion.getSampleItemsMax(), ip.items.size());
+        for (int i=0;i<sampleCount;i++) {
+            JsonNode it = ip.items.get(i);
+            if (it != null && it.isObject()) samples.add(truncateAndRedact(it));
+        }
+        d.set("sample_items", samples);
+        if (ip.pagination != null) d.set("pagination", ip.pagination);
+        return d;
+    }
+
+    // Trunca strings a 50, ofusca emails y evita anidar objetos/arrays
+    private com.fasterxml.jackson.databind.node.ObjectNode truncateAndRedact(JsonNode obj) {
+        com.fasterxml.jackson.databind.node.ObjectNode out = om.createObjectNode();
+        obj.fieldNames().forEachRemaining(fn -> {
+            JsonNode v = obj.get(fn);
+            if (v.isTextual()) {
+                String s = v.asText("");
+                String t = s.length()>presentacion.getTruncateStringLength() ? s.substring(0,presentacion.getTruncateStringLength())+"…" : s;
+                if (presentacion.isObfuscateEmails() && t.contains("@")) {
+                    int at = t.indexOf('@');
+                    if (at>0) t = t.substring(0, Math.min(at, t.length())) + "@…";
+                }
+                out.put(fn, t);
+            } else if (v.isNumber()) {
+                out.put(fn, v.asText());
+            } else if (v.isBoolean()) {
+                out.put(fn, v.asBoolean());
+            } else {
+                // Ignorar objetos/arrays anidados para mantenerlo compacto
+            }
+        });
+        return out;
+    }
+
+    // Fusiona los resultados del 2º turno (lite) con items/pagination reales
+    @SuppressWarnings("unused")
+    private com.fasterxml.jackson.databind.node.ObjectNode mergeLiteWithItems(String target, ItemsAndPagination ip, JsonNode lite) {
+        com.fasterxml.jackson.databind.node.ObjectNode out = om.createObjectNode();
+        // Copiar arrays de recurso reales
+        if (target == null) {
+            // Intento de última oportunidad: inferir target a partir de los ítems
+            try {
+                String guessed = guessTargetFromItems(ip.items);
+                if (guessed != null) target = guessed;
+            } catch (Exception ignore) { }
+        }
+        if (target != null) {
+            com.fasterxml.jackson.databind.node.ArrayNode arr = om.createArrayNode();
+            for (JsonNode it : ip.items) arr.add(it);
+            out.set(target, arr);
+        } else {
+            // fallback a clave genérica si no hay target (no debería aplicarse en LITE)
+            com.fasterxml.jackson.databind.node.ArrayNode arr = om.createArrayNode();
+            for (JsonNode it : ip.items) arr.add(it);
+            out.set("items", arr);
+        }
+        if (ip.pagination != null) out.set("pagination", ip.pagination);
+        if (lite != null && lite.isObject()) {
+            if (lite.has("text")) out.set("text", lite.get("text"));
+            if (lite.has("suggestions")) out.set("suggestions", lite.get("suggestions"));
+            if (lite.has("summary_fields")) out.set("summary_fields", lite.get("summary_fields"));
+        }
+        return out;
+    }
+
+    // Construye un envelope sin segunda llamada al LLM a partir de los resultados de tools.
+    // Regresa null si no puede determinar el tipo o el formato.
+    private ResponseEnvelope buildFastEnvelopeFromApi(List<ExecMeta> executed) {
+        try {
+            if (executed == null || executed.isEmpty()) return null;
+            // Para simplicidad, solo soportamos 1 tool_call en fast-path; si hay más, delegamos al LLM.
+            if (executed.size() != 1) return null;
+            ExecMeta meta = executed.get(0);
+            if (meta == null || meta.apiResultNode == null) return null;
+
+            String endpoint = meta.endpointName == null ? "" : meta.endpointName;
+            JsonNode node = meta.apiResultNode;
+
+            // Detectar listado de usuarios: API devuelve { items: [...], page?, size?, next_page?, prev_page?, has_more? }
+            if (endpoint.toLowerCase(Locale.ROOT).contains("usuarios") && node.has("items") && node.get("items").isArray()) {
+                com.fasterxml.jackson.databind.node.ObjectNode out = om.createObjectNode();
+                // text corto
+                int n = node.get("items").size();
+                out.put("text", n > 0 ? "He obtenido " + n + " usuarios." : "No hay usuarios con ese criterio.");
+                out.set("usuarios", node.get("items"));
+                // pagination
+                com.fasterxml.jackson.databind.node.ObjectNode pag = om.createObjectNode();
+                pag.set("page", node.get("page") != null && node.get("page").isNumber()? node.get("page") : null);
+                pag.set("size", node.get("size") != null && node.get("size").isNumber()? node.get("size") : null);
+                pag.put("returned", n);
+                if (node.has("has_more") && node.get("has_more").isBoolean()) pag.set("has_more", node.get("has_more"));
+                if (node.has("next_page") && node.get("next_page").canConvertToInt()) pag.set("next_page", node.get("next_page"));
+                if (node.has("prev_page") && node.get("prev_page").canConvertToInt()) pag.set("prev_page", node.get("prev_page"));
+                if (node.has("total") && node.get("total").canConvertToInt()) pag.set("total", node.get("total"));
+                out.set("pagination", pag);
+                // summary_fields heurístico
+                List<String> sfs = new ArrayList<>();
+                try {
+                    JsonNode first = node.get("items").size() > 0 ? node.get("items").get(0) : null;
+                    if (first != null) {
+                        if (first.has("nombre")) sfs.add("nombre");
+                        if (first.has("email")) sfs.add("email");
+                        if (sfs.isEmpty() && first.has("id")) sfs.add("id");
+                    }
+                } catch (Exception ignore) {}
+                if (!sfs.isEmpty()) {
+                    com.fasterxml.jackson.databind.node.ArrayNode sf = om.createArrayNode();
+                    for (String k : sfs) sf.add(k);
+                    out.set("summary_fields", sf);
+                }
+                // suggestions
+                com.fasterxml.jackson.databind.node.ArrayNode sugg = om.createArrayNode();
+                boolean hasMore = node.path("has_more").asBoolean(false) || node.has("next_page");
+                if (hasMore) sugg.add("Siguiente página");
+                if (node.has("prev_page") && !node.get("prev_page").isNull()) sugg.add("Anterior");
+                sugg.add("Exportar a CSV");
+                sugg.add("Exportar a Excel");
+                out.set("suggestions", sugg);
+                return buildEnvelopeFromContentNode(out);
+            }
+
+            // Detectar listado de academias: API devuelve { ok: true, result: [ ... ] }
+            if (endpoint.toLowerCase(Locale.ROOT).contains("academias") && node.has("result") && node.get("result").isArray()) {
+                com.fasterxml.jackson.databind.node.ObjectNode out = om.createObjectNode();
+                int n = node.get("result").size();
+                out.put("text", n > 0 ? "He obtenido el listado de academias disponibles." : "No hay academias.");
+                out.set("academias", node.get("result"));
+                // summary_fields
+                com.fasterxml.jackson.databind.node.ArrayNode sf = om.createArrayNode();
+                sf.add("id");
+                sf.add("nombre");
+                out.set("summary_fields", sf);
+                // suggestions
+                com.fasterxml.jackson.databind.node.ArrayNode sugg = om.createArrayNode();
+                sugg.add("Consultar detalles de una academia");
+                sugg.add("Crear una nueva academia");
+                sugg.add("Eliminar una academia");
+                sugg.add("Modificar una academia existente");
+                out.set("suggestions", sugg);
+                return buildEnvelopeFromContentNode(out);
+            }
+
+            return null;
+        } catch (Exception e) {
+            // En caso de cualquier problema, devolver null para seguir con el flujo normal
+            return null;
+        }
+    }
     
     // Fallback final: si el mensaje sale vacío y no hay items, devolvemos un saludo útil y sugerencias por defecto
     private ResponseEnvelope applyFinalFallback(ResponseEnvelope env) {
@@ -539,6 +1148,16 @@ public class ChatService {
             if (env != null && "success".equals(env.getStatus())) {
                 String msg = env.getMessage() == null ? "" : env.getMessage().trim();
                 boolean noItems = (env.getData() == null) || (env.getData().getItems() == null) || env.getData().getItems().isEmpty();
+                // Si hay items pero el tipo es "chat", intenta inferir un tipo más específico (usuarios, cursos, etc.)
+                try {
+                    if (!noItems && env.getData() != null) {
+                        String t = env.getData().getType();
+                        if (t == null || t.isBlank() || "chat".equalsIgnoreCase(t)) {
+                            String guessed = guessTargetFromItems(env.getData().getItems());
+                            if (guessed != null) env.getData().setType(guessed);
+                        }
+                    }
+                } catch (Exception ignore) { }
                 if (msg.isEmpty() && noItems) {
                     env.setMessage("Hola, ¿en qué puedo ayudarte hoy?");
                     if (env.getSuggestions() == null || env.getSuggestions().isEmpty()) {
@@ -560,8 +1179,8 @@ public class ChatService {
             return ResponseEnvelope.success("", DataSection.of("chat", List.of(), null), List.of(), List.of());
         }
         // Detect arrays representando recursos
-        List<String> resourceKeys = List.of("usuarios","academias","cursos","alumnos","profesores");
-        String typeDetected = "chat";
+    List<String> resourceKeys = parametros.getAllowedTargetsPlural();
+    String typeDetected = parametros.getDefaultType();
         List<JsonNode> items = new ArrayList<>();
         PaginationInfo pagination = null;
         for (String k : resourceKeys) {
@@ -585,17 +1204,39 @@ public class ChatService {
                 break; // primero encontrado
             }
         }
+        // Fallback: si no se ha detectado una clave conocida pero existe 'items' como array, intentar inferir el tipo por el contenido
+        if (items.isEmpty()) {
+            JsonNode genericArr = null;
+            for (String gk : parametros.getGenericArrayKeys()) {
+                JsonNode candidate = contentNode.get(gk);
+                if (candidate != null && candidate.isArray()) { genericArr = candidate; break; }
+            }
+            if (genericArr != null) {
+                List<JsonNode> tmp = new ArrayList<>();
+                for (JsonNode el : genericArr) tmp.add(el);
+                String guessed = guessTargetFromItems(tmp);
+                if (guessed != null) {
+                    typeDetected = guessed;
+                    items.addAll(tmp);
+                    JsonNode pagNode = contentNode.get("pagination");
+                    if (pagNode != null && pagNode.isObject()) {
+                        pagination = PaginationInfo.of(
+                            pagNode.path("page").isNumber()? pagNode.get("page").asInt() : null,
+                            pagNode.path("size").isNumber()? pagNode.get("size").asInt() : null,
+                            pagNode.path("returned").isNumber()? pagNode.get("returned").asInt() : (genericArr.size()),
+                            pagNode.path("has_more").isBoolean()? pagNode.get("has_more").asBoolean() : null,
+                            pagNode.path("next_page").isNumber()? pagNode.get("next_page").asInt() : null,
+                            pagNode.path("prev_page").isNumber()? pagNode.get("prev_page").asInt() : null,
+                            pagNode.path("total").isNumber()? pagNode.get("total").asInt() : null
+                        );
+                    }
+                }
+            }
+        }
         // Si no encontró array de recursos pero el nodo es objeto => intentar detectar clave singular y mapear a lista con un único ítem
         if (items.isEmpty() && contentNode.isObject()) {
             // Soportar claves singulares habituales devueltas por la IA (o por reformateo)
-            Map<String, String> singularToPlural = Map.of(
-                "usuario", "usuarios",
-                "academia", "academias",
-                "curso", "cursos",
-                "alumno", "alumnos",
-                "profesor", "profesores"
-            );
-            for (Map.Entry<String, String> entry : singularToPlural.entrySet()) {
+            for (Map.Entry<String, String> entry : parametros.getSingularToPlural().entrySet()) {
                 JsonNode obj = contentNode.get(entry.getKey());
                 if (obj != null && obj.isObject()) {
                     typeDetected = entry.getValue();
@@ -639,6 +1280,7 @@ public class ChatService {
     }
 
     // Inferir tipo de recurso a partir del nombre del endpoint usado en tool_call
+    @SuppressWarnings("unused")
     private String inferTypeFromEndpoint(String endpointName) {
         if (endpointName == null) return "object";
         String e = endpointName.toLowerCase(Locale.ROOT);

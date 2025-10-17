@@ -105,6 +105,13 @@ PS C:\Users\Angel FV\Desktop\FORMACION\chat_backend_academia\backend-chat-openai
     -Dbackend.debug=true   --> activa logs
 
 
+Uso de display_name en JWT (oct-2025)
+-------------------------------------
+- Si el access token incluye `display_name` (o `name`/`preferred_username`), el backend-chat lo usará para personalizar el prompt y NO hará prefetch del endpoint de "mi perfil".
+- Si no viene ese claim, mantiene el prefetch como antes.
+- No se añade el nombre al token delegado que usa el backend-chat para llamar al API (no es necesario para autorización).
+
+
 
 
 #ejecutar los test desde el api-workers-profesores:

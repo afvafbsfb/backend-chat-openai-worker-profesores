@@ -163,6 +163,8 @@ public class OpenAICallApiService {
 
     @Value("${openai.api.model:gpt-4o-mini}")
     private String openaiApiModel;
+    @Value("${openai.api.temperature:0.2}")
+    private double openaiApiTemperature;
     @Value("${openai.mock:false}")
     private boolean openaiMock;
     private List<Map<String, Object>> whitelist;
@@ -245,6 +247,16 @@ public class OpenAICallApiService {
         return processMessages(messages, callApiTool, xmlLogger, authorization);
     }
 
+    // Variant: allow passing extra request body properties (e.g., response_format).
+    public String callChatWithToolsWithExtras(List<Map<String, Object>> messages, Map<String,Object> extraBodyProps, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) throws Exception {
+        if (debug) {
+            logger.debug("[OpenAICallApiService] callChatWithToolsWithExtras called messagesCount={} extrasKeys={} authorizationPresent={}", messages == null ? 0 : messages.size(), (extraBodyProps==null?0:extraBodyProps.keySet()), authorization != null);
+        }
+        loadWhitelistFromOpenApi();
+        Map<String, Object> callApiTool = createCallApiTool();
+        return processMessagesWithExtras(messages, callApiTool, extraBodyProps, xmlLogger, authorization);
+    }
+
     private void loadWhitelistFromOpenApi() {
         try {
             InputStream is = new ClassPathResource("served-openapi.json").getInputStream();
@@ -273,6 +285,54 @@ public class OpenAICallApiService {
                                 ep.put("path", path);
                                 Object descObj = opMap.get("description");
                                 ep.put("description", descObj == null ? "" : String.valueOf(descObj));
+                                // Extract query param names and detect pagination by presence of page/size or response schema hints
+                                List<String> queryParams = new ArrayList<>();
+                                boolean paginated = false;
+                                Object parametersObj = opMap.get("parameters");
+                                if (parametersObj instanceof List<?>) {
+                                    for (Object po : (List<?>) parametersObj) {
+                                        if (po instanceof Map<?, ?>) {
+                                            Map<?, ?> p = (Map<?, ?>) po;
+                                            try {
+                                                Object in = p.get("in");
+                                                Object name = p.get("name");
+                                                if (in != null && "query".equals(String.valueOf(in)) && name != null) {
+                                                    String qn = String.valueOf(name);
+                                                    queryParams.add(qn);
+                                                    if ("page".equals(qn) || "size".equals(qn)) paginated = true;
+                                                }
+                                            } catch (Exception ignore) { }
+                                        }
+                                    }
+                                }
+                                // Detect pagination from 200 response schema properties
+                                try {
+                                    Object responsesObj = opMap.get("responses");
+                                    if (responsesObj instanceof Map<?, ?>) {
+                                        Object r200 = ((Map<?, ?>) responsesObj).get("200");
+                                        if (r200 instanceof Map<?, ?>) {
+                                            Object content = ((Map<?, ?>) r200).get("content");
+                                            if (content instanceof Map<?, ?>) {
+                                                Object appJson = ((Map<?, ?>) content).get("application/json");
+                                                if (appJson instanceof Map<?, ?>) {
+                                                    Object schema = ((Map<?, ?>) appJson).get("schema");
+                                                    if (schema instanceof Map<?, ?>) {
+                                                        Map<?, ?> schemaMap = (Map<?, ?>) schema;
+                                                        Object propsObj = schemaMap.get("properties");
+                                                        if (propsObj instanceof Map<?, ?>) {
+                                                            Map<?, ?> propsMap = (Map<?, ?>) propsObj;
+                                                            if (propsMap.containsKey("page") || propsMap.containsKey("size") || propsMap.containsKey("totalElements") || propsMap.containsKey("items")) {
+                                                                paginated = true;
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                } catch (Exception ignore) { }
+                                if (!queryParams.isEmpty()) ep.put("query", queryParams);
+                                if (paginated) ep.put("paginated", true);
                                 paths.add(ep);
                             }
                         }
@@ -301,6 +361,34 @@ public class OpenAICallApiService {
         } catch (Exception e) {
             logger.error("Error al cargar la whitelist desde served-openapi.json: {}", e.getMessage());
             this.whitelist = List.of();
+        }
+    }
+
+    // Apply default page/size and cap size for paginated GET endpoints
+    private JsonNode sanitizePagination(Map<String, Object> endpoint, String method, JsonNode query) {
+        try {
+            if (endpoint == null) return query;
+            Object pag = endpoint.get("paginated");
+            boolean isPaginated = (pag instanceof Boolean) ? (Boolean) pag : false;
+            if (!isPaginated) return query;
+            if (method == null || !"GET".equalsIgnoreCase(method)) return query;
+            com.fasterxml.jackson.databind.node.ObjectNode q = (query == null || query.isNull()) ? mapper.createObjectNode() : (query.isObject() ? (com.fasterxml.jackson.databind.node.ObjectNode) query.deepCopy() : mapper.createObjectNode());
+            // default page=1 if missing or invalid
+            int page = 1;
+            try { if (q.has("page") && q.get("page").canConvertToInt()) page = Math.max(1, q.get("page").asInt()); } catch (Exception ignore) { }
+            q.put("page", page);
+            // default size=20 if missing; cap to 50
+            int size = 20;
+            try {
+                if (q.has("size") && q.get("size").canConvertToInt()) size = q.get("size").asInt();
+            } catch (Exception ignore) { }
+            if (size <= 0) size = 20;
+            if (size > 50) size = 50;
+            q.put("size", size);
+            return q;
+        } catch (Exception e) {
+            // on any error, return original query untouched
+            return query;
         }
     }
 
@@ -365,12 +453,64 @@ public class OpenAICallApiService {
         return mapper.writeValueAsString(Map.of("error", "too_many_iterations", "message", "Demasiadas iteraciones de tool calling (posible bucle infinito)"));
     }
 
+    private String processMessagesWithExtras(List<Map<String, Object>> messages, Map<String, Object> callApiTool, Map<String,Object> extraBodyProps, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) throws Exception {
+        List<Map<String, Object>> currentMessages = new ArrayList<>(messages);
+        int maxIterations = 10;
+
+        for (int iter = 0; iter < maxIterations; iter++) {
+            if (xmlLogger != null) {
+                xmlLogger.addStep("OpenAI", "Llamada a OpenAI (iteración " + iter + ") - mensajes: " + messagesToLogString(currentMessages));
+            }
+
+            Map<String, Object> requestBody = buildRequestBody(currentMessages, callApiTool, extraBodyProps);
+            String responseBody = sendRequestToOpenAi(requestBody, authorization);
+
+            if (responseBody == null || responseBody.isBlank()) {
+                logger.error("Respuesta vacía o nula de OpenAI");
+                return mapper.writeValueAsString(Map.of("error", "openai_empty_response", "message", "Empty or null response body"));
+            }
+
+            Map<String, Object> response = mapper.readValue(responseBody, new TypeReference<Map<String, Object>>() {});
+            Object messageObj = response.get("message");
+            if (messageObj instanceof Map<?, ?>) {
+                try {
+                    currentMessages.add(mapper.convertValue(messageObj, new TypeReference<Map<String, Object>>() {}));
+                } catch (IllegalArgumentException e) {
+                    logger.warn("Error al convertir el mensaje: {}", messageObj, e);
+                }
+            } else {
+                logger.warn("El mensaje recibido no es del tipo esperado: {}", messageObj);
+            }
+
+            if (processToolCalls(response, currentMessages, xmlLogger, authorization)) {
+                continue;
+            }
+
+            return responseBody;
+        }
+
+        return mapper.writeValueAsString(Map.of("error", "too_many_iterations", "message", "Demasiadas iteraciones de tool calling (posible bucle infinito)"));
+    }
+
     private Map<String, Object> buildRequestBody(List<Map<String, Object>> messages, Map<String, Object> callApiTool) {
         return Map.of(
             "model", openaiApiModel,
             "messages", messages,
-            "tools", List.of(callApiTool)
+            "tools", List.of(callApiTool),
+            "temperature", openaiApiTemperature
         );
+    }
+
+    private Map<String, Object> buildRequestBody(List<Map<String, Object>> messages, Map<String, Object> callApiTool, Map<String,Object> extras) {
+        Map<String,Object> body = new HashMap<>();
+        body.put("model", openaiApiModel);
+        body.put("messages", messages);
+        body.put("tools", List.of(callApiTool));
+        body.put("temperature", openaiApiTemperature);
+        if (extras != null) {
+            body.putAll(extras);
+        }
+        return body;
     }
 
     private String sendRequestToOpenAi(Map<String, Object> requestBody, String authorization) {
@@ -466,6 +606,8 @@ public class OpenAICallApiService {
             JsonNode query = mapper.valueToTree(args.getOrDefault("query", Collections.emptyMap()));
             JsonNode body = mapper.valueToTree(args.getOrDefault("body", Collections.emptyMap()));
             String method = args.get("method") == null ? "GET" : String.valueOf(args.get("method"));
+            // Enforce conservative pagination defaults/caps for paginated endpoints
+            query = sanitizePagination(endpoint, method, query);
             return apiProxyService.executeSpecCall(endpoint, method, pathParams, query, body, authorization, xmlLogger);
         } catch (Exception e) {
             logger.warn("Exception in executeToolCall: {}", e.getMessage(), e);

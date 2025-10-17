@@ -51,12 +51,21 @@ public class ChatController {
                 requestId = java.util.UUID.randomUUID().toString();
                 RequestFlowXmlContext.set(requestId, xmlLogger);
                 loggerActivo = true;
-                String userMsg = "";
-                if (request != null && request.getMessages() != null && !request.getMessages().isEmpty()) {
-                    ChatRequest.Message firstMsg = request.getMessages().get(0);
-                    userMsg = "Mensaje recibido: [" + firstMsg.getRole() + "] " + firstMsg.getContent();
-                }
-                xmlLogger.addStep("ChatController", "Recibida petición POST /chat" + (userMsg.isEmpty() ? "" : ("<br>" + userMsg)));
+                // Consolidar toda la mensajería recibida en un único paso (con saltos de línea)
+                // Imprimir TODA la mensajería recibida en esta petición para el HTML (enumerada)
+                try {
+                    if (request != null && request.getMessages() != null && !request.getMessages().isEmpty()) {
+                        StringBuilder sb = new StringBuilder();
+                        sb.append("Recibida petición POST /chat - Mensajes recibidos (" + request.getMessages().size() + "):\n");
+                        int idx = 1;
+                        for (ChatRequest.Message m : request.getMessages()) {
+                            String role = m == null ? "" : String.valueOf(m.getRole());
+                            String content = m == null ? "" : String.valueOf(m.getContent());
+                            sb.append("[" + idx++ + "] " + role + ": " + content + "\n");
+                        }
+                        xmlLogger.addStep("ChatController", sb.toString());
+                    }
+                } catch (Exception ignore) { }
             }
             if (debug) {
                 String trace = requestId == null ? "" : (" requestId=" + requestId);

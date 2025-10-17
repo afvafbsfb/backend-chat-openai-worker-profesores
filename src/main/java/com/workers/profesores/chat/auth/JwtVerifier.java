@@ -63,6 +63,24 @@ public class JwtVerifier {
         Integer academiaId = claims.get("academia_id") == null ? null : Integer.parseInt(String.valueOf(claims.get("academia_id")));
         Integer profesorUsuarioId = claims.get("profesor_usuario_id") == null ? null : Integer.parseInt(String.valueOf(claims.get("profesor_usuario_id")));
         String actor = claims.get("actor") == null ? null : String.valueOf(claims.get("actor"));
-        return new UserClaims(usuarioId, roles, academiaId, profesorUsuarioId, actor, tokenVersion);
+        // Extract display name from common keys
+        String displayName = null;
+        try {
+            Object dn = claims.get("display_name");
+            if (dn == null) dn = claims.get("name");
+            if (dn == null) dn = claims.get("preferred_username");
+            if (dn != null) displayName = String.valueOf(dn);
+            if (displayName == null || displayName.isBlank()) {
+                Object given = claims.get("given_name");
+                Object family = claims.get("family_name");
+                if (given != null || family != null) {
+                    String g = given == null ? "" : String.valueOf(given);
+                    String f = family == null ? "" : String.valueOf(family);
+                    String full = (g + " " + f).trim();
+                    displayName = full.isEmpty() ? null : full;
+                }
+            }
+        } catch (Exception ignore) { displayName = null; }
+        return new UserClaims(usuarioId, roles, academiaId, profesorUsuarioId, actor, tokenVersion, displayName);
     }
 }

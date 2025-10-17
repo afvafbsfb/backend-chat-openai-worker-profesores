@@ -24,13 +24,27 @@ public class RequestFlowXmlLogger {
 
     public void writeHtml() {
         String fileName = basePath + File.separator + testName + ".html";
+        // Asegura que el directorio base existe para evitar fallos al escribir
+        try {
+            File dir = new File(basePath);
+            if (!dir.exists()) {
+                boolean ok = dir.mkdirs();
+                if (!ok) {
+                    // Intento adicional por si hay condiciones de carrera
+                    dir = dir.getAbsoluteFile();
+                    dir.mkdirs();
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         try (FileWriter writer = new FileWriter(fileName, false)) {
             writer.write("<!DOCTYPE html>\n<html lang=\"es\">\n<head>\n<meta charset=\"UTF-8\">\n<title>Flujo de la prueba: " + escapeHtml(testName) + "</title>\n");
-            writer.write("<style>body{font-family:sans-serif;} table{border-collapse:collapse;width:100%;margin-top:1em;} th,td{border:1px solid #ccc;padding:8px;text-align:left;} th{background:#f0f0f0;} tr:nth-child(even){background:#fafafa;} .step{margin-bottom:1em;} .timestamp{color:#888;font-size:0.9em;}</style>\n");
+            writer.write("<style>body{font-family:sans-serif;} table{border-collapse:collapse;width:100%;margin-top:1em;} th,td{border:1px solid #ccc;padding:8px;text-align:left;} th{background:#f0f0f0;} tr:nth-child(even){background:#fafafa;} .step{margin-bottom:1em;} .timestamp{color:#888;font-size:0.9em;} td.desc{white-space:pre-wrap;}</style>\n");
             writer.write("</head><body>\n<h2>Flujo de la prueba: " + escapeHtml(testName) + "</h2>\n<table>\n<thead><tr><th>Paso</th><th>Descripción</th><th>Timestamp</th></tr></thead>\n<tbody>\n");
             int i = 1;
             for (Step step : steps) {
-                writer.write("<tr class='step'><td>" + i + ". " + escapeHtml(step.name) + "</td><td>" + escapeHtml(step.description) + "</td><td class='timestamp'>" + step.timestamp.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")) + "</td></tr>\n");
+                writer.write("<tr class='step'><td>" + i + ". " + escapeHtml(step.name) + "</td><td class='desc'>" + escapeHtml(step.description) + "</td><td class='timestamp'>" + step.timestamp.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")) + "</td></tr>\n");
                 i++;
             }
             writer.write("</tbody></table>\n</body></html>\n");
