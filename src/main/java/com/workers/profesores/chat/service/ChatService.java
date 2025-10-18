@@ -198,6 +198,26 @@ public class ChatService {
             systemPromptSb.append(" Perfil_usuario: ").append(profileJsonForPrompt).append(".");
             // Instrucción explícita: usar call_api para cualquier acceso adicional a endpoints y devolver JSON estructurado
             systemPromptSb.append(" ").append(whitelistTable).append("\n\n");
+            // Derivar dinámicamente recursos disponibles/no disponibles a partir de la whitelist
+            try {
+                java.util.Set<String> avail = new java.util.HashSet<>();
+                java.util.List<java.util.Map<String,Object>> eps = openai.getEndpoints();
+                java.util.List<String> targets = parametros.getAllowedTargetsPlural();
+                for (java.util.Map<String,Object> ep : eps) {
+                    Object op = ep.get("operationId");
+                    String s = op == null ? String.valueOf(ep.getOrDefault("name","")) : String.valueOf(op);
+                    String sl = s == null ? "" : s.toLowerCase(java.util.Locale.ROOT);
+                    for (String t : targets) {
+                        if (sl.contains(t.toLowerCase(java.util.Locale.ROOT))) avail.add(t);
+                    }
+                }
+                java.util.List<String> unavailable = new java.util.ArrayList<>();
+                for (String t : targets) if (!avail.contains(t)) unavailable.add(t);
+                if (!avail.isEmpty() || !unavailable.isEmpty()) {
+                    systemPromptSb.append("Recursos disponibles (whitelist): ").append(avail.toString()).append(". ");
+                    if (!unavailable.isEmpty()) systemPromptSb.append("Recursos no disponibles: ").append(unavailable.toString()).append(". ");
+                }
+            } catch (Exception ignore) { }
             // Reglas concisas de salida: priorizamos que el modelo haga el formateo humano
             systemPromptSb.append(
                 "Reglas de salida (estrictas y concisas):\n" +
@@ -209,7 +229,9 @@ public class ChatService {
                 "  - 'summary_fields': incluye 2 claves RELEVANTES existentes en los ítems (p.ej., ['nombre','email'] o ['id','nombre']).\n" +
                 "  - 'pagination': inclúyelo sólo si el endpoint es paginado, con los valores reales (no inventes).\n" +
                 "- 'suggestions': 2–5 próximas acciones útiles (paginación, filtros, exportación, ver detalle, etc.).\n" +
-                "- Saludos/charla: si es un saludo, NO uses call_api. Devuelve { 'text': ..., 'suggestions': [...] }.\n"
+                "- Saludos/charla: si es un saludo, NO uses call_api. Devuelve { 'text': ..., 'suggestions': [...] } y añade SIEMPRE 3–5 'suggestions' adaptadas al rol del usuario y a los recursos disponibles (whitelist). Evita sugerir recursos no disponibles; si un recurso no existe (p. ej., 'alumnos'), sugiere alternativas válidas (p. ej., 'usuarios' o 'cursos').\n" +
+                "- Prohibición de inventar: si un recurso NO está en la whitelist (p.ej., 'alumnos' si no existe endpoint), dilo explícitamente con lenguaje cercano (p. ej., 'no dispongo de datos de ese recurso en este sistema') y NO inventes conteos.\n" +
+                "- El 'text' debe basarse estrictamente en los tool_outputs ejecutados en este flujo; no menciones cantidades de recursos que no hayas consultado o que no existan.\n"
             );
             // Regla para consultas con agregaciones: encadenar tool_calls en el primer turno
             systemPromptSb.append(
@@ -224,6 +246,14 @@ public class ChatService {
                 "\nNavegación mínima:\n" +
                 "- Usa 'Contexto_paginacion' del historial si existe.\n" +
                 "- 'Siguiente' => mismo endpoint y filtros, query.page = next_page o page+1. 'Anterior' => prev_page o page-1 (>=1). 'Ir a página N' => page=N.\n"
+            );
+            // Guía breve: sugerencias en saludos por rol (usar solo recursos disponibles)
+            systemPromptSb.append(
+                "\nSugerencias en saludos (guía por rol; usa únicamente recursos de la whitelist):\n" +
+                "- Admin_plataforma: ['Listar academias'].\n" +
+                "- Admin_academia: ['Ver cursos','Ver alumnos', 'Ver profesores'].\n" +
+                "- Profesor_academia: ['Ver mis cursos','Listar usuarios de mi academia','Ver cursos disponibles'].\n" +
+                "Si un recurso no está disponible (p. ej., 'alumnos'), sustituye por otro válido (p. ej., 'usuarios').\n"
             );
             // Mini-ejemplo de salida para reforzar nombres en castellano y summary_fields
             systemPromptSb.append(
@@ -247,6 +277,17 @@ public class ChatService {
                 "  ]\n" +
                 "}\n" +
                 "(Si hay muchas academias, limita a 3 y sugiere 'continuar' en 'suggestions').\n"
+            );
+            // Micro-ejemplo de recurso no disponible (evitar alucinaciones, tono no técnico)
+            systemPromptSb.append(
+                "\nEjemplo recurso no disponible (solo estructura):\n" +
+                "Entrada: 'dime el total de academias y el total de alumnos'\n" +
+                "Salida: {\n" +
+                "  'text': 'Tenemos 3 academias. Ahora mismo no dispongo de datos de alumnos en este sistema.',\n" +
+                "  'academias': [ { 'id': 308, 'nombre': 'Academia Central' } ],\n" +
+                "  'summary_fields': ['id','nombre'],\n" +
+                "  'suggestions': ['Listar academias','Ver usuarios']\n" +
+                "}\n"
             );
             String systemPrompt = systemPromptSb.toString();
             if (xmlLogger != null) xmlLogger.addStep("ChatService", "System prompt construido y whitelist añadida");
@@ -288,6 +329,8 @@ public class ChatService {
                 logger.debug("[ChatService] Calling OpenAI with seed messages (seedSize={})", seed.size());
                 if (xmlLogger != null) xmlLogger.addStep("OpenAIClient", "Primera llamada a OpenAI (seedSize=" + seed.size() + ")");
             }
+            // Telemetry: tiempo de preparación de seed hasta la primera llamada
+            if (xmlLogger != null) xmlLogger.addStep("Telemetry", "seed_ms=" + (System.currentTimeMillis() - t0));
             if (xmlLogger != null) xmlLogger.addStep("OpenAIClient", "Primera llamada a OpenAI (callChatWithTools)");
             // Pasamos el Authorization (Bearer token) a la llamada a OpenAI service para que las herramientas puedan acceder al token si es necesario
             String rawFirst = openai.callChatWithTools(seed, xmlLogger, authorization);
@@ -431,6 +474,9 @@ public class ChatService {
             List<Map<String, Object>> toolOutputs = new ArrayList<>();
             // Keep metadata of executed tools to enable fast-path without a second OpenAI round-trip
             List<ExecMeta> executed = new ArrayList<>();
+            // Métricas acumuladas de API para resumen de telemetría
+            long totalApiMs = 0L;
+            int totalCallsInBatch = 0;
             
             for (JsonNode tc : assistantMsg.path("tool_calls")) {
                 String callId   = tc.path("id").asText();
@@ -464,6 +510,8 @@ public class ChatService {
                 if ("call_api_batch".equals(funcName)) {
                     // Ejecutar múltiples llamadas dentro de un único tool_call y devolver un resultado agregado
                     List<Map<String,Object>> batchResults = new ArrayList<>();
+                    long batchStart = System.currentTimeMillis();
+                    java.util.List<Long> perCallMs = new java.util.ArrayList<>();
                     try {
                         JsonNode calls = args.path("calls");
                         if (calls != null && calls.isArray()) {
@@ -475,6 +523,7 @@ public class ChatService {
                                 JsonNode bodyB = c.path("body");
                                 Map<String, Object> epB = openai.getEndpointByName(endpointNameB);
                                 String apiResB;
+                                long c0 = System.currentTimeMillis();
                                 if (epB == null) {
                                     apiResB = "{\"error\":\"Endpoint no permitido: " + endpointNameB + "\"}";
                                 } else {
@@ -491,6 +540,8 @@ public class ChatService {
                                         if (xmlLogger != null) xmlLogger.addStep("Authorization", "Fallo autorización (batch): " + exInnerB.getMessage());
                                     }
                                 }
+                                long cMs = System.currentTimeMillis() - c0;
+                                perCallMs.add(cMs);
                                 // track executed meta por call individual
                                 try {
                                     JsonNode parsedB = om.readTree(apiResB);
@@ -506,18 +557,26 @@ public class ChatService {
                                     batchResults.add(Map.of("ok", false, "result", apiResB));
                                 }
                             }
+                            totalCallsInBatch += calls.size();
                         } else {
                             batchResults.add(Map.of("ok", false, "result", Map.of("error","bad_arguments","message","'calls' debe ser un array")));
                         }
                     } catch (Exception exBatch) {
                         batchResults.add(Map.of("ok", false, "result", Map.of("error","exception","message", String.valueOf(exBatch.getMessage()))));
                     }
+                    long batchTotalMs = System.currentTimeMillis() - batchStart;
+                    totalApiMs += batchTotalMs;
                     String contentBatch = om.writeValueAsString(Map.of("ok", true, "results", batchResults));
                     toolOutputs.add(Map.of(
                         "role", "tool",
                         "tool_call_id", callId,
                         "content", contentBatch
                     ));
+                    if (xmlLogger != null) {
+                        try {
+                            xmlLogger.addStep("Telemetry", "batch_metrics calls_in_batch=" + perCallMs.size() + ", batch_total_ms=" + batchTotalMs + ", per_call_ms=" + perCallMs);
+                        } catch (Exception ignore) { }
+                    }
                     continue;
                 }
                 String endpointName = args.path("name").asText();
@@ -625,6 +684,7 @@ public class ChatService {
                 }
                     String apiResult;
                 try {
+                    long apiStartMs = System.currentTimeMillis();
                     // Antes de ejecutar, validar permisos y sanitizar parámetros
                     try {
                         // Prefer delegated token if available, otherwise forward original authorization
@@ -640,6 +700,9 @@ public class ChatService {
                         apiResult = om.writeValueAsString(errMap);
                         if (xmlLogger != null) xmlLogger.addStep("Authorization", "Fallo autorización: " + exInner.getMessage());
                     }
+                    long apiElapsedMs = System.currentTimeMillis() - apiStartMs;
+                    totalApiMs += apiElapsedMs;
+                    if (xmlLogger != null) xmlLogger.addStep("Telemetry", "api_call_ms=" + apiElapsedMs + " (single)");
                     if (xmlLogger != null) xmlLogger.addStep("ApiProxyService", "Respuesta recibida de API: " + endpointName + " (result_snippet=" + (apiResult == null ? "" : (apiResult.length() > 200 ? apiResult.substring(0, 200) + "..." : apiResult)) + ")");
                     if (debug) logger.debug("[ChatService] ApiProxyService result snippet: {}", (apiResult == null ? "" : (apiResult.length() > 200 ? apiResult.substring(0,200) + "..." : apiResult)));
                 } catch (Exception ex) {
@@ -711,7 +774,29 @@ public class ChatService {
                     if (fastEnv != null) {
                         if (xmlLogger != null) xmlLogger.addStep("ChatService", "Fast-path PRE-2º turno aplicado (flag ON)");
                         if (debug) logger.debug("[ChatService] Pre-second fast-path applied (flag)");
-                        return applyFinalFallback(fastEnv);
+                        // Telemetría adicional: origen de sugerencias y señales de paginación del resultado base
+                        try {
+                            ExecMeta meta0 = executed.get(0);
+                            if (meta0 != null && meta0.apiResultNode != null && xmlLogger != null) {
+                                boolean hasMoreField = meta0.apiResultNode.has("has_more") && meta0.apiResultNode.get("has_more").isBoolean();
+                                boolean hasMoreVal = hasMoreField ? meta0.apiResultNode.get("has_more").asBoolean(false) : false;
+                                boolean nextPagePresent = meta0.apiResultNode.has("next_page");
+                                boolean nextPageIsNull = nextPagePresent && meta0.apiResultNode.get("next_page").isNull();
+                                boolean prevPagePresent = meta0.apiResultNode.has("prev_page");
+                                boolean prevPageIsNull = prevPagePresent && meta0.apiResultNode.get("prev_page").isNull();
+                                xmlLogger.addStep("Telemetry",
+                                    "fastpath_suggestions_source=backend, pag_flags has_more=" + hasMoreVal +
+                                    ", has_more_field=" + hasMoreField +
+                                    ", next_page_present=" + nextPagePresent +
+                                    ", next_page_is_null=" + nextPageIsNull +
+                                    ", prev_page_present=" + prevPagePresent +
+                                    ", prev_page_is_null=" + prevPageIsNull
+                                );
+                            }
+                        } catch (Exception ignore) { }
+                        // Opcional: LITE polish del texto del fast-path, sin tool_calls, con timebox y fallback
+                        ResponseEnvelope polished = tryPolishFastpathLite(fastEnv, xmlLogger, authorization, System.currentTimeMillis());
+                        return applyFinalFallback(polished == null ? fastEnv : polished);
                     }
                 } catch (Exception fastEx) {
                     if (debug) logger.debug("[ChatService] Pre-second fast-path failed: {}", fastEx.getMessage());
@@ -744,43 +829,84 @@ public class ChatService {
             followup.add(assistantEcho);
             // Eco recortado: limitar arrays en toolOutputs a una muestra pequeña + metadatos
             int sampleN = Math.max(0, parametros.getModelEchoSampleSize());
+            long reinjectPayloadBytes = 0L;
             for (Map<String,Object> to : toolOutputs) {
                 try {
                     Object contentObj = to.get("content");
                     String contentStr = contentObj == null ? null : String.valueOf(contentObj);
                     JsonNode cnode = contentStr == null ? null : om.readTree(contentStr);
                     if (sampleN > 0 && cnode != null && cnode.isObject()) {
-                        JsonNode items = null;
-                        // buscar clave de array conocida o 'items'
-                        for (String k : parametros.getAllowedTargetsPlural()) {
-                            if (cnode.has(k) && cnode.get(k).isArray()) { items = cnode.get(k); break; }
-                        }
-                        if (items == null && cnode.has("items") && cnode.get("items").isArray()) items = cnode.get("items");
-                        if (items != null && items.size() > sampleN) {
-                            com.fasterxml.jackson.databind.node.ObjectNode trimmed = (com.fasterxml.jackson.databind.node.ObjectNode) cnode.deepCopy();
-                            com.fasterxml.jackson.databind.node.ArrayNode arr = om.createArrayNode();
-                            for (int i=0;i<sampleN;i++) arr.add(items.get(i));
-                            // reemplazar array original por la muestra
-                            boolean replaced = false;
-                            for (String k : parametros.getAllowedTargetsPlural()) {
-                                if (trimmed.has(k) && trimmed.get(k).isArray()) { trimmed.set(k, arr); replaced = true; break; }
+                        // Caso A: wrapper batch => results[].result.{array}
+                        if (cnode.has("results") && cnode.get("results").isArray()) {
+                            com.fasterxml.jackson.databind.node.ObjectNode trimmedBatch = (com.fasterxml.jackson.databind.node.ObjectNode) cnode.deepCopy();
+                            com.fasterxml.jackson.databind.node.ArrayNode results = (com.fasterxml.jackson.databind.node.ArrayNode) trimmedBatch.get("results");
+                            for (int ri = 0; ri < results.size(); ri++) {
+                                JsonNode riNode = results.get(ri);
+                                if (riNode != null && riNode.isObject()) {
+                                    JsonNode resultNode = riNode.get("result");
+                                    if (resultNode != null && resultNode.isObject()) {
+                                        com.fasterxml.jackson.databind.node.ObjectNode rObj = (com.fasterxml.jackson.databind.node.ObjectNode) resultNode.deepCopy();
+                                        JsonNode items = null;
+                                        for (String k : parametros.getAllowedTargetsPlural()) {
+                                            if (rObj.has(k) && rObj.get(k).isArray()) { items = rObj.get(k); break; }
+                                        }
+                                        if (items == null && rObj.has("items") && rObj.get("items").isArray()) items = rObj.get("items");
+                                        if (items != null && items.isArray() && items.size() > sampleN) {
+                                            com.fasterxml.jackson.databind.node.ArrayNode arr = om.createArrayNode();
+                                            for (int i=0;i<sampleN;i++) arr.add(items.get(i));
+                                            boolean replaced = false;
+                                            for (String k : parametros.getAllowedTargetsPlural()) {
+                                                if (rObj.has(k) && rObj.get(k).isArray()) { rObj.set(k, arr); replaced = true; break; }
+                                            }
+                                            if (!replaced && rObj.has("items") && rObj.get("items").isArray()) rObj.set("items", arr);
+                                            rObj.put("returned", items.size());
+                                            rObj.put("sample_of", sampleN);
+                                            ((com.fasterxml.jackson.databind.node.ObjectNode) riNode).set("result", rObj);
+                                        }
+                                    }
+                                }
                             }
-                            if (!replaced && trimmed.has("items") && trimmed.get("items").isArray()) trimmed.set("items", arr);
-                            // añadir metadatos returned/sample_of para que el modelo comprenda que hay más
-                            trimmed.put("returned", items.size());
-                            trimmed.put("sample_of", sampleN);
                             to = new HashMap<>(to);
-                            to.put("content", om.writeValueAsString(trimmed));
+                            to.put("content", om.writeValueAsString(trimmedBatch));
+                        } else {
+                            // Caso B: tool output plano
+                            JsonNode items = null;
+                            for (String k : parametros.getAllowedTargetsPlural()) {
+                                if (cnode.has(k) && cnode.get(k).isArray()) { items = cnode.get(k); break; }
+                            }
+                            if (items == null && cnode.has("items") && cnode.get("items").isArray()) items = cnode.get("items");
+                            if (items != null && items.size() > sampleN) {
+                                com.fasterxml.jackson.databind.node.ObjectNode trimmed = (com.fasterxml.jackson.databind.node.ObjectNode) cnode.deepCopy();
+                                com.fasterxml.jackson.databind.node.ArrayNode arr = om.createArrayNode();
+                                for (int i=0;i<sampleN;i++) arr.add(items.get(i));
+                                boolean replaced = false;
+                                for (String k : parametros.getAllowedTargetsPlural()) {
+                                    if (trimmed.has(k) && trimmed.get(k).isArray()) { trimmed.set(k, arr); replaced = true; break; }
+                                }
+                                if (!replaced && trimmed.has("items") && trimmed.get("items").isArray()) trimmed.set("items", arr);
+                                trimmed.put("returned", items.size());
+                                trimmed.put("sample_of", sampleN);
+                                to = new HashMap<>(to);
+                                to.put("content", om.writeValueAsString(trimmed));
+                            }
                         }
                     }
                 } catch (Exception ignore) {}
+                try {
+                    Object contentObj2 = to.get("content");
+                    String contentStr2 = contentObj2 == null ? null : String.valueOf(contentObj2);
+                    if (contentStr2 != null) reinjectPayloadBytes += contentStr2.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+                } catch (Exception _ignore) {}
                 followup.add(to);
             }
             if (xmlLogger != null) xmlLogger.addStep("OpenAIClient", "Segunda llamada a OpenAI (reinyectando resultados de tools)");
                 if (debug) {
                     System.out.println("[ChatService][DEBUG] Calling OpenAI with followup messages: " + followup);
                 }
+            if (xmlLogger != null) xmlLogger.addStep("Telemetry", "api_ms_total=" + totalApiMs + ", calls_in_batch=" + totalCallsInBatch + ", reinject_payload_bytes=" + reinjectPayloadBytes);
+            long secondStartMs = System.currentTimeMillis();
             JsonNode second = om.readTree(openai.callChatWithTools(followup, xmlLogger, authorization));
+            if (xmlLogger != null) xmlLogger.addStep("Telemetry", "second_ms=" + (System.currentTimeMillis() - secondStartMs));
             // Telemetría: fin de la primera llamada del segundo turno
             if (xmlLogger != null) xmlLogger.addStep("Telemetry", "decision_ms_first_second_turn=" + (System.currentTimeMillis() - t0));
             if (debug) logger.debug("[Telemetry] decision_ms_first_second_turn={} (since start)", (System.currentTimeMillis() - t0));
@@ -801,6 +927,7 @@ public class ChatService {
                 if (xmlLogger != null) xmlLogger.addStep("ChatService", "Segundo turno - iteración extra " + (extraIters+1) + ": procesando tool_calls");
                 // Ejecutar tool_calls devueltos por el 2º turno
                 List<Map<String, Object>> iterToolOutputs = new ArrayList<>();
+                long iterApiMs = 0L;
                 for (JsonNode tc : finalMsg.path("tool_calls")) {
                     String callId   = tc.path("id").asText();
                     String funcName = tc.path("function").path("name").asText();
@@ -821,6 +948,8 @@ public class ChatService {
                     }
                     if ("call_api_batch".equals(funcName)) {
                         List<Map<String,Object>> batchResults = new ArrayList<>();
+                        long batchStartIter = System.currentTimeMillis();
+                        java.util.List<Long> perCallMsIter = new java.util.ArrayList<>();
                         try {
                             JsonNode calls = args.path("calls");
                             if (calls != null && calls.isArray()) {
@@ -832,6 +961,7 @@ public class ChatService {
                                     JsonNode bodyB = c.path("body");
                                     Map<String, Object> epB = openai.getEndpointByName(endpointNameB);
                                     String apiResB;
+                                    long c0 = System.currentTimeMillis();
                                     if (epB == null) {
                                         apiResB = "{\"error\":\"Endpoint no permitido: " + endpointNameB + "\"}";
                                     } else {
@@ -848,6 +978,8 @@ public class ChatService {
                                             if (xmlLogger != null) xmlLogger.addStep("Authorization", "[iter] Fallo autorización (batch): " + exInnerB.getMessage());
                                         }
                                     }
+                                    long cMs = System.currentTimeMillis() - c0;
+                                    perCallMsIter.add(cMs);
                                     try {
                                         JsonNode parsedB = om.readTree(apiResB);
                                         ExecMeta metaB = new ExecMeta();
@@ -868,12 +1000,17 @@ public class ChatService {
                         } catch (Exception exBatch) {
                             batchResults.add(Map.of("ok", false, "result", Map.of("error","exception","message", String.valueOf(exBatch.getMessage()))));
                         }
+                        long batchTotalIter = System.currentTimeMillis() - batchStartIter;
+                        iterApiMs += batchTotalIter;
                         String contentBatch = om.writeValueAsString(Map.of("ok", true, "results", batchResults));
                         iterToolOutputs.add(Map.of(
                             "role", "tool",
                             "tool_call_id", callId,
                             "content", contentBatch
                         ));
+                        if (xmlLogger != null) {
+                            try { xmlLogger.addStep("Telemetry", "[iter] batch_metrics calls_in_batch=" + perCallMsIter.size() + ", batch_total_ms=" + batchTotalIter + ", per_call_ms=" + perCallMsIter); } catch (Exception ignore) {}
+                        }
                         continue;
                     }
                     String endpointName = args.path("name").asText();
@@ -907,12 +1044,16 @@ public class ChatService {
                     }
                     String apiResult;
                     try {
+                        long apiStartMs = System.currentTimeMillis();
                         String authToUse = (delegatedAuth != null) ? delegatedAuth : authorization;
                         if (xmlLogger != null) {
                             apiResult = apiProxy.executeSpecCall(ep, methodFromModel, pathParams, query, body, authToUse, xmlLogger);
                         } else {
                             apiResult = apiProxy.executeSpecCall(ep, methodFromModel, pathParams, query, body, authToUse);
                         }
+                        long apiElapsedMs = System.currentTimeMillis() - apiStartMs;
+                        iterApiMs += apiElapsedMs;
+                        if (xmlLogger != null) xmlLogger.addStep("Telemetry", "[iter] api_call_ms=" + apiElapsedMs + " (single)");
                     } catch (Exception exInner) {
                         Map<String, Object> errMap = Map.of("error", "authorization_failure", "message", exInner.getMessage() == null ? "" : exInner.getMessage());
                         apiResult = om.writeValueAsString(errMap);
@@ -951,37 +1092,79 @@ public class ChatService {
                 iterAssistantEcho.put("tool_calls", om.convertValue(finalMsg.path("tool_calls"), List.class));
                 followup.add(iterAssistantEcho);
                 int sampleN2 = Math.max(0, parametros.getModelEchoSampleSize());
+                long iterReinjectBytes = 0L;
                 for (Map<String,Object> to2 : iterToolOutputs) {
                     try {
                         Object contentObj = to2.get("content");
                         String contentStr = contentObj == null ? null : String.valueOf(contentObj);
                         JsonNode cnode = contentStr == null ? null : om.readTree(contentStr);
                         if (sampleN2 > 0 && cnode != null && cnode.isObject()) {
-                            JsonNode items = null;
-                            for (String k : parametros.getAllowedTargetsPlural()) {
-                                if (cnode.has(k) && cnode.get(k).isArray()) { items = cnode.get(k); break; }
-                            }
-                            if (items == null && cnode.has("items") && cnode.get("items").isArray()) items = cnode.get("items");
-                            if (items != null && items.size() > sampleN2) {
-                                com.fasterxml.jackson.databind.node.ObjectNode trimmed = (com.fasterxml.jackson.databind.node.ObjectNode) cnode.deepCopy();
-                                com.fasterxml.jackson.databind.node.ArrayNode arr = om.createArrayNode();
-                                for (int i=0;i<sampleN2;i++) arr.add(items.get(i));
-                                boolean replaced = false;
-                                for (String k : parametros.getAllowedTargetsPlural()) {
-                                    if (trimmed.has(k) && trimmed.get(k).isArray()) { trimmed.set(k, arr); replaced = true; break; }
+                            if (cnode.has("results") && cnode.get("results").isArray()) {
+                                com.fasterxml.jackson.databind.node.ObjectNode trimmedBatch = (com.fasterxml.jackson.databind.node.ObjectNode) cnode.deepCopy();
+                                com.fasterxml.jackson.databind.node.ArrayNode results = (com.fasterxml.jackson.databind.node.ArrayNode) trimmedBatch.get("results");
+                                for (int ri = 0; ri < results.size(); ri++) {
+                                    JsonNode riNode = results.get(ri);
+                                    if (riNode != null && riNode.isObject()) {
+                                        JsonNode resultNode = riNode.get("result");
+                                        if (resultNode != null && resultNode.isObject()) {
+                                            com.fasterxml.jackson.databind.node.ObjectNode rObj = (com.fasterxml.jackson.databind.node.ObjectNode) resultNode.deepCopy();
+                                            JsonNode items = null;
+                                            for (String k : parametros.getAllowedTargetsPlural()) {
+                                                if (rObj.has(k) && rObj.get(k).isArray()) { items = rObj.get(k); break; }
+                                            }
+                                            if (items == null && rObj.has("items") && rObj.get("items").isArray()) items = rObj.get("items");
+                                            if (items != null && items.isArray() && items.size() > sampleN2) {
+                                                com.fasterxml.jackson.databind.node.ArrayNode arr = om.createArrayNode();
+                                                for (int i=0;i<sampleN2;i++) arr.add(items.get(i));
+                                                boolean replaced = false;
+                                                for (String k : parametros.getAllowedTargetsPlural()) {
+                                                    if (rObj.has(k) && rObj.get(k).isArray()) { rObj.set(k, arr); replaced = true; break; }
+                                                }
+                                                if (!replaced && rObj.has("items") && rObj.get("items").isArray()) rObj.set("items", arr);
+                                                rObj.put("returned", items.size());
+                                                rObj.put("sample_of", sampleN2);
+                                                ((com.fasterxml.jackson.databind.node.ObjectNode) riNode).set("result", rObj);
+                                            }
+                                        }
+                                    }
                                 }
-                                if (!replaced && trimmed.has("items") && trimmed.get("items").isArray()) trimmed.set("items", arr);
-                                trimmed.put("returned", items.size());
-                                trimmed.put("sample_of", sampleN2);
                                 to2 = new HashMap<>(to2);
-                                to2.put("content", om.writeValueAsString(trimmed));
+                                to2.put("content", om.writeValueAsString(trimmedBatch));
+                            } else {
+                                JsonNode items = null;
+                                for (String k : parametros.getAllowedTargetsPlural()) {
+                                    if (cnode.has(k) && cnode.get(k).isArray()) { items = cnode.get(k); break; }
+                                }
+                                if (items == null && cnode.has("items") && cnode.get("items").isArray()) items = cnode.get("items");
+                                if (items != null && items.size() > sampleN2) {
+                                    com.fasterxml.jackson.databind.node.ObjectNode trimmed = (com.fasterxml.jackson.databind.node.ObjectNode) cnode.deepCopy();
+                                    com.fasterxml.jackson.databind.node.ArrayNode arr = om.createArrayNode();
+                                    for (int i=0;i<sampleN2;i++) arr.add(items.get(i));
+                                    boolean replaced = false;
+                                    for (String k : parametros.getAllowedTargetsPlural()) {
+                                        if (trimmed.has(k) && trimmed.get(k).isArray()) { trimmed.set(k, arr); replaced = true; break; }
+                                    }
+                                    if (!replaced && trimmed.has("items") && trimmed.get("items").isArray()) trimmed.set("items", arr);
+                                    trimmed.put("returned", items.size());
+                                    trimmed.put("sample_of", sampleN2);
+                                    to2 = new HashMap<>(to2);
+                                    to2.put("content", om.writeValueAsString(trimmed));
+                                }
                             }
                         }
                     } catch (Exception ignore) {}
+                    try {
+                        Object contentObj2 = to2.get("content");
+                        String contentStr2 = contentObj2 == null ? null : String.valueOf(contentObj2);
+                        if (contentStr2 != null) iterReinjectBytes += contentStr2.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+                    } catch (Exception _ignore) {}
                     followup.add(to2);
                 }
                 // Nueva llamada a OpenAI con los nuevos tool outputs
+                if (xmlLogger != null) xmlLogger.addStep("Telemetry", "[iter] api_ms_total=" + iterApiMs + ", reinject_payload_bytes=" + iterReinjectBytes);
+                long iterSecondStart = System.currentTimeMillis();
                 second = om.readTree(openai.callChatWithTools(followup, xmlLogger, authorization));
+                if (xmlLogger != null) xmlLogger.addStep("Telemetry", "[iter] second_ms=" + (System.currentTimeMillis() - iterSecondStart));
                 if (debug) {
                     try {
                         String prettySecondIter = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(second);
@@ -1009,6 +1192,11 @@ public class ChatService {
                 JsonNode node = om.readTree(finalContent);
                 JsonNode enriched = maybeEnrichWithExecutedItems(node, executed);
                 ResponseEnvelope env = buildEnvelopeFromContentNode(enriched);
+                if (xmlLogger != null) {
+                    int itemsReturned = 0;
+                    try { itemsReturned = env.getData() != null && env.getData().getItems() != null ? env.getData().getItems().size() : 0; } catch (Exception ignore) {}
+                    xmlLogger.addStep("Telemetry", "summary seed_ms+api_ms+second_ms decision_ms=" + (System.currentTimeMillis() - t0) + ", items_returned=" + itemsReturned + ", calls_in_batch=" + totalCallsInBatch);
+                }
                 // Enriquecimiento ligero de presentación solo si está habilitado vía configuración
                 if (parametros.isPresentationEnrichmentEnabled()) {
                     try { applyPresentationEnrichment(env); } catch (Exception ignore) {}
@@ -1477,6 +1665,105 @@ public class ChatService {
             // En caso de cualquier problema, devolver null para seguir con el flujo normal
             return null;
         }
+    }
+
+    // LITE polish del fast-path: timeboxed, sin tool_calls, mejora 'text' y 'suggestions' sin alterar arrays/paginación
+    private ResponseEnvelope tryPolishFastpathLite(ResponseEnvelope base, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization, long startMs) {
+        try {
+            if (base == null || !"success".equals(base.getStatus())) return null;
+            if (!parametros.isFastpathPolishEnabled()) return null;
+            // Heurística opcional: si está activada, aplicar sólo si text es corto o items <= N
+            if (parametros.isFastpathPolishHeuristicEnabled()) {
+                int textLen = base.getMessage() == null ? 0 : base.getMessage().length();
+                int items = (base.getData() == null || base.getData().getItems() == null) ? 0 : base.getData().getItems().size();
+                if (xmlLogger != null) xmlLogger.addStep("Telemetry", "polish_try=true heuristic_enabled=true text_len=" + textLen + ", items=" + items + ", timeout_ms=" + parametros.getFastpathPolishTimeoutMs());
+                if (!(textLen < Math.max(0, parametros.getFastpathPolishMinTextLen()) || items <= Math.max(0, parametros.getFastpathPolishMaxItems()))) {
+                    if (xmlLogger != null) xmlLogger.addStep("Telemetry", "polish_skip_heuristic=true");
+                    return null; // no cumple heurística => no pulimos
+                }
+            }
+            if (!parametros.isFastpathPolishHeuristicEnabled() && xmlLogger != null) {
+                int textLen = base.getMessage() == null ? 0 : base.getMessage().length();
+                int items = (base.getData() == null || base.getData().getItems() == null) ? 0 : base.getData().getItems().size();
+                xmlLogger.addStep("Telemetry", "polish_try=true heuristic_enabled=false text_len=" + textLen + ", items=" + items + ", timeout_ms=" + parametros.getFastpathPolishTimeoutMs());
+            }
+            // Construir prompt mínimo y schema de salida
+            Map<String,Object> sys = Map.of("role","system","content",
+                "Reformula únicamente el campo 'text' a un tono cercano y claro (no técnico), en castellano de España. " +
+                "No inventes datos ni cambies las listas ni la paginación. Devuelve solo un JSON con 'text' y opcionalmente 'suggestions' (2–5 frases cortas y útiles). " +
+                "No realices tool_calls."
+            );
+            // Descriptor compacto del base (solo lo necesario)
+            com.fasterxml.jackson.databind.node.ObjectNode desc = om.createObjectNode();
+            desc.put("text", base.getMessage() == null ? "" : base.getMessage());
+            com.fasterxml.jackson.databind.node.ArrayNode suggIn = om.createArrayNode();
+            if (base.getSuggestions() != null) for (String s : base.getSuggestions()) suggIn.add(s);
+            desc.set("suggestions", suggIn);
+            com.fasterxml.jackson.databind.node.ObjectNode pag = null;
+            if (base.getData() != null && base.getData().getPagination() != null) {
+                pag = om.createObjectNode();
+                var p = base.getData().getPagination();
+                if (p.getPage()!=null) pag.put("page", p.getPage());
+                if (p.getSize()!=null) pag.put("size", p.getSize());
+                if (p.getReturned()!=null) pag.put("returned", p.getReturned());
+                if (p.getHasMore()!=null) pag.put("has_more", p.getHasMore());
+                if (p.getNextPage()!=null) pag.put("next_page", p.getNextPage());
+                if (p.getPrevPage()!=null) pag.put("prev_page", p.getPrevPage());
+                if (p.getTotal()!=null) pag.put("total", p.getTotal());
+                desc.set("pagination", pag);
+            }
+            // Mensajes
+            List<Map<String,Object>> msgs = new ArrayList<>();
+            msgs.add(sys);
+            msgs.add(Map.of("role","user","content","Pulir este mensaje y sugerencias manteniendo el mismo contenido:\n" + desc.toString()));
+            // Schema LITE de salida
+            Map<String,Object> schema = Map.of(
+                "type","object",
+                "additionalProperties", false,
+                "properties", Map.of(
+                    "text", Map.of("type","string","maxLength", presentacion.getTextMaxLength()),
+                    "suggestions", Map.of(
+                        "type","array",
+                        "items", Map.of("type","string","maxLength", presentacion.getSuggestionItemMaxLen()),
+                        "minItems", presentacion.getSuggestionsMin(),
+                        "maxItems", presentacion.getSuggestionsMax()
+                    )
+                ),
+                "required", List.of("text")
+            );
+            Map<String,Object> extras = Map.of(
+                "response_format", Map.of(
+                    "type","json_schema",
+                    "json_schema", Map.of("name","fastpath_polish","schema", schema)
+                )
+            );
+            // Timebox duro: si excede, devolvemos null para hacer fallback inmediato
+            long tStart = System.currentTimeMillis();
+            String raw;
+            try {
+                raw = openai.callChatWithToolsWithExtras(msgs, extras, xmlLogger, authorization);
+            } catch (Exception ex) {
+                if (xmlLogger != null) xmlLogger.addStep("Telemetry", "polish_fallback=true reason=call_error error=" + ex.getMessage());
+                return null;
+            }
+            long elapsed = System.currentTimeMillis() - tStart;
+            if (xmlLogger != null) xmlLogger.addStep("Telemetry", "polish_ms=" + elapsed + ", polish_timeout_hit=" + (elapsed > parametros.getFastpathPolishTimeoutMs()));
+            if (elapsed > parametros.getFastpathPolishTimeoutMs()) { if (xmlLogger != null) xmlLogger.addStep("Telemetry", "polish_fallback=true reason=timeout"); return null; }
+            JsonNode resp = om.readTree(raw == null ? "" : raw);
+            JsonNode msg = resp.path("choices").get(0).path("message").path("content");
+            String content = msg.isMissingNode() ? "" : msg.asText("");
+            JsonNode node;
+            try { node = om.readTree(content); } catch (Exception ex) { if (xmlLogger != null) xmlLogger.addStep("Telemetry", "polish_fallback=true reason=parse_error"); return null; }
+            String newText = node.has("text") && node.get("text").isTextual()? node.get("text").asText("") : null;
+            List<String> newSugg = new ArrayList<>();
+            JsonNode ns = node.get("suggestions");
+            if (ns != null && ns.isArray()) for (JsonNode s : ns) if (s.isTextual()) newSugg.add(s.asText());
+            if (newText == null || newText.isBlank()) return null;
+            // Construir nuevo envelope con el mismo data y las secciones pulidas
+            ResponseEnvelope out = ResponseEnvelope.success(newText, base.getData(), newSugg.isEmpty()? base.getSuggestions() : newSugg, base.getMessages());
+            if (xmlLogger != null) xmlLogger.addStep("Telemetry", "polish_applied=true");
+            return out;
+        } catch (Exception ignore) { return null; }
     }
     
     // Fallback final: si el mensaje sale vacío y no hay items, devolvemos un saludo útil y sugerencias por defecto

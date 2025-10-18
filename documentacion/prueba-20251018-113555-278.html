@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Flujo de la prueba: prueba-20251018-113555-278</title>
+<style>body{font-family:sans-serif;} table{border-collapse:collapse;width:100%;margin-top:1em;} th,td{border:1px solid #ccc;padding:8px;text-align:left;} th{background:#f0f0f0;} tr:nth-child(even){background:#fafafa;} .step{margin-bottom:1em;} .timestamp{color:#888;font-size:0.9em;} td.desc{white-space:pre-wrap;}</style>
+</head><body>
+<h2>Flujo de la prueba: prueba-20251018-113555-278</h2>
+<table>
+<thead><tr><th>Paso</th><th>Descripción</th><th>Timestamp</th></tr></thead>
+<tbody>
+<tr class='step'><td>1. ChatController</td><td class='desc'>Recibida petición POST /chat - Mensajes recibidos (1):
+[1] user: quiero que me des el listado de usuarios bloqueados
+</td><td class='timestamp'>2025-10-18 11:35:55.278</td></tr>
+<tr class='step'><td>2. ChatController</td><td class='desc'>JWT válido: usuarioId=1475, roles=[Admin_plataforma], academiaId=null</td><td class='timestamp'>2025-10-18 11:35:55.280</td></tr>
+<tr class='step'><td>3. ChatService</td><td class='desc'>Inicio de runChat</td><td class='timestamp'>2025-10-18 11:35:55.282</td></tr>
+<tr class='step'><td>4. ChatService</td><td class='desc'>Delegated token creado: preview=Bearer e..., token_sha4=7fcf401f</td><td class='timestamp'>2025-10-18 11:35:55.292</td></tr>
+<tr class='step'><td>5. ChatService</td><td class='desc'>System prompt construido y whitelist añadida</td><td class='timestamp'>2025-10-18 11:35:55.292</td></tr>
+<tr class='step'><td>6. ChatService</td><td class='desc'>Mensajes de usuario preparados para OpenAI</td><td class='timestamp'>2025-10-18 11:35:55.292</td></tr>
+<tr class='step'><td>7. OpenAIClient</td><td class='desc'>Primera llamada a OpenAI (seedSize=3)</td><td class='timestamp'>2025-10-18 11:35:55.294</td></tr>
+<tr class='step'><td>8. Telemetry</td><td class='desc'>seed_ms=13</td><td class='timestamp'>2025-10-18 11:35:55.294</td></tr>
+<tr class='step'><td>9. OpenAIClient</td><td class='desc'>Primera llamada a OpenAI (callChatWithTools)</td><td class='timestamp'>2025-10-18 11:35:55.294</td></tr>
+<tr class='step'><td>10. OpenAI</td><td class='desc'>Llamada a OpenAI (iteración 0) - mensajes: [system] Eres un asistente (secretaria) para una plataforma de academias en España. Solo puedes acceder a los recursos de la API ... | [system] Perfil_usuario: {&quot;nombre&quot;:&quot;Admin Plataforma&quot;,&quot;id&quot;:1475} | [user] quiero que me des el listado de usuarios bloqueados | </td><td class='timestamp'>2025-10-18 11:35:55.296</td></tr>
+<tr class='step'><td>11. OpenAIClient</td><td class='desc'>OpenAI primera respuesta parseada a JSON</td><td class='timestamp'>2025-10-18 11:35:56.308</td></tr>
+<tr class='step'><td>12. Telemetry</td><td class='desc'>parse_ms=1027</td><td class='timestamp'>2025-10-18 11:35:56.308</td></tr>
+<tr class='step'><td>13. OpenAIClient</td><td class='desc'>Procesando tool_call: call_api</td><td class='timestamp'>2025-10-18 11:35:56.308</td></tr>
+<tr class='step'><td>14. ApiProxyService</td><td class='desc'>Llamada a API: usuarios.listar_usuarios (GET)&lt;br&gt;pathParams=&lt;br&gt;query={&quot;estado&quot;:&quot;bloqueado&quot;}&lt;br&gt;body=</td><td class='timestamp'>2025-10-18 11:35:56.308</td></tr>
+<tr class='step'><td>15. ApiProxyService</td><td class='desc'>Authorization preview=Bearer e..., token_sha4=7fcf401f</td><td class='timestamp'>2025-10-18 11:35:56.308</td></tr>
+<tr class='step'><td>16. Telemetry</td><td class='desc'>api_call_ms=252 (single)</td><td class='timestamp'>2025-10-18 11:35:56.560</td></tr>
+<tr class='step'><td>17. ApiProxyService</td><td class='desc'>Respuesta recibida de API: usuarios.listar_usuarios (result_snippet={
+  &quot;has_more&quot;: false,
+  &quot;items&quot;: [
+    {
+      &quot;academia_id&quot;: 308,
+      &quot;email&quot;: &quot;bloqueado@academia.com&quot;,
+      &quot;estado&quot;: &quot;Bloqueado&quot;,
+      &quot;fecha_alta&quot;: &quot;2025-10-16T13:59:07&quot;,
+      &quot;id&quot;: 1473,
+ ...)</td><td class='timestamp'>2025-10-18 11:35:56.560</td></tr>
+<tr class='step'><td>18. ChatService</td><td class='desc'>Fast-path PRE-2º turno aplicado (flag ON)</td><td class='timestamp'>2025-10-18 11:35:56.568</td></tr>
+<tr class='step'><td>19. Telemetry</td><td class='desc'>fastpath_suggestions_source=backend, pag_flags has_more=false, has_more_field=true, next_page_present=true, next_page_is_null=true, prev_page_present=true, prev_page_is_null=true</td><td class='timestamp'>2025-10-18 11:35:56.568</td></tr>
+<tr class='step'><td>20. Telemetry</td><td class='desc'>polish_try=true heuristic_enabled=false text_len=23, items=5, timeout_ms=500</td><td class='timestamp'>2025-10-18 11:35:56.569</td></tr>
+<tr class='step'><td>21. OpenAI</td><td class='desc'>Llamada a OpenAI (iteración 0) - mensajes: [system] Reformula únicamente el campo &#39;text&#39; a un tono cercano y claro (no técnico), en castellano de España. No inventes datos ... | [user] Pulir este mensaje y sugerencias manteniendo el mismo contenido:
+{&quot;text&quot;:&quot;He obtenido 5 usuarios.&quot;,&quot;suggestions&quot;:[&quot;Sigui... | </td><td class='timestamp'>2025-10-18 11:35:56.573</td></tr>
+<tr class='step'><td>22. Telemetry</td><td class='desc'>polish_ms=951, polish_timeout_hit=true</td><td class='timestamp'>2025-10-18 11:35:57.521</td></tr>
+<tr class='step'><td>23. Telemetry</td><td class='desc'>polish_fallback=true reason=timeout</td><td class='timestamp'>2025-10-18 11:35:57.521</td></tr>
+<tr class='step'><td>24. ChatController</td><td class='desc'>runChat() completado (controller_ms_desde_inicio=2243, run_ms=2240)</td><td class='timestamp'>2025-10-18 11:35:57.521</td></tr>
+<tr class='step'><td>25. ChatController</td><td class='desc'>Respuesta generada por ChatService (pretty)=
+{
+  &quot;status&quot; : &quot;success&quot;,
+  &quot;message&quot; : &quot;He obtenido 5 usuarios.&quot;,
+  &quot;data&quot; : {
+    &quot;type&quot; : &quot;usuarios&quot;,
+    &quot;items&quot; : [ {
+      &quot;academia_id&quot; : 308,
+      &quot;email&quot; : &quot;bloqueado@academia.com&quot;,
+      &quot;estado&quot; : &quot;Bloqueado&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-16T13:59:07&quot;,
+      &quot;id&quot; : 1473,
+      &quot;nombre&quot; : &quot;Usuario Bloqueado&quot;,
+      &quot;rol&quot; : &quot;Admin_plataforma&quot;
+    }, {
+      &quot;academia_id&quot; : null,
+      &quot;email&quot; : &quot;admin_plataforma_2@academia.com&quot;,
+      &quot;estado&quot; : &quot;Bloqueado&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-16T13:59:10&quot;,
+      &quot;id&quot; : 1478,
+      &quot;nombre&quot; : &quot;Admin Plataforma 2&quot;,
+      &quot;rol&quot; : &quot;Admin_plataforma&quot;
+    }, {
+      &quot;academia_id&quot; : 309,
+      &quot;email&quot; : &quot;user_academia_1_1@academia.com&quot;,
+      &quot;estado&quot; : &quot;Bloqueado&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-16T13:59:11&quot;,
+      &quot;id&quot; : 1480,
+      &quot;nombre&quot; : &quot;User Academia 1.1&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 309,
+      &quot;email&quot; : &quot;user_academia_1_2@academia.com&quot;,
+      &quot;estado&quot; : &quot;Bloqueado&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-16T13:59:11&quot;,
+      &quot;id&quot; : 1481,
+      &quot;nombre&quot; : &quot;User Academia 1.2&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : null,
+      &quot;email&quot; : &quot;reserve_admin_plataforma_2@academia.com&quot;,
+      &quot;estado&quot; : &quot;Bloqueado&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-16T13:59:15&quot;,
+      &quot;id&quot; : 1490,
+      &quot;nombre&quot; : &quot;Reserve Admin Plataforma 2&quot;,
+      &quot;rol&quot; : &quot;Admin_plataforma&quot;
+    } ],
+    &quot;pagination&quot; : {
+      &quot;page&quot; : 1,
+      &quot;size&quot; : 20,
+      &quot;returned&quot; : 5,
+      &quot;hasMore&quot; : false
+    },
+    &quot;summaryFields&quot; : [ &quot;nombre&quot;, &quot;email&quot; ]
+  },
+  &quot;suggestions&quot; : [ &quot;Siguiente página&quot;, &quot;Exportar a CSV&quot;, &quot;Exportar a Excel&quot; ],
+  &quot;messages&quot; : [ ]
+}</td><td class='timestamp'>2025-10-18 11:35:57.527</td></tr>
+<tr class='step'><td>26. ChatController</td><td class='desc'>HTTP listo (server_total_ms=2249, serialize_ms=6, items=5, type=&#39;usuarios&#39;, envelope_chars=1705, envelope_bytes=1706)</td><td class='timestamp'>2025-10-18 11:35:57.527</td></tr>
+</tbody></table>
+</body></html>

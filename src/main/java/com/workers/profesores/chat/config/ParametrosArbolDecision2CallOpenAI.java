@@ -83,6 +83,13 @@ public class ParametrosArbolDecision2CallOpenAI {
     // Muestra máxima de ítems a reinyectar al 2º turno (eco recortado)
     private int modelEchoSampleSize = 5;
 
+    // Fast-path polish LITE (post fast-path, pulido de texto)
+    private boolean fastpathPolishEnabled = true; // aplicar al 100% de fast-path por defecto
+    private int fastpathPolishTimeoutMs = 500;    // timebox duro en ms
+    private boolean fastpathPolishHeuristicEnabled = false; // desactivado: aplicar siempre salvo que se cambie por config
+    private int fastpathPolishMinTextLen = 0;     // si se activa heurística: activar solo si text base < N
+    private int fastpathPolishMaxItems = Integer.MAX_VALUE; // si se activa heurística: activar si items <= N
+
     // Getters
     public boolean isSecondTurnLiteEnabled() { return secondTurnLiteEnabled; }
     public boolean isFastpathEnabled() { return fastpathEnabled; }
@@ -101,6 +108,11 @@ public class ParametrosArbolDecision2CallOpenAI {
     public boolean isPreSecondFastpathEnabled() { return preSecondFastpathEnabled; }
     public boolean isPresentationEnrichmentEnabled() { return presentationEnrichmentEnabled; }
     public int getModelEchoSampleSize() { return modelEchoSampleSize; }
+    public boolean isFastpathPolishEnabled() { return fastpathPolishEnabled; }
+    public int getFastpathPolishTimeoutMs() { return fastpathPolishTimeoutMs; }
+    public boolean isFastpathPolishHeuristicEnabled() { return fastpathPolishHeuristicEnabled; }
+    public int getFastpathPolishMinTextLen() { return fastpathPolishMinTextLen; }
+    public int getFastpathPolishMaxItems() { return fastpathPolishMaxItems; }
 
     // Setters opcionales para tests o configuración programática
     public ParametrosArbolDecision2CallOpenAI setSecondTurnLiteEnabled(boolean v) { this.secondTurnLiteEnabled = v; return this; }
@@ -120,4 +132,9 @@ public class ParametrosArbolDecision2CallOpenAI {
     public ParametrosArbolDecision2CallOpenAI setPreSecondFastpathEnabled(boolean v) { this.preSecondFastpathEnabled = v; return this; }
     public ParametrosArbolDecision2CallOpenAI setPresentationEnrichmentEnabled(boolean v) { this.presentationEnrichmentEnabled = v; return this; }
     public ParametrosArbolDecision2CallOpenAI setModelEchoSampleSize(int v) { this.modelEchoSampleSize = v; return this; }
+    public ParametrosArbolDecision2CallOpenAI setFastpathPolishEnabled(boolean v) { this.fastpathPolishEnabled = v; return this; }
+    public ParametrosArbolDecision2CallOpenAI setFastpathPolishTimeoutMs(int v) { this.fastpathPolishTimeoutMs = v; return this; }
+    public ParametrosArbolDecision2CallOpenAI setFastpathPolishHeuristicEnabled(boolean v) { this.fastpathPolishHeuristicEnabled = v; return this; }
+    public ParametrosArbolDecision2CallOpenAI setFastpathPolishMinTextLen(int v) { this.fastpathPolishMinTextLen = v; return this; }
+    public ParametrosArbolDecision2CallOpenAI setFastpathPolishMaxItems(int v) { this.fastpathPolishMaxItems = v; return this; }
 }

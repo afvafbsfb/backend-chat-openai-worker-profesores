@@ -1,9 +1,22 @@
 # Documentación de herramientas y scripts
 
+C:\Users\Angel FV\Desktop\FORMACION\chat_backend_academia\backend-chat-openai-worker-profesores> 
 
 #  para compilar el proyecto
 mvn -v
 mvn compile
+# Limpiar y compilar
+mvn clean compile
+# Ejecutar tests unitarios
+mvn test
+# Limpiar y ejecutar tests (compila)
+mvn clean test
+# Compilar + tests + empaquetar (jar)
+mvn clean package
+# Verificación completa (incluye tests; útil si hay ITs)
+mvn clean verify
+# (Opcional) construir sin tests
+mvn clean package -DskipTests
 
 # levantar el backend-chat openai en local
 mvn spring-boot:run -e -X
@@ -12,46 +25,12 @@ spring-boot:run: arranca la app directamente desde el código fuente.
 -e: muestra stack traces completos si falla algo.
 -X: modo debug de Maven (muchísima traza). Úsalo solo cuando necesites diagnosticar.
 
-# desde la raíz del repo api-workers-profesores. Levantar API (usa RDS dev: DB_ENV=developmentAWS)
-$env:DB_ENV = 'developmentAWS';
-$env:JWT_SECRET_KEY = 'mi_secret_app_local_larga';
-$env:JWT_DELEGATION_SECRET = 'mi_secret_delegacion_local_larga';
-$env:DEBUG = '1';
-$env:FLASK_DEBUG = '1';
-$env:APP_ENV = 'development';
-if (Test-Path '.venv\Scripts\Activate.ps1') { . '.venv\Scripts\Activate.ps1' }
-python -u main.py
-
-o bien usar:
-
-.\scripts\run_api_with_cleanup.ps1 -JwtSecret 'mi_secret_app_local_larga' -DelegationSecret 'mi_secret_delegacion_local_larga'
-
-
-Levantar backend-chat (apuntar a http://localhost:5000)
-coge las propiedades de los ficheros de properties, ya no es necesario definir antes las vbles de entorno:
-
-
-ademas de tener el ficheor configurado  application-properties en resources del backend-chat --> ((openai.mock=false))
-#$env:DEBUG = '1';
-#$env:OPENAI_API_KEY = 'sk-proj-8j.....'
-#$env:JWT_DELEGATION_SECRET="mi_secret_delegacion_local_larga";
-#$env:JWT_DELEGATION_EXPIRATIONMINUTES = '5' 
-#$env:DUMP_SECRETS = '1' 
-
-PS C:\Users\Angel FV\Desktop\FORMACION\chat_backend_academia\backend-chat-openai-worker-profesores> mvn spring-boot:run -e -X
-######mvn spring-boot:run -e -X
-
-
-
 
 # fuerza mock para evitar llamadas a OpenAI, ponerlo en los ficheros de properties
 .\mvnw.cmd spring-boot:run -Dopenai.mock=true -Dbackend.debug=true
 
 
-
-
 # configura secret y TTL (temporal en la sesión de PowerShell). en los ficheros de properties
-
 
 $env:DEBUG = '1'
 
@@ -62,19 +41,10 @@ if (-not (Test-Path .\logs)) { New-Item -ItemType Directory -Path .\logs | Out-N
 if (Test-Path .\logs\pytest_mediator_chat.log) { Remove-Item .\logs\pytest_mediator_chat.log -Force }
 
 
-#ejecutar el backend en local
-
-mvn --% spring-boot:run -Dspring-boot.run.jvmArguments="-Dbackend.debug=true -Djwt.delegation.secret=mi_secret_delegacion_local_larga" -Dspring-boot.run.arguments="--openai.mock=false --academia.api.baseurl=http://localhost:5000 --backend.debug=true --debug.api.proxy=true" 2>&1 | Tee-Object -FilePath .\logs\mediator_stdout.log
-
-
-
 # Ejecutar pytest para el test que quiere verificar el flujo -s para ver prints
 # Capturamos la salida y la guardamos a logs\pytest_mediator_chat.log
 
 pytest -q tests/chat/test_mediator_chat.py::test_mediator_list_requests -s 2>&1 | Tee-Object -FilePath .\logs\pytest_mediator_chat.log
-
-
-
 
 
 PS C:\Users\Angel FV\Desktop\FORMACION\chat_backend_academia\backend-chat-openai-worker-profesores> & mvn "-Dopenai.mock=true" "-Dacademia.api.baseurl=http://localhost:5000" "-Dbackend.debug=true" "-Ddebug.api.proxy=true" spring-boot:run
