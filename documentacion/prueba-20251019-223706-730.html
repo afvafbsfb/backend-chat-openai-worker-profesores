@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Flujo de la prueba: prueba-20251019-223706-730</title>
+<style>body{font-family:sans-serif;} table{border-collapse:collapse;width:100%;margin-top:1em;} th,td{border:1px solid #ccc;padding:8px;text-align:left;} th{background:#f0f0f0;} tr:nth-child(even){background:#fafafa;} .step{margin-bottom:1em;} .timestamp{color:#888;font-size:0.9em;} td.desc{white-space:pre-wrap;}</style>
+</head><body>
+<h2>Flujo de la prueba: prueba-20251019-223706-730</h2>
+<table>
+<thead><tr><th>Paso</th><th>Descripción</th><th>Timestamp</th></tr></thead>
+<tbody>
+<tr class='step'><td>1. ChatController</td><td class='desc'>Recibida petición POST /chat - Mensajes recibidos (3):
+[1] assistant: Mostrando página 1 de usuarios
+[2] assistant: Paginacion_token: {&quot;token&quot;:&quot;eyJ0YXJnZXRfcGFnZSI6Miwic2l6ZSI6NTAsInBhZ2UiOjEsInR5cGUiOiJ1c3VhcmlvcyJ9.&quot;}
+[3] user: Siguiente
+</td><td class='timestamp'>2025-10-19 22:37:06.730</td></tr>
+<tr class='step'><td>2. ChatController</td><td class='desc'>JWT válido: usuarioId=1496, roles=[Admin_plataforma], academiaId=null</td><td class='timestamp'>2025-10-19 22:37:06.731</td></tr>
+<tr class='step'><td>3. ChatService</td><td class='desc'>Inicio de runChat</td><td class='timestamp'>2025-10-19 22:37:06.732</td></tr>
+<tr class='step'><td>4. ChatService</td><td class='desc'>Delegated token creado: preview=Bearer e..., token_sha4=5050f20c</td><td class='timestamp'>2025-10-19 22:37:06.737</td></tr>
+<tr class='step'><td>5. ChatService</td><td class='desc'>System prompt construido y whitelist añadida</td><td class='timestamp'>2025-10-19 22:37:06.737</td></tr>
+<tr class='step'><td>6. ChatService</td><td class='desc'>Mensajes de usuario preparados para OpenAI</td><td class='timestamp'>2025-10-19 22:37:06.737</td></tr>
+<tr class='step'><td>7. Planner</td><td class='desc'>Planner round intento=1 (tool_choice=require plan_api, temp=0)</td><td class='timestamp'>2025-10-19 22:37:06.737</td></tr>
+<tr class='step'><td>8. OpenAI</td><td class='desc'>Llamada a OpenAI (iteración 0) - mensajes: [system] Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), brev... | [system] Perfil_usuario: {&quot;nombre&quot;:&quot;Admin Plataforma&quot;,&quot;id&quot;:1496} | [assistant] Mostrando página 1 de usuarios | [user] Siguiente | [system] ROL: Eres un planificador de llamadas a API. Tu objetivo es decidir si corresponde planificar una llamada real a la API ... | </td><td class='timestamp'>2025-10-19 22:37:06.740</td></tr>
+<tr class='step'><td>9. Planner</td><td class='desc'>Plan ejecutado directamente: usuarios.listar_usuarios</td><td class='timestamp'>2025-10-19 22:37:07.916</td></tr>
+<tr class='step'><td>10. Telemetry</td><td class='desc'>planner_success=true attempt=1</td><td class='timestamp'>2025-10-19 22:37:07.917</td></tr>
+<tr class='step'><td>11. OpenAIClient</td><td class='desc'>Segunda llamada (post-planner) a OpenAI con reformat/schema</td><td class='timestamp'>2025-10-19 22:37:07.917</td></tr>
+<tr class='step'><td>12. OpenAI</td><td class='desc'>Llamada a OpenAI (sin herramientas) - mensajes: [system] Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), brev... | [system] Perfil_usuario: {&quot;nombre&quot;:&quot;Admin Plataforma&quot;,&quot;id&quot;:1496} | [assistant] Mostrando página 1 de usuarios | [user] Siguiente | [assistant]  tool_calls: [{function={name=call_api, arguments={&quot;method&quot;:&quot;GET&quot;,&quot;pathParams&quot;:{},&quot;query&quot;:{&quot;page&quot;:2,&quot;size&quot;:50},&quot;name&quot;:&quot;usuarios.listar_usuarios&quot;,&quot;body&quot;:{}}}, id=planner_call_1, type=function}] | [tool] {
+  &quot;has_more&quot;: false,
+  &quot;items&quot;: [
+    {
+      &quot;academia_id&quot;: 313,
+      &quot;email&quot;: &quot;prof_a2_08@academia.com&quot;,
+      &quot;est... tool_call_id: planner_call_1 | </td><td class='timestamp'>2025-10-19 22:37:07.917</td></tr>
+<tr class='step'><td>13. Planner</td><td class='desc'>Fallo en post-planner second turn: argument &quot;content&quot; is null</td><td class='timestamp'>2025-10-19 22:37:08.253</td></tr>
+<tr class='step'><td>14. OpenAI</td><td class='desc'>Llamada a OpenAI (sin herramientas) - mensajes: [system] Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), brev... | [system] Perfil_usuario: {&quot;nombre&quot;:&quot;Admin Plataforma&quot;,&quot;id&quot;:1496} | [assistant] Mostrando página 1 de usuarios | [user] Siguiente | [assistant]  tool_calls: [{function={name=call_api, arguments={&quot;method&quot;:&quot;GET&quot;,&quot;pathParams&quot;:{},&quot;query&quot;:{&quot;page&quot;:2,&quot;size&quot;:50},&quot;name&quot;:&quot;usuarios.listar_usuarios&quot;,&quot;body&quot;:{}}}, id=planner_call_1, type=function}] | [tool] {
+  &quot;has_more&quot;: false,
+  &quot;items&quot;: [
+    {
+      &quot;academia_id&quot;: 313,
+      &quot;email&quot;: &quot;prof_a2_08@academia.com&quot;,
+      &quot;est... tool_call_id: planner_call_1 | [user] Por favor, devuelve únicamente un objeto JSON válido con al menos la propiedad &#39;text&#39; (string) y que &#39;text&#39; NO esté vací... | </td><td class='timestamp'>2025-10-19 22:37:08.253</td></tr>
+<tr class='step'><td>15. ChatController</td><td class='desc'>runChat() completado (controller_ms_desde_inicio=1902, run_ms=1901)</td><td class='timestamp'>2025-10-19 22:37:08.632</td></tr>
+<tr class='step'><td>16. ChatController</td><td class='desc'>Respuesta generada por ChatService (pretty)=
+{
+  &quot;status&quot; : &quot;success&quot;,
+  &quot;message&quot; : &quot;Mostrando página 2. (2 en esta página)&quot;,
+  &quot;data&quot; : {
+    &quot;type&quot; : &quot;usuarios&quot;,
+    &quot;items&quot; : [ {
+      &quot;academia_id&quot; : 313,
+      &quot;email&quot; : &quot;prof_a2_08@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:10&quot;,
+      &quot;id&quot; : 1543,
+      &quot;nombre&quot; : &quot;Profesor A2 08&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 313,
+      &quot;email&quot; : &quot;prof_a2_09@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:10&quot;,
+      &quot;id&quot; : 1544,
+      &quot;nombre&quot; : &quot;Profesor A2 09&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    } ],
+    &quot;pagination&quot; : {
+      &quot;page&quot; : 2,
+      &quot;size&quot; : 50,
+      &quot;returned&quot; : 2,
+      &quot;hasMore&quot; : false,
+      &quot;prevPage&quot; : 1
+    }
+  },
+  &quot;uiSuggestions&quot; : [ {
+    &quot;id&quot; : &quot;pg-prev&quot;,
+    &quot;displayText&quot; : &quot;Anterior&quot;,
+    &quot;type&quot; : &quot;Paginacion&quot;,
+    &quot;pagination&quot; : {
+      &quot;direction&quot; : &quot;prev&quot;,
+      &quot;page&quot; : 1,
+      &quot;size&quot; : 50
+    },
+    &quot;contextToken&quot; : &quot;eyJ0YXJnZXRfcGFnZSI6MSwic2l6ZSI6NTAsInBhZ2UiOjIsInR5cGUiOiJ1c3VhcmlvcyJ9.&quot;
+  } ],
+  &quot;messages&quot; : [ ]
+}</td><td class='timestamp'>2025-10-19 22:37:08.634</td></tr>
+<tr class='step'><td>17. ChatController</td><td class='desc'>HTTP listo (server_total_ms=1904, serialize_ms=2, items=2, type=&#39;usuarios&#39;, envelope_chars=1114, envelope_bytes=1116)</td><td class='timestamp'>2025-10-19 22:37:08.634</td></tr>
+</tbody></table>
+</body></html>

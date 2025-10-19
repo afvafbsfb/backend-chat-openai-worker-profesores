@@ -112,6 +112,8 @@ public class ChatService {
         } catch (Exception ignore) { return query; }
     }
 
+    // (Eliminado) No se realiza detección de saludo en backend: la IA decide cómo responder
+
     // Si el segundo turno normal devolvió solo {text,...} sin arrays de recursos, añadimos los items/paginación reales del tool_call ejecutado
     private JsonNode maybeEnrichWithExecutedItems(JsonNode modelNode, List<ExecMeta> executed) {
         try {
@@ -297,6 +299,195 @@ public class ChatService {
                 ));
             }
             if (xmlLogger != null) xmlLogger.addStep("ChatService", "Mensajes de usuario preparados para OpenAI");
+
+            // 1.5) Planner siempre-on: primer intento de planificar y ejecutar directamente (con 1 retry)
+            // Sin heurísticas de saludo en backend: siempre dejamos que el planner se intente ejecutar
+            try {
+                // Mensaje de guía específico para el planner (reglas + sinónimos + ejemplos + whitelist)
+                String plannerGuidance = promptBuilder.buildPlannerGuidance(openai);
+                List<Map<String, Object>> plannerSeed = new ArrayList<>(seed);
+                plannerSeed.add(Map.of("role","system","content", plannerGuidance));
+                boolean plannerSucceeded = false;
+                int maxPlannerAttempts = Math.max(1, parametros.getPlannerMaxAttempts());
+                for (int attempt = 1; attempt <= maxPlannerAttempts && !plannerSucceeded; attempt++) {
+                    if (xmlLogger != null) xmlLogger.addStep("Planner", "Planner round intento=" + attempt + " (tool_choice=require plan_api, temp=0)");
+                    String rawPlan = openai.callPlannerStrict(plannerSeed, xmlLogger, authorization);
+                    JsonNode planNode = om.readTree(rawPlan);
+                    // Buscar tool_calls -> function name == plan_api
+                    JsonNode choices = planNode.path("choices");
+                    if (choices.isArray() && choices.size() > 0) {
+                        JsonNode msg = choices.get(0).path("message");
+                        JsonNode toolCalls = msg.path("tool_calls");
+                        if (toolCalls.isArray()) {
+                            boolean foundAny = false;
+                            for (JsonNode tc : toolCalls) {
+                            String fname = tc.path("function").path("name").asText("");
+                            if (!"plan_api".equals(fname)) continue;
+                                foundAny = true;
+                            // arguments debe contener endpoint/method/pathParams/query/page/size
+                            String argsStr = tc.path("function").path("arguments").asText("");
+                            JsonNode args = null;
+                            try { args = om.readTree(argsStr); } catch (Exception ex) { args = tc.path("function").path("arguments"); }
+                            if (args == null || !args.isObject()) continue;
+                            String epName = args.path("endpoint").asText(null);
+                            String methodFromModel = args.path("method").asText("GET");
+                            JsonNode pathParams = args.path("pathParams"); if (pathParams == null || pathParams.isMissingNode()) pathParams = om.createObjectNode();
+                            JsonNode query      = args.path("query"); if (query == null || query.isMissingNode()) query = om.createObjectNode();
+                            // page/size opcionales: si vienen, inserta en query antes de sanitizar
+                            if (args.has("page") && args.get("page").canConvertToInt()) ((com.fasterxml.jackson.databind.node.ObjectNode)query).put("page", args.get("page").asInt());
+                            if (args.has("size") && args.get("size").canConvertToInt()) ((com.fasterxml.jackson.databind.node.ObjectNode)query).put("size", args.get("size").asInt());
+                            Map<String,Object> ep = openai.getEndpointByName(epName);
+                            if (ep == null) continue;
+                            // Sanitiza paginación y ejecuta
+                            JsonNode qEff = sanitizePagination(ep, methodFromModel, query);
+                            String authToUse = delegatedAuthUpfront != null ? delegatedAuthUpfront : authorization;
+                            String apiRaw = (xmlLogger != null)
+                                ? apiProxy.executeSpecCall(ep, methodFromModel, pathParams, qEff, om.createObjectNode(), authToUse, xmlLogger)
+                                : apiProxy.executeSpecCall(ep, methodFromModel, pathParams, qEff, om.createObjectNode(), authToUse);
+                            JsonNode apiNode = om.readTree(apiRaw);
+                            // Construir envelope directo desde el resultado
+                            String target = extractTargetFromEndpointName(epName);
+                            ItemsAndPagination ip = findItemsArray(apiNode, target);
+                            List<JsonNode> items = (ip == null || ip.items == null) ? List.of() : ip.items;
+                            PaginationInfo pagination = null;
+                            if (ip != null && ip.pagination != null && ip.pagination.isObject()) {
+                                JsonNode p = ip.pagination;
+                                pagination = PaginationInfo.of(
+                                    p.path("page").isNumber()? p.get("page").asInt() : qEff.path("page").isNumber()? qEff.get("page").asInt() : 1,
+                                    p.path("size").isNumber()? p.get("size").asInt() : qEff.path("size").isNumber()? qEff.get("size").asInt() : 50,
+                                    p.path("returned").isNumber()? p.get("returned").asInt() : items.size(),
+                                    p.path("has_more").isBoolean()? p.get("has_more").asBoolean() : (items.size() >= (qEff.path("size").isNumber()? qEff.get("size").asInt() : 50)),
+                                    p.path("next_page").isNumber()? p.get("next_page").asInt() : null,
+                                    p.path("prev_page").isNumber()? p.get("prev_page").asInt() : null,
+                                    p.path("total").isNumber()? p.get("total").asInt() : null
+                                );
+                            }
+                            DataSection data = DataSection.of(target == null ? guessTargetFromItems(items) : target, items, pagination);
+                            ResponseEnvelope env = ResponseEnvelope.success("", data, List.of(), List.of());
+                            // Lazy total si falta
+                            try {
+                                if (parametros.isLazyTotalEnabled() && env.getData() != null && env.getData().getPagination() != null && env.getData().getPagination().getTotal() == null) {
+                                    ExecMeta base = new ExecMeta();
+                                    base.endpointName = epName; base.method = methodFromModel; base.apiResultNode = apiNode; base.querySnapshot = qEff; base.pathParamsSnapshot = pathParams; base.endpointPath = String.valueOf(ep.getOrDefault("path",""));
+                                    Integer totalLazy = computeLazyTotal(openai, apiProxy, base, env.getData().getPagination(), authorization, delegatedAuthUpfront, xmlLogger);
+                                    if (totalLazy != null) env.getData().getPagination().setTotal(totalLazy);
+                                }
+                            } catch (Exception ignore) {}
+                            // Mensaje y sugerencias
+                            try { env.setMessage(composePaginatedMessage(env.getMessage(), env.getData() == null ? null : env.getData().getPagination())); } catch (Exception __m) { }
+                            try { if (env.getData() != null && env.getData().getPagination() != null) ensurePaginationSuggestions(env, env.getData().getPagination(), null); } catch (Exception __s) { }
+                            if (xmlLogger != null) {
+                                xmlLogger.addStep("Planner", "Plan ejecutado directamente: " + epName);
+                                xmlLogger.addStep("Telemetry", "planner_success=true attempt=" + attempt);
+                            }
+                            plannerSucceeded = true;
+                            // No hacemos early-return: reinyectamos como si fuera una tool_call normal y pedimos al modelo que redacte el texto final
+                            try {
+                                // Construir assistantEcho con un único tool_call 'call_api'
+                                String callId = "planner_call_1";
+                                java.util.Map<String, Object> functionSpec = new java.util.HashMap<>();
+                                functionSpec.put("name", "call_api");
+                                // arguments con el shape esperado por el resolvedor de tools
+                                java.util.Map<String, Object> argsMap = new java.util.HashMap<>();
+                                argsMap.put("name", epName);
+                                argsMap.put("method", methodFromModel);
+                                argsMap.put("pathParams", pathParams);
+                                argsMap.put("query", qEff);
+                                argsMap.put("body", om.createObjectNode());
+                                String argsJson = om.writeValueAsString(argsMap);
+                                java.util.Map<String, Object> toolCall = new java.util.HashMap<>();
+                                toolCall.put("id", callId);
+                                toolCall.put("type", "function");
+                                toolCall.put("function", java.util.Map.of(
+                                    "name", "call_api",
+                                    "arguments", argsJson
+                                ));
+                                java.util.List<java.util.Map<String, Object>> plannerToolCalls = new java.util.ArrayList<>();
+                                plannerToolCalls.add(toolCall);
+
+                                java.util.Map<String, Object> assistantEcho = new java.util.HashMap<>();
+                                assistantEcho.put("role", "assistant");
+                                assistantEcho.put("content", "");
+                                assistantEcho.put("tool_calls", plannerToolCalls);
+
+                                // Tool output con el resultado del API
+                                java.util.Map<String, Object> toolOutput = new java.util.HashMap<>();
+                                toolOutput.put("role", "tool");
+                                toolOutput.put("tool_call_id", callId);
+                                toolOutput.put("content", apiRaw);
+
+                                java.util.List<java.util.Map<String, Object>> followup = new java.util.ArrayList<>(seed);
+                                followup.add(assistantEcho);
+                                followup.add(toolOutput);
+                                if (xmlLogger != null) xmlLogger.addStep("OpenAIClient", "Segunda llamada (post-planner) a OpenAI con reformat/schema");
+                                String secondRaw = openai.callChatNoToolsWithExtras(followup, openai.buildChatResponseSchemaExtras(), xmlLogger, authorization);
+                                JsonNode secondNode = om.readTree(secondRaw);
+                                JsonNode ch = secondNode.path("choices");
+                                if (ch != null && ch.isArray() && ch.size() > 0) {
+                                    String c = ch.get(0).path("message").path("content").asText("");
+                                    try {
+                                        JsonNode cNode = om.readTree(c);
+                                        return applyFinalFallback(buildEnvelopeFromContentNode(cNode));
+                                    } catch (Exception __p3) {
+                                        // Si el contenido no es JSON contractual utilizable, priorizar el envelope con datos reales del plan ejecutado
+                                        return applyFinalFallback(env);
+                                    }
+                                } else {
+                                    // Sin choices: prioriza el envelope ya construido desde el resultado real del plan
+                                    return applyFinalFallback(env);
+                                }
+                            } catch (Exception postPlannerEx) {
+                                if (xmlLogger != null) xmlLogger.addStep("Planner", "Fallo en post-planner second turn: " + postPlannerEx.getMessage());
+                                // Intentar reformateo con schema antes del fallback final
+                                try {
+                                    List<Map<String,Object>> reSeed = new ArrayList<>(seed);
+                                    // reutilizamos assistantEcho + toolOutput del plan ejecutado
+                                    String callId = "planner_call_1";
+                                    Map<String,Object> functionSpec = new java.util.HashMap<>();
+                                    functionSpec.put("name", "call_api");
+                                    Map<String,Object> argsMap = new java.util.HashMap<>();
+                                    argsMap.put("name", epName);
+                                    argsMap.put("method", methodFromModel);
+                                    argsMap.put("pathParams", pathParams);
+                                    argsMap.put("query", qEff);
+                                    argsMap.put("body", om.createObjectNode());
+                                    String argsJson = om.writeValueAsString(argsMap);
+                                    Map<String,Object> toolCall = new java.util.HashMap<>();
+                                    toolCall.put("id", callId);
+                                    toolCall.put("type", "function");
+                                    toolCall.put("function", java.util.Map.of("name","call_api","arguments", argsJson));
+                                    List<Map<String,Object>> plannerToolCalls = new ArrayList<>();
+                                    plannerToolCalls.add(toolCall);
+                                    Map<String,Object> assistantEcho = new java.util.HashMap<>();
+                                    assistantEcho.put("role","assistant"); assistantEcho.put("content",""); assistantEcho.put("tool_calls", plannerToolCalls);
+                                    Map<String,Object> toolOutput = new java.util.HashMap<>();
+                                    toolOutput.put("role","tool"); toolOutput.put("tool_call_id", callId); toolOutput.put("content", apiRaw);
+                                    reSeed.add(assistantEcho); reSeed.add(toolOutput);
+                                    reSeed.add(Map.of("role","user","content", promptBuilder.buildReformatInstruction()));
+                                    String reformatted2 = openai.callChatNoToolsWithExtras(reSeed, openai.buildChatResponseSchemaExtras(), xmlLogger, authorization);
+                                    JsonNode n2 = om.readTree(reformatted2);
+                                    return applyFinalFallback(buildEnvelopeFromContentNode(n2));
+                                } catch (Exception __last) {
+                                    // Fallback a envelope directo (con mensaje mínimo ya compuesto)
+                                    return applyFinalFallback(env);
+                                }
+                            }
+                            }
+                            if (!foundAny && attempt == 2 && xmlLogger != null) {
+                                xmlLogger.addStep("Telemetry", "planner_success=false reason=no_tool_calls");
+                            }
+                        }
+                    } else if (attempt == 2 && xmlLogger != null) {
+                        xmlLogger.addStep("Telemetry", "planner_success=false reason=no_choices");
+                    }
+                }
+                if (xmlLogger != null) xmlLogger.addStep("Planner", "Planner sin plan válido; continuamos con flujo actual");
+            } catch (Exception __planner) {
+                if (xmlLogger != null) {
+                    xmlLogger.addStep("Planner", "Error en planner: " + __planner.getMessage());
+                    xmlLogger.addStep("Telemetry", "planner_success=false reason=exception");
+                }
+            }
             if (xmlLogger != null) {
                 try {
                     int clientMsgs = incoming == null ? 0 : incoming.size();
@@ -392,7 +583,32 @@ public class ChatService {
                 // Si el contenido ya es JSON válido, procesarlo y convertirlo a envelope.
                 try {
                     JsonNode contentNode = om.readTree(content);
-                    return applyFinalFallback(buildEnvelopeFromContentNode(contentNode));
+                    ResponseEnvelope envDirect = buildEnvelopeFromContentNode(contentNode);
+                    // Si el modelo devolvió JSON válido pero con 'text' vacío y sin items/paginación, reintentar con reformat + schema
+                    try {
+                        boolean noItems = (envDirect.getData() == null) || (envDirect.getData().getItems() == null) || envDirect.getData().getItems().isEmpty();
+                        boolean noPag = (envDirect.getData() == null) || (envDirect.getData().getPagination() == null);
+                        String msg0 = envDirect.getMessage();
+                        if ((msg0 == null || msg0.isBlank()) && noItems && noPag) {
+                            if (debug) System.out.println("[ChatService][DEBUG] Empty text with no tools/items; forcing reformat with schema");
+                            List<Map<String, Object>> reSeed = new ArrayList<>();
+                            reSeed.add(systemMsg);
+                            if (profileJsonForPrompt != null && profileJsonForPrompt.trim().length() > 2 && !profileJsonForPrompt.trim().equals("{}")) {
+                                reSeed.add(Map.of("role", "system", "content", "Perfil_usuario: " + profileJsonForPrompt));
+                            }
+                            // Reinyecta el contenido original del assistant como antecedente
+                            reSeed.add(Map.of("role", "assistant", "content", content));
+                            reSeed.add(Map.of("role", "user", "content", promptBuilder.buildReformatInstruction()));
+                            String reformatted2 = openai.callChatNoToolsWithExtras(reSeed, openai.buildChatResponseSchemaExtras(), xmlLogger, authorization);
+                            JsonNode rep2 = om.readTree(reformatted2);
+                            if (rep2.has("choices")) {
+                                String c2 = rep2.path("choices").get(0).path("message").path("content").asText("");
+                                try { JsonNode n2 = om.readTree(c2); return applyFinalFallback(buildEnvelopeFromContentNode(n2)); } catch (Exception __p) { /* fallthrough */ }
+                            }
+                            try { JsonNode n2 = om.readTree(reformatted2); return applyFinalFallback(buildEnvelopeFromContentNode(n2)); } catch (Exception __p2) { /* fallthrough */ }
+                        }
+                    } catch (Exception ignoreGuard) { }
+                    return applyFinalFallback(envDirect);
                 } catch (Exception e) {
                     // Intentamos pedir al modelo que convierta la respuesta anterior en JSON válido siguiendo el contrato
                     if (debug) System.out.println("[ChatService][DEBUG] Content not JSON, requesting reformat to JSON from OpenAI");
@@ -407,7 +623,8 @@ public class ChatService {
                         // Instrucción clara y estricta para devolver JSON
                         String reformatInstruction = promptBuilder.buildReformatInstruction();
                         reformatSeed.add(Map.of("role", "user", "content", reformatInstruction));
-                        String reformatted = openai.callChatWithTools(reformatSeed, xmlLogger, authorization);
+                        // Enforce JSON schema so 'text' nunca venga vacío
+                        String reformatted = openai.callChatNoToolsWithExtras(reformatSeed, openai.buildChatResponseSchemaExtras(), xmlLogger, authorization);
                         if (debug) {
                             try {
                                 JsonNode tmpRef = om.readTree(reformatted == null ? "" : reformatted);
@@ -951,7 +1168,7 @@ public class ChatService {
                 } catch (Exception ignore) { }
             }
             long secondStartMs = System.currentTimeMillis();
-            JsonNode second = om.readTree(openai.callChatWithTools(followup, xmlLogger, authorization));
+            JsonNode second = om.readTree(openai.callChatNoToolsWithExtras(followup, openai.buildChatResponseSchemaExtras(), xmlLogger, authorization));
             if (xmlLogger != null) xmlLogger.addStep("Telemetry", "second_ms=" + (System.currentTimeMillis() - secondStartMs));
             // Telemetría: fin de la primera llamada del segundo turno
             if (xmlLogger != null) xmlLogger.addStep("Telemetry", "decision_ms_first_second_turn=" + (System.currentTimeMillis() - t0));
@@ -1265,7 +1482,7 @@ public class ChatService {
                 // Nueva llamada a OpenAI con los nuevos tool outputs
                 if (xmlLogger != null) xmlLogger.addStep("Telemetry", "[iter] api_ms_total=" + iterApiMs + ", reinject_payload_bytes=" + iterReinjectBytes);
                 long iterSecondStart = System.currentTimeMillis();
-                second = om.readTree(openai.callChatWithTools(followup, xmlLogger, authorization));
+                second = om.readTree(openai.callChatNoToolsWithExtras(followup, openai.buildChatResponseSchemaExtras(), xmlLogger, authorization));
                 if (xmlLogger != null) xmlLogger.addStep("Telemetry", "[iter] second_ms=" + (System.currentTimeMillis() - iterSecondStart));
                 if (debug) {
                     try {
@@ -1302,7 +1519,7 @@ public class ChatService {
                 ResponseEnvelope env = buildEnvelopeFromContentNode(enriched);
                 // 1) Si falta total y hay paginación, intentar conteo lazy (opcional)
                 try {
-                    if (env.getData() != null && env.getData().getPagination() != null) {
+                    if (parametros.isLazyTotalEnabled() && env.getData() != null && env.getData().getPagination() != null) {
                         PaginationInfo p = env.getData().getPagination();
                         if (p.getTotal() == null) {
                             ExecMeta metaSel = selectExecMetaForPagination(executed, incoming);
@@ -1390,7 +1607,7 @@ public class ChatService {
                 ResponseEnvelope envFallback = buildEnvelopeFromContentNode(metaSel == null ? om.createObjectNode() : metaSel.apiResultNode);
                 // Total lazy si falta
                 try {
-                    if (envFallback.getData() != null && envFallback.getData().getPagination() != null) {
+                    if (parametros.isLazyTotalEnabled() && envFallback.getData() != null && envFallback.getData().getPagination() != null) {
                         PaginationInfo p = envFallback.getData().getPagination();
                         if (p.getTotal() == null) {
                             Integer totalLazy = computeLazyTotal(openai, apiProxy, metaSel, p, authorization, null, xmlLogger);

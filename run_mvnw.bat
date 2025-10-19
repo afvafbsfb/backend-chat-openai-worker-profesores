@@ -1,6 +1,6 @@
-@echo off
-setlocal
-pushd "%~dp0"
-mvnw.cmd %*
-popd
+@echo off 
+setlocal 
+pushd "%~dp0" 
+mvnw.cmd %* 
+popd 
 endlocal

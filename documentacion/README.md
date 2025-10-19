@@ -21,11 +21,14 @@ mvn clean package -DskipTests
 ---> ejecuta todos los test desde powershell
 mvn --% test -Dsurefire.reportFormat=plain -Dsurefire.useFile=false -DtrimStackTrace=false
 
--Dsurefire.reportFormat=plain: imprime también los tests OK (no solo fallos).
+        -Dsurefire.reportFormat=plain: imprime también los tests OK (no solo fallos).
 
--Dsurefire.useFile=false: vuelca el reporte a la consola en lugar de solo a ficheros.
+        -Dsurefire.useFile=false: vuelca el reporte a la consola en lugar de solo a ficheros.
 
--DtrimStackTrace=false: muestra stacktraces completos si hay fallo.
+        -DtrimStackTrace=false: muestra stacktraces completos si hay fallo.
+
+---> ejecutar solo 1 test llamado PlannerPhaseTest: 
+mvn --% test -Dsurefire.reportFormat=plain -Dsurefire.useFile=false -DtrimStackTrace=false  -Dtest=PlannerPhaseTest
 
 
 ---> test que tengan ese patrón *Chat*Test  (test que contentan Chat y que terminen por Test)

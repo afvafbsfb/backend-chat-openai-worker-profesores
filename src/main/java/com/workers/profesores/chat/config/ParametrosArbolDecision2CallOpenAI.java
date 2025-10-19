@@ -70,13 +70,17 @@ public class ParametrosArbolDecision2CallOpenAI {
     // fastpathTargetsAllowed eliminado: no se usa
 
     // Presupuesto y límites del segundo turno (CONFIG)
-    private long secondTurnBudgetMs = 15000L; // antes 8000
-    private int secondTurnMaxExtraIterations = 3; // antes 2
+    private long secondTurnBudgetMs = 12000L; // reduce budget to 12s to avoid long drifts
+    private int secondTurnMaxExtraIterations = 1; // allow at most 1 extra iteration
+    // Número máximo de intentos del planner (plan_api) antes de desistir
+    private int plannerMaxAttempts = 1; // reducir a 1 para latencia menor en consultas triviales
     // preSecondFastpathEnabled eliminado: no se usa
     // Enriquecimiento de presentación (backend) por defecto desactivado
     private boolean presentationEnrichmentEnabled = false;
     // Muestra máxima de ítems a reinyectar al 2º turno (eco recortado)
     private int modelEchoSampleSize = 5;
+    // Habilita/deshabilita el cálculo "lazy total" (puede incrementar latencia)
+    private boolean lazyTotalEnabled = false; // disable by default to avoid extra API calls post-second-turn
 
     // Fast-path polish LITE eliminado: el backend no realiza pulido de texto
 
@@ -94,9 +98,11 @@ public class ParametrosArbolDecision2CallOpenAI {
     // getFastpathTargetsAllowed eliminado
     public long getSecondTurnBudgetMs() { return secondTurnBudgetMs; }
     public int getSecondTurnMaxExtraIterations() { return secondTurnMaxExtraIterations; }
+    public int getPlannerMaxAttempts() { return plannerMaxAttempts; }
     // isPreSecondFastpathEnabled eliminado
     public boolean isPresentationEnrichmentEnabled() { return presentationEnrichmentEnabled; }
     public int getModelEchoSampleSize() { return modelEchoSampleSize; }
+    public boolean isLazyTotalEnabled() { return lazyTotalEnabled; }
     // getters del polish eliminados
     // isAutoInjectStoredPaginationAlways eliminado
 
@@ -112,9 +118,11 @@ public class ParametrosArbolDecision2CallOpenAI {
     // setFastpathTargetsAllowed eliminado
     public ParametrosArbolDecision2CallOpenAI setSecondTurnBudgetMs(long v) { this.secondTurnBudgetMs = v; return this; }
     public ParametrosArbolDecision2CallOpenAI setSecondTurnMaxExtraIterations(int v) { this.secondTurnMaxExtraIterations = v; return this; }
+    public ParametrosArbolDecision2CallOpenAI setPlannerMaxAttempts(int v) { this.plannerMaxAttempts = v; return this; }
     // setPreSecondFastpathEnabled eliminado
     public ParametrosArbolDecision2CallOpenAI setPresentationEnrichmentEnabled(boolean v) { this.presentationEnrichmentEnabled = v; return this; }
     public ParametrosArbolDecision2CallOpenAI setModelEchoSampleSize(int v) { this.modelEchoSampleSize = v; return this; }
+    public ParametrosArbolDecision2CallOpenAI setLazyTotalEnabled(boolean v) { this.lazyTotalEnabled = v; return this; }
     // setters del polish eliminados
     // setAutoInjectStoredPaginationAlways eliminado
 }

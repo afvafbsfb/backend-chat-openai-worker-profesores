@@ -259,6 +259,68 @@ public class OpenAICallApiService {
     return processMessagesWithExtras(messages, List.of(callApiTool, callApiBatchTool), extraBodyProps, xmlLogger, authorization);
     }
 
+    // Reformat-only variant: do NOT register tools or whitelist; force tool_choice="none" and return immediately.
+    public String callChatNoToolsWithExtras(List<Map<String, Object>> messages, Map<String,Object> extraBodyProps, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) throws Exception {
+        if (debug) {
+            logger.debug("[OpenAICallApiService] callChatNoToolsWithExtras called messagesCount={} extrasKeys={} authorizationPresent={}", messages == null ? 0 : messages.size(), (extraBodyProps==null?0:extraBodyProps.keySet()), authorization != null);
+        }
+        // Build extras ensuring tool_choice none
+        Map<String,Object> extras = new HashMap<>();
+        if (extraBodyProps != null) extras.putAll(extraBodyProps);
+        // If caller didn't set a tool_choice, enforce none to avoid the model emitting tool_calls
+        if (!extras.containsKey("tool_choice")) {
+            extras.put("tool_choice", "none");
+        }
+        Map<String, Object> requestBody = buildRequestBodyNoTools(messages, extras);
+        if (xmlLogger != null) {
+            xmlLogger.addStep("OpenAI", "Llamada a OpenAI (sin herramientas) - mensajes: " + messagesToLogString(messages));
+        }
+        return sendRequestToOpenAi(requestBody, authorization);
+    }
+
+    // --- Planner support (always-on) ---
+    private Map<String, Object> createPlannerTool() {
+        // Defines a strict planning tool that outputs the API call plan: endpoint (operationId), method, pathParams, query, page?, size?
+        Map<String, Object> parameters = Map.of(
+            "type", "object",
+            "properties", Map.of(
+                "endpoint", Map.of("type", "string", "description", "operationId del endpoint permitido, p.ej. 'usuarios.listar_usuarios'"),
+                "method", Map.of("type", "string", "enum", List.of("GET","POST","PUT","DELETE")),
+                "pathParams", Map.of("type", "object"),
+                "query", Map.of("type", "object"),
+                "page", Map.of("type", List.of("integer","null")),
+                "size", Map.of("type", List.of("integer","null"))
+            ),
+            "required", List.of("endpoint","method")
+        );
+        return Map.of(
+            "type", "function",
+            "function", Map.of(
+                "name", "plan_api",
+                "description", "Planifica una llamada a la API basándose en los endpoints permitidos; NO ejecuta la llamada.",
+                "parameters", parameters
+            )
+        );
+    }
+
+    /**
+     * Planner round: enforce tool_choice=plan_api and temperature=0 to get a deterministic plan.
+     * Returns raw OpenAI JSON string with tool_calls that should include function name 'plan_api'.
+     */
+    public String callPlannerStrict(List<Map<String, Object>> messages, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) throws Exception {
+        loadWhitelistFromOpenApi();
+        Map<String, Object> plannerTool = createPlannerTool();
+        Map<String, Object> extra = new HashMap<>();
+        // Enforce planner tool
+        extra.put("tool_choice", Map.of(
+            "type", "function",
+            "function", Map.of("name", "plan_api")
+        ));
+        // Deterministic
+        extra.put("temperature", 0.0);
+        return processMessagesWithExtras(messages, List.of(plannerTool), extra, xmlLogger, authorization);
+    }
+
     private void loadWhitelistFromOpenApi() {
         try {
             InputStream is = new ClassPathResource("served-openapi.json").getInputStream();
@@ -515,6 +577,18 @@ public class OpenAICallApiService {
         return body;
     }
 
+    // Build a request body without tools, for reformat-only second turn
+    private Map<String, Object> buildRequestBodyNoTools(List<Map<String, Object>> messages, Map<String,Object> extras) {
+        Map<String,Object> body = new HashMap<>();
+        body.put("model", openaiApiModel);
+        body.put("messages", messages);
+        body.put("temperature", openaiApiTemperature);
+        if (extras != null) {
+            body.putAll(extras);
+        }
+        return body;
+    }
+
     private String sendRequestToOpenAi(Map<String, Object> requestBody, String authorization) {
         try {
             RestTemplate restTemplate = createRestTemplate();
@@ -701,6 +775,45 @@ public class OpenAICallApiService {
         } catch (Exception e) {
             return "{\"ok\":false,\"error\":\"batch_serialize_failed\"}";
         }
+    }
+
+    // Build response_format extras enforcing a JSON schema for chat responses: requires non-empty 'text'.
+    public Map<String,Object> buildChatResponseSchemaExtras() {
+        Map<String,Object> textSchema = new HashMap<>();
+        textSchema.put("type", "string");
+        textSchema.put("minLength", 1);
+
+        Map<String,Object> sugItemProps = new HashMap<>();
+        sugItemProps.put("id", Map.of("type","string"));
+        sugItemProps.put("display_text", Map.of("type","string","minLength",1));
+        sugItemProps.put("type", Map.of("type","string","enum", List.of("Paginacion","Registro","Generica")));
+        sugItemProps.put("recordAction", Map.of("type","string","enum", List.of("Alta","Baja","Modificacion","Consulta")));
+        Map<String,Object> sugItem = new HashMap<>();
+        sugItem.put("type","object");
+        sugItem.put("properties", sugItemProps);
+        sugItem.put("required", List.of("id","display_text","type"));
+        sugItem.put("additionalProperties", true);
+
+        Map<String,Object> properties = new HashMap<>();
+        properties.put("text", textSchema);
+        properties.put("ui_suggestions", Map.of("type","array","items", sugItem));
+        properties.put("summary_fields", Map.of("type","array","items", Map.of("type","string")));
+
+        Map<String,Object> schema = new HashMap<>();
+        schema.put("type","object");
+        schema.put("properties", properties);
+        schema.put("required", List.of("text"));
+        schema.put("additionalProperties", true);
+
+        Map<String,Object> jsonSchemaWrapper = new HashMap<>();
+        jsonSchemaWrapper.put("name", "chat_response");
+        jsonSchemaWrapper.put("schema", schema);
+
+        Map<String,Object> responseFormat = new HashMap<>();
+        responseFormat.put("type", "json_schema");
+        responseFormat.put("json_schema", jsonSchemaWrapper);
+
+        return Map.of("response_format", responseFormat);
     }
     // Utilidad para loggear los mensajes de OpenAI de forma legible
     // Utilidad para loggear los mensajes de OpenAI de forma legible

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/plan_api.json",
+  "title": "plan_api",
+  "type": "object",
+  "required": ["endpoint", "method"],
+  "properties": {
+    "endpoint": { "type": "string", "description": "operationId del endpoint" },
+    "method": { "type": "string", "enum": ["GET", "POST", "PUT", "DELETE"] },
+    "pathParams": { "type": "object", "additionalProperties": true },
+    "query": { "type": "object", "additionalProperties": true },
+    "page": { "type": ["integer", "null"], "minimum": 1 },
+    "size": { "type": ["integer", "null"], "minimum": 1 }
+  },
+  "additionalProperties": false
+}

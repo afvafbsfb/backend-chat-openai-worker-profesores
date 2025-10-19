@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/response-envelope.json",
+  "title": "ResponseEnvelope",
+  "type": "object",
+  "required": ["status", "data"],
+  "properties": {
+    "status": { "type": "string", "enum": ["success", "error"] },
+    "message": { "type": "string" },
+    "data": {
+      "type": "object",
+      "required": ["type", "items"],
+      "properties": {
+        "type": { "type": "string" },
+        "items": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "pagination": {
+          "type": ["object", "null"],
+          "properties": {
+            "page": { "type": ["integer", "null"], "minimum": 1 },
+            "size": { "type": ["integer", "null"], "minimum": 1 },
+            "returned": { "type": ["integer", "null"], "minimum": 0 },
+            "has_more": { "type": ["boolean", "null"] },
+            "next_page": { "type": ["integer", "null"] },
+            "prev_page": { "type": ["integer", "null"] },
+            "total": { "type": ["integer", "null"], "minimum": 0 }
+          },
+          "additionalProperties": true
+        },
+        "summaryFields": {
+          "type": ["array", "null"],
+          "items": { "type": "string" },
+          "maxItems": 3
+        }
+      },
+      "additionalProperties": true
+    },
+    "uiSuggestions": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "displayText": { "type": "string" },
+          "type": { "type": "string" },
+          "recordAction": { "type": ["string", "null"] },
+          "record": { "type": ["object", "null"] },
+          "contextToken": { "type": ["string", "null"] },
+          "pagination": {
+            "type": ["object", "null"],
+            "properties": {
+              "direction": { "type": ["string", "null"], "enum": ["next", "prev", "goto", null] },
+              "page": { "type": ["integer", "null"] },
+              "size": { "type": ["integer", "null"] }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "messages": { "type": ["array", "null"] }
+  },
+  "additionalProperties": true
+}
