@@ -73,7 +73,9 @@ public class ChatE2EDelegationTest {
     var payloadMap = Map.of(
         "sub", subJson,
         "roles", List.of("Admin_academia"),
-        "academia_id", 1
+        "academia_id", 1,
+        // Añadimos display_name para evitar prefetch a /usuarios/me en ChatService
+        "display_name", "Admin Test"
     );
     String payloadJson = om.writeValueAsString(payloadMap);
     String payloadB64 = Base64.getUrlEncoder().withoutPadding().encodeToString(payloadJson.getBytes(StandardCharsets.UTF_8));

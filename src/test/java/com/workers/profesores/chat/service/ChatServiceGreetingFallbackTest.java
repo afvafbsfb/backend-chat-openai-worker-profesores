@@ -17,7 +17,7 @@ public class ChatServiceGreetingFallbackTest {
         @Override
         public String callChatWithTools(List<Map<String, Object>> messages, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) {
             // Simula un modelo que devuelve un objeto válido pero con text vacío y sin arrays
-            String contentJson = "{\"text\":\"\",\"suggestions\":[]}";
+            String contentJson = "{\"text\":\"\",\"ui_suggestions\":[]}";
             return "{\"choices\":[{\"message\":{\"content\":" + quote(contentJson) + "}}]}";
         }
         private String quote(String s){ return "\"" + s.replace("\\","\\\\").replace("\"","\\\"") + "\""; }
@@ -27,14 +27,15 @@ public class ChatServiceGreetingFallbackTest {
     static class NoopJwtDelegation extends JwtDelegationService { }
 
     @Test
-    public void emptyMessage_noItems_shouldApplyFallback() throws Exception {
+    public void emptyMessage_noItems_noBackendFallback() throws Exception {
         ChatService svc = new ChatService(new DummyOpenAI_EmptyMessage(), new NoopApiProxy(), new NoopJwtDelegation());
         ResponseEnvelope env = svc.runChat(List.of(new ChatRequest.Message("user","hola")), null, null,
                 new UserClaims(1L, List.of("Admin_academia"), 1, null, null, 1));
         assertEquals("success", env.getStatus());
+        // El backend ya no rellena el texto en blanco: el prompt/IA debe aportarlo
         assertNotNull(env.getMessage());
-        assertFalse(env.getMessage().isBlank(), "Fallback should set a non-empty message");
-        assertNotNull(env.getSuggestions());
-        assertFalse(env.getSuggestions().isEmpty(), "Fallback should set default suggestions");
+    // Nuevo contrato: no se autogeneran ui_suggestions en el fallback de saludo
+    assertNotNull(env.getUiSuggestions());
+    assertTrue(env.getUiSuggestions().isEmpty(), "Fallback greeting should not auto-fill ui_suggestions");
     }
 }

@@ -37,7 +37,7 @@ public class PaginationDefaultsTest {
     }
 
     @Test
-    public void defaultSizeIs20AndCappedAt50() throws Exception {
+    public void defaultSizeIs50AndCappedAt50() throws Exception {
         RecordingApiProxy proxy = new RecordingApiProxy();
         DummyOpenAI_NoNetwork openai = new DummyOpenAI_NoNetwork();
         // Inyectar whitelist con endpoint paginado
@@ -69,7 +69,7 @@ public class PaginationDefaultsTest {
     assertTrue(executedA, "Debe ejecutarse la tool_call A");
     assertNotNull(proxy.lastQuery, "Debe capturarse la query en proxy");
         int sizeA = proxy.lastQuery.has("size") && proxy.lastQuery.get("size").canConvertToInt() ? proxy.lastQuery.get("size").asInt() : -1;
-        assertEquals(20, sizeA, "size por defecto debe ser 20");
+        assertEquals(50, sizeA, "size por defecto debe ser 50");
         int pageA = proxy.lastQuery.has("page") && proxy.lastQuery.get("page").canConvertToInt() ? proxy.lastQuery.get("page").asInt() : -1;
         assertEquals(1, pageA, "page por defecto debe ser 1");
 

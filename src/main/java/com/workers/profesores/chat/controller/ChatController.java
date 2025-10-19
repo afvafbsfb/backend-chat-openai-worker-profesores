@@ -8,7 +8,6 @@ import com.workers.profesores.chat.util.RequestFlowXmlLogger;
 import com.workers.profesores.chat.util.RequestFlowXmlContext;
 import org.springframework.http.ResponseEntity;
 import com.workers.profesores.chat.dto.response.ResponseEnvelope;
-import java.util.List;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -80,7 +79,7 @@ public class ChatController {
                 if (debug) {
                     System.out.println("DEBUG " + LocalDateTime.now() + " [ChatController][chat] Request vacío. Se responde 400");
                 }
-                return ResponseEntity.badRequest().body(ResponseEnvelope.error("Petición inválida","bad_request","Request vacío", List.of()));
+                return ResponseEntity.badRequest().body(ResponseEnvelope.error("Petición inválida","bad_request","Request vacío"));
             }
             // Verificar JWT y extraer claims
             UserClaims claims = null;
@@ -108,7 +107,7 @@ public class ChatController {
                 }
             } catch (Exception ex) {
                 if (xmlLogger != null) xmlLogger.addStep("ChatController", "JWT inválido: " + ex.getMessage());
-                return ResponseEntity.status(401).body(ResponseEnvelope.error("No autorizado","unauthorized","Token inválido o expirado", List.of()));
+                return ResponseEntity.status(401).body(ResponseEnvelope.error("No autorizado","unauthorized","Token inválido o expirado"));
             }
 
             // Generar y almacenar el token delegado
@@ -171,7 +170,8 @@ public class ChatController {
             }
             if (debug) {
                 System.out.println("DEBUG " + LocalDateTime.now() + " [ChatController][chat] Respuesta generada por ChatService (JSON completo, pretty):\n" + envelopePretty);
-                logger.debug("[ChatController][chat] Envelope pretty chars={}", envelopePretty.length());
+                int prettyLen = (envelopePretty == null) ? 0 : envelopePretty.length();
+                logger.debug("[ChatController][chat] Envelope pretty chars={}", prettyLen);
             }
             return ResponseEntity.ok(envelope);
         } catch (Exception ex) {
@@ -181,7 +181,7 @@ public class ChatController {
             if (debug) {
                 ex.printStackTrace();
             }
-            return ResponseEntity.status(500).body(ResponseEnvelope.error("Error interno","internal_error", ex.getMessage(), List.of()));
+            return ResponseEntity.status(500).body(ResponseEnvelope.error("Error interno","internal_error", ex.getMessage()));
         } finally {
             if (xmlLogger != null && loggerActivo) {
                 try {

@@ -30,11 +30,8 @@ public class ParametrosArbolDecision2CallOpenAI {
         public int getPriority() { return priority; }
     }
 
-    // Flags/prerrequisitos del modo LITE y fast-path (DECISIÓN)
-    private boolean secondTurnLiteEnabled = false;
-    private boolean fastpathEnabled = true;
-    private boolean requireSingleToolCall = true;
-    private List<String> allowedMethodsForLite = List.of("GET");
+    // Flags/prerrequisitos (DECISIÓN)
+    // requireSingleToolCall eliminado (no se usa)
 
     // Targets soportados (plurales) (DECISIÓN)
     private List<String> allowedTargetsPlural = List.of("usuarios","academias","cursos","alumnos","profesores");
@@ -70,31 +67,23 @@ public class ParametrosArbolDecision2CallOpenAI {
         "profesor","profesores"
     );
 
-    // Targets con fast-path permitido (DECISIÓN)
-    private List<String> fastpathTargetsAllowed = List.of("usuarios","academias");
+    // fastpathTargetsAllowed eliminado: no se usa
 
     // Presupuesto y límites del segundo turno (CONFIG)
     private long secondTurnBudgetMs = 15000L; // antes 8000
     private int secondTurnMaxExtraIterations = 3; // antes 2
-    // Fast-path previo al 2º turno bajo flag explícito (CONFIG)
-    private boolean preSecondFastpathEnabled = false;
+    // preSecondFastpathEnabled eliminado: no se usa
     // Enriquecimiento de presentación (backend) por defecto desactivado
     private boolean presentationEnrichmentEnabled = false;
     // Muestra máxima de ítems a reinyectar al 2º turno (eco recortado)
     private int modelEchoSampleSize = 5;
 
-    // Fast-path polish LITE (post fast-path, pulido de texto)
-    private boolean fastpathPolishEnabled = true; // aplicar al 100% de fast-path por defecto
-    private int fastpathPolishTimeoutMs = 500;    // timebox duro en ms
-    private boolean fastpathPolishHeuristicEnabled = false; // desactivado: aplicar siempre salvo que se cambie por config
-    private int fastpathPolishMinTextLen = 0;     // si se activa heurística: activar solo si text base < N
-    private int fastpathPolishMaxItems = Integer.MAX_VALUE; // si se activa heurística: activar si items <= N
+    // Fast-path polish LITE eliminado: el backend no realiza pulido de texto
+
+    // autoInjectStoredPaginationAlways eliminado: navegación stateless con contextToken desde el cliente
 
     // Getters
-    public boolean isSecondTurnLiteEnabled() { return secondTurnLiteEnabled; }
-    public boolean isFastpathEnabled() { return fastpathEnabled; }
-    public boolean isRequireSingleToolCall() { return requireSingleToolCall; }
-    public List<String> getAllowedMethodsForLite() { return allowedMethodsForLite; }
+    // fastpath eliminado: sin getter
     public List<String> getAllowedTargetsPlural() { return allowedTargetsPlural; }
     public List<String> getGenericArrayKeys() { return genericArrayKeys; }
     public Map<String, List<String>> getTargetSpecificArrayKeys() { return targetSpecificArrayKeys; }
@@ -102,23 +91,17 @@ public class ParametrosArbolDecision2CallOpenAI {
     public int getHeuristicScanLimit() { return heuristicScanLimit; }
     public String getDefaultType() { return defaultType; }
     public Map<String, String> getSingularToPlural() { return singularToPlural; }
-    public List<String> getFastpathTargetsAllowed() { return fastpathTargetsAllowed; }
+    // getFastpathTargetsAllowed eliminado
     public long getSecondTurnBudgetMs() { return secondTurnBudgetMs; }
     public int getSecondTurnMaxExtraIterations() { return secondTurnMaxExtraIterations; }
-    public boolean isPreSecondFastpathEnabled() { return preSecondFastpathEnabled; }
+    // isPreSecondFastpathEnabled eliminado
     public boolean isPresentationEnrichmentEnabled() { return presentationEnrichmentEnabled; }
     public int getModelEchoSampleSize() { return modelEchoSampleSize; }
-    public boolean isFastpathPolishEnabled() { return fastpathPolishEnabled; }
-    public int getFastpathPolishTimeoutMs() { return fastpathPolishTimeoutMs; }
-    public boolean isFastpathPolishHeuristicEnabled() { return fastpathPolishHeuristicEnabled; }
-    public int getFastpathPolishMinTextLen() { return fastpathPolishMinTextLen; }
-    public int getFastpathPolishMaxItems() { return fastpathPolishMaxItems; }
+    // getters del polish eliminados
+    // isAutoInjectStoredPaginationAlways eliminado
 
     // Setters opcionales para tests o configuración programática
-    public ParametrosArbolDecision2CallOpenAI setSecondTurnLiteEnabled(boolean v) { this.secondTurnLiteEnabled = v; return this; }
-    public ParametrosArbolDecision2CallOpenAI setFastpathEnabled(boolean v) { this.fastpathEnabled = v; return this; }
-    public ParametrosArbolDecision2CallOpenAI setRequireSingleToolCall(boolean v) { this.requireSingleToolCall = v; return this; }
-    public ParametrosArbolDecision2CallOpenAI setAllowedMethodsForLite(List<String> v) { this.allowedMethodsForLite = List.copyOf(v); return this; }
+    // fastpath eliminado: sin setter
     public ParametrosArbolDecision2CallOpenAI setAllowedTargetsPlural(List<String> v) { this.allowedTargetsPlural = List.copyOf(v); return this; }
     public ParametrosArbolDecision2CallOpenAI setGenericArrayKeys(List<String> v) { this.genericArrayKeys = List.copyOf(v); return this; }
     public ParametrosArbolDecision2CallOpenAI setTargetSpecificArrayKeys(Map<String,List<String>> v) { this.targetSpecificArrayKeys = Map.copyOf(v); return this; }
@@ -126,15 +109,12 @@ public class ParametrosArbolDecision2CallOpenAI {
     public ParametrosArbolDecision2CallOpenAI setHeuristicScanLimit(int v) { this.heuristicScanLimit = v; return this; }
     public ParametrosArbolDecision2CallOpenAI setDefaultType(String v) { this.defaultType = v; return this; }
     public ParametrosArbolDecision2CallOpenAI setSingularToPlural(Map<String,String> v) { this.singularToPlural = Map.copyOf(v); return this; }
-    public ParametrosArbolDecision2CallOpenAI setFastpathTargetsAllowed(List<String> v) { this.fastpathTargetsAllowed = List.copyOf(v); return this; }
+    // setFastpathTargetsAllowed eliminado
     public ParametrosArbolDecision2CallOpenAI setSecondTurnBudgetMs(long v) { this.secondTurnBudgetMs = v; return this; }
     public ParametrosArbolDecision2CallOpenAI setSecondTurnMaxExtraIterations(int v) { this.secondTurnMaxExtraIterations = v; return this; }
-    public ParametrosArbolDecision2CallOpenAI setPreSecondFastpathEnabled(boolean v) { this.preSecondFastpathEnabled = v; return this; }
+    // setPreSecondFastpathEnabled eliminado
     public ParametrosArbolDecision2CallOpenAI setPresentationEnrichmentEnabled(boolean v) { this.presentationEnrichmentEnabled = v; return this; }
     public ParametrosArbolDecision2CallOpenAI setModelEchoSampleSize(int v) { this.modelEchoSampleSize = v; return this; }
-    public ParametrosArbolDecision2CallOpenAI setFastpathPolishEnabled(boolean v) { this.fastpathPolishEnabled = v; return this; }
-    public ParametrosArbolDecision2CallOpenAI setFastpathPolishTimeoutMs(int v) { this.fastpathPolishTimeoutMs = v; return this; }
-    public ParametrosArbolDecision2CallOpenAI setFastpathPolishHeuristicEnabled(boolean v) { this.fastpathPolishHeuristicEnabled = v; return this; }
-    public ParametrosArbolDecision2CallOpenAI setFastpathPolishMinTextLen(int v) { this.fastpathPolishMinTextLen = v; return this; }
-    public ParametrosArbolDecision2CallOpenAI setFastpathPolishMaxItems(int v) { this.fastpathPolishMaxItems = v; return this; }
+    // setters del polish eliminados
+    // setAutoInjectStoredPaginationAlways eliminado
 }

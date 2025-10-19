@@ -7,8 +7,6 @@ mvn -v
 mvn compile
 # Limpiar y compilar
 mvn clean compile
-# Ejecutar tests unitarios
-mvn test
 # Limpiar y ejecutar tests (compila)
 mvn clean test
 # Compilar + tests + empaquetar (jar)
@@ -17,6 +15,23 @@ mvn clean package
 mvn clean verify
 # (Opcional) construir sin tests
 mvn clean package -DskipTests
+
+# compilar ejecutando  los test y viendo el detalle de cada test
+
+---> ejecuta todos los test desde powershell
+mvn --% test -Dsurefire.reportFormat=plain -Dsurefire.useFile=false -DtrimStackTrace=false
+
+-Dsurefire.reportFormat=plain: imprime también los tests OK (no solo fallos).
+
+-Dsurefire.useFile=false: vuelca el reporte a la consola en lugar de solo a ficheros.
+
+-DtrimStackTrace=false: muestra stacktraces completos si hay fallo.
+
+
+---> test que tengan ese patrón *Chat*Test  (test que contentan Chat y que terminen por Test)
+
+mvn --% -Dtest=*Chat*Test test -Dsurefire.reportFormat=plain -Dsurefire.useFile=false -DtrimStackTrace=false
+
 
 # levantar el backend-chat openai en local
 mvn spring-boot:run -e -X

@@ -379,12 +379,12 @@ public class OpenAICallApiService {
             int page = 1;
             try { if (q.has("page") && q.get("page").canConvertToInt()) page = Math.max(1, q.get("page").asInt()); } catch (Exception ignore) { }
             q.put("page", page);
-            // default size=20 if missing; cap to 50
-            int size = 20;
+            // default size=50 if missing; cap to 50 (align with ChatService)
+            int size = 50;
             try {
                 if (q.has("size") && q.get("size").canConvertToInt()) size = q.get("size").asInt();
             } catch (Exception ignore) { }
-            if (size <= 0) size = 20;
+            if (size <= 0) size = 50;
             if (size > 50) size = 50;
             q.put("size", size);
             return q;

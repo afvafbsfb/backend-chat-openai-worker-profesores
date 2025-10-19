@@ -5,11 +5,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.workers.profesores.chat.dto.ChatRequest;
 import com.workers.profesores.chat.config.ParametrosArbolDecision2CallOpenAI;
-import com.workers.profesores.chat.config.ParametrosPresentacionSegundoTurno;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import com.workers.profesores.chat.dto.response.*;
+import com.workers.profesores.chat.prompt.PromptOpenAi;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import java.util.*;
@@ -21,14 +21,14 @@ public class ChatService {
     private final ObjectMapper om = new ObjectMapper();
     private final com.workers.profesores.chat.auth.JwtDelegationService jwtDelegationService;
     private final ParametrosArbolDecision2CallOpenAI parametros;
-    private final ParametrosPresentacionSegundoTurno presentacion;
+    private final ContextTokenService contextTokenService;
+    private final PromptOpenAi promptBuilder;
     private static final Logger logger = LoggerFactory.getLogger(ChatService.class);
 
     @Value("${backend.debug:false}")
     private boolean debug;
-    // Flags se obtienen desde ParametrosArbolDecision2CallOpenAI para evitar duplicidad de fuentes
-    private boolean fastpathEnabled;
-    private boolean secondTurnLiteEnabled;
+    // Modo fastpath eliminado: no hay flag local
+    // Modo LITE eliminado: sin flag
     // Note: local welcome handling removed to always delegate to OpenAI
 
     // Exec metadata to support fast-path without a second OpenAI round-trip
@@ -38,6 +38,78 @@ public class ChatService {
         String method;
         JsonNode apiResultNode;
         String raw;
+        // Added to preserve filters/sort and endpoint path for pagination context
+        JsonNode querySnapshot;
+        String endpointPath;
+        JsonNode pathParamsSnapshot;
+    }
+
+    // Contexto de navegación inferido del historial cuando el cliente no envía Paginacion_token
+    private static class NavContext {
+        String direction; // "next" | "prev"
+        Integer currentPage;
+    }
+
+    // Extrae del historial (assistant + user) la intención de navegación y la página actual, p. ej.
+    // assistant: "Mostrando página 1 de usuarios" + user: "Siguiente" => direction=next, currentPage=1
+    private NavContext extractNavContext(List<ChatRequest.Message> incoming) {
+        if (incoming == null || incoming.isEmpty()) return null;
+        String lastUser = null;
+        Integer pageFromAssistant = null;
+        try {
+            for (int i = incoming.size() - 1; i >= 0; i--) {
+                ChatRequest.Message m = incoming.get(i);
+                if (m == null) continue;
+                String role = m.getRole() == null ? "" : m.getRole().toLowerCase();
+                String content = m.getContent() == null ? "" : m.getContent();
+                if (lastUser == null && "user".equals(role)) {
+                    lastUser = content.toLowerCase();
+                }
+                if (pageFromAssistant == null && ("assistant".equals(role) || "system".equals(role))) {
+                    // Buscar patrones "Mostrando página N" tolerando tilde
+                    String cLower = content.toLowerCase();
+                    java.util.regex.Matcher mm = java.util.regex.Pattern
+                        .compile("mostrando p[áa]gina\\s+(\\d+)")
+                        .matcher(cLower);
+                    if (mm.find()) {
+                        try { pageFromAssistant = Integer.parseInt(mm.group(1)); } catch (Exception ignore) { }
+                    }
+                }
+            }
+            if (lastUser == null || pageFromAssistant == null) return null;
+            NavContext nc = new NavContext();
+            if (lastUser.contains("siguiente") || lastUser.contains("next")) {
+                nc.direction = "next";
+                nc.currentPage = pageFromAssistant;
+                return nc;
+            }
+            if (lastUser.contains("anterior") || lastUser.contains("previo") || lastUser.contains("previous")) {
+                nc.direction = "prev";
+                nc.currentPage = pageFromAssistant;
+                return nc;
+            }
+            return null;
+        } catch (Exception ignore) { return null; }
+    }
+
+    // Ajusta la query con heurística de navegación si no hay token: establece 'page' si falta
+    private JsonNode adjustQueryWithNavContext(Map<String, Object> endpoint, String method, JsonNode query, NavContext nav) {
+        try {
+            if (endpoint == null || nav == null) return query;
+            Object pag = endpoint.get("paginated");
+            boolean isPaginated = (pag instanceof Boolean) ? (Boolean) pag : false;
+            if (!isPaginated) return query;
+            if (method == null || !"GET".equalsIgnoreCase(method)) return query;
+            com.fasterxml.jackson.databind.node.ObjectNode q = (query == null || query.isNull())
+                ? om.createObjectNode()
+                : (query.isObject() ? (com.fasterxml.jackson.databind.node.ObjectNode) query.deepCopy() : om.createObjectNode());
+            boolean hasPage = q.has("page") && q.get("page").canConvertToInt();
+            if (!hasPage && nav.currentPage != null && nav.direction != null) {
+                int target = "next".equals(nav.direction) ? (nav.currentPage + 1) : Math.max(1, nav.currentPage - 1);
+                q.put("page", target);
+            }
+            return q;
+        } catch (Exception ignore) { return query; }
     }
 
     // Si el segundo turno normal devolvió solo {text,...} sin arrays de recursos, añadimos los items/paginación reales del tool_call ejecutado
@@ -72,29 +144,28 @@ public class ChatService {
                        ApiProxyService apiProxy,
                        com.workers.profesores.chat.auth.JwtDelegationService jwtDelegationService,
                        ParametrosArbolDecision2CallOpenAI parametros) {
-        this(openai, apiProxy, jwtDelegationService, parametros, new ParametrosPresentacionSegundoTurno());
+    this(openai, apiProxy, jwtDelegationService, parametros, new ContextTokenService());
     }
 
     // Convenience constructor for unit tests that don't wire Spring configuration properties
     public ChatService(OpenAICallApiService openai,
                        ApiProxyService apiProxy,
                        com.workers.profesores.chat.auth.JwtDelegationService jwtDelegationService) {
-        this(openai, apiProxy, jwtDelegationService, new ParametrosArbolDecision2CallOpenAI(), new ParametrosPresentacionSegundoTurno());
+    this(openai, apiProxy, jwtDelegationService, new ParametrosArbolDecision2CallOpenAI(), new ContextTokenService());
     }
 
     
 
     public ChatService(OpenAICallApiService openai, ApiProxyService apiProxy, com.workers.profesores.chat.auth.JwtDelegationService jwtDelegationService,
                        ParametrosArbolDecision2CallOpenAI parametros,
-                       ParametrosPresentacionSegundoTurno presentacion) {
+                       ContextTokenService contextTokenService) {
         this.openai = openai;
         this.apiProxy = apiProxy;
         this.jwtDelegationService = jwtDelegationService;
         this.parametros = parametros == null ? new ParametrosArbolDecision2CallOpenAI() : parametros;
-        this.presentacion = presentacion == null ? new ParametrosPresentacionSegundoTurno() : presentacion;
-    // Inicializa flags desde parámetros (ConfigurationProperties)
-    this.fastpathEnabled = this.parametros.isFastpathEnabled();
-    this.secondTurnLiteEnabled = this.parametros.isSecondTurnLiteEnabled();
+        this.contextTokenService = contextTokenService == null ? new ContextTokenService() : contextTokenService;
+        this.promptBuilder = new PromptOpenAi(this.parametros);
+    // Modo LITE y fastpath eliminados: sin inicialización de flags
     }
 
 
@@ -112,9 +183,7 @@ public class ChatService {
                 } catch (Exception ex) { /* ignore */ }
             }
             if (xmlLogger != null) xmlLogger.addStep("ChatService", "Inicio de runChat");
-            // 0) System prompt base + whitelist dinámica
-            String promptBase = "Eres un asistente (secretaria) para una plataforma de academias en España. Solo puedes acceder a los recursos de la API mediante la función call_api y siempre bajo las condiciones de autorizacion que tenga el rol del usuario logueado. Cuando necesites datos, usa exclusivamente call_api con los endpoints permitidos. Responde en castellano, de forma breve y clara. Si necesitas confirmar una operación destructiva, pide confirmación explícita antes de ejecutar. Cuando pidas listados grandes, sugiere exportar a CSV/Excel en lugar de mostrar miles de filas. No uses tablas Markdown en el system prompt ni en las instrucciones del sistema.";
-                String whitelistTable = openai.renderEndpointsTable();
+            // 0) System prompt base + whitelist dinámica (via PromptOpenAi)
             // Perfil del usuario para personalización: si el JWT trae displayName, no hagas prefetch.
             String profileJsonForPrompt = "{}";
             // Create delegated token up-front so prefetch calls to ApiProxyService use delegated auth
@@ -185,111 +254,7 @@ public class ChatService {
                 if (debug) System.out.println("[ChatService][DEBUG] getMiPerfil failed while building prompt: " + e.getMessage());
             }
 
-            StringBuilder systemPromptSb = new StringBuilder(promptBase);
-            if (claims != null) {
-                String rolesStr = claims.roles == null ? "[]" : claims.roles.toString();
-                String academiaStr = claims.academiaId == null ? "null" : claims.academiaId.toString();
-                systemPromptSb.append(" Contexto del usuario: roles=").append(rolesStr).append(", academiaId=").append(academiaStr).append(". ");
-                systemPromptSb.append("Regla de ámbito: Si el usuario tiene rol Admin_academia, asume siempre ámbito 'academia' y limita las operaciones a esa academia. ");
-                systemPromptSb.append("Si el usuario tiene rol Profesor_academia, su ámbito está restringido a la academia y a los cursos con los que esté vinculado en dicha academia: el profesor solo puede consultar información de la academia y de sus propios cursos, y puede modificar aspectos de los cursos a los que está asignado (por ejemplo: crear sesiones, añadir anotaciones, consultar la lista de alumnos del curso, sus notas y su progreso). No realices operaciones sobre otras academias ni sobre cursos donde el profesor no esté vinculado; si la intención implica afectar a otro ámbito, pide confirmación o aclaración antes de ejecutar acciones con impacto.");
-                systemPromptSb.append("Si el usuario tiene rol Admin_plataforma, el modelo debe intentar inferir por el contexto y las últimas peticiones si la operación se refiere a una academia concreta; en ese caso asume ámbito 'academia' (por ejemplo usando academia_id). Si no está claro, pide confirmación antes de ejecutar acciones con impacto (crear/borrar/editar). ");
-            }
-            // Añadimos el perfil del usuario (si se pudo obtener) para que el modelo pueda usar el nombre y otros datos sin necesidad de tool calls adicionales
-            systemPromptSb.append(" Perfil_usuario: ").append(profileJsonForPrompt).append(".");
-            // Instrucción explícita: usar call_api para cualquier acceso adicional a endpoints y devolver JSON estructurado
-            systemPromptSb.append(" ").append(whitelistTable).append("\n\n");
-            // Derivar dinámicamente recursos disponibles/no disponibles a partir de la whitelist
-            try {
-                java.util.Set<String> avail = new java.util.HashSet<>();
-                java.util.List<java.util.Map<String,Object>> eps = openai.getEndpoints();
-                java.util.List<String> targets = parametros.getAllowedTargetsPlural();
-                for (java.util.Map<String,Object> ep : eps) {
-                    Object op = ep.get("operationId");
-                    String s = op == null ? String.valueOf(ep.getOrDefault("name","")) : String.valueOf(op);
-                    String sl = s == null ? "" : s.toLowerCase(java.util.Locale.ROOT);
-                    for (String t : targets) {
-                        if (sl.contains(t.toLowerCase(java.util.Locale.ROOT))) avail.add(t);
-                    }
-                }
-                java.util.List<String> unavailable = new java.util.ArrayList<>();
-                for (String t : targets) if (!avail.contains(t)) unavailable.add(t);
-                if (!avail.isEmpty() || !unavailable.isEmpty()) {
-                    systemPromptSb.append("Recursos disponibles (whitelist): ").append(avail.toString()).append(". ");
-                    if (!unavailable.isEmpty()) systemPromptSb.append("Recursos no disponibles: ").append(unavailable.toString()).append(". ");
-                }
-            } catch (Exception ignore) { }
-            // Reglas concisas de salida: priorizamos que el modelo haga el formateo humano
-            systemPromptSb.append(
-                "Reglas de salida (estrictas y concisas):\n" +
-                "- Devuelve SOLO un objeto JSON válido (sin texto fuera del JSON).\n" +
-                "- 'text': resumen breve y natural en castellano (España).\n" +
-                "- Listados: devuelve SIEMPRE un array bajo la clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores').\n" +
-                "  - Copia tal cual las propiedades originales de la API.\n" +
-                "  - Si calculas campos derivados (p.ej., conteos), AÑÁDELOS con nombres en castellano y amigables (ej.: 'numero_usuarios'), sin sobrescribir los originales ni usar '*_count' ni inglés.\n" +
-                "  - 'summary_fields': incluye 2 claves RELEVANTES existentes en los ítems (p.ej., ['nombre','email'] o ['id','nombre']).\n" +
-                "  - 'pagination': inclúyelo sólo si el endpoint es paginado, con los valores reales (no inventes).\n" +
-                "- 'suggestions': 2–5 próximas acciones útiles (paginación, filtros, exportación, ver detalle, etc.).\n" +
-                "- Saludos/charla: si es un saludo, NO uses call_api. Devuelve { 'text': ..., 'suggestions': [...] } y añade SIEMPRE 3–5 'suggestions' adaptadas al rol del usuario y a los recursos disponibles (whitelist). Evita sugerir recursos no disponibles; si un recurso no existe (p. ej., 'alumnos'), sugiere alternativas válidas (p. ej., 'usuarios' o 'cursos').\n" +
-                "- Prohibición de inventar: si un recurso NO está en la whitelist (p.ej., 'alumnos' si no existe endpoint), dilo explícitamente con lenguaje cercano (p. ej., 'no dispongo de datos de ese recurso en este sistema') y NO inventes conteos.\n" +
-                "- El 'text' debe basarse estrictamente en los tool_outputs ejecutados en este flujo; no menciones cantidades de recursos que no hayas consultado o que no existan.\n"
-            );
-            // Regla para consultas con agregaciones: encadenar tool_calls en el primer turno
-            systemPromptSb.append(
-                "\nAgregaciones (\"para cada\", \"por\", \"agrupar\", \"cuántos por...\"):\n" +
-                "- Si la intención requiere calcular algo por elemento (p.ej., 'para cada academia cuántos usuarios tiene'), EMITE en tu PRIMER mensaje TODAS las tool_calls necesarias para completar la tarea, sin detenerte tras la primera.\n" +
-                "  Ejemplo de plan: (1) listar academias; (2) para cada academia del resultado, llamar a 'usuarios.listar_usuarios' filtrando por 'academia_id=ID'.\n" +
-                "- No devuelvas una respuesta parcial solo con el listado base cuando falten llamadas adicionales para responder.\n" +
-                "- Si necesitas varias llamadas, usa 'call_api_batch' con un array 'calls'. Si la lista es larga, limita a N (p.ej., 3) y sugiere 'continuar' en 'suggestions'.\n"
-            );
-            // Navegación mínima
-            systemPromptSb.append(
-                "\nNavegación mínima:\n" +
-                "- Usa 'Contexto_paginacion' del historial si existe.\n" +
-                "- 'Siguiente' => mismo endpoint y filtros, query.page = next_page o page+1. 'Anterior' => prev_page o page-1 (>=1). 'Ir a página N' => page=N.\n"
-            );
-            // Guía breve: sugerencias en saludos por rol (usar solo recursos disponibles)
-            systemPromptSb.append(
-                "\nSugerencias en saludos (guía por rol; usa únicamente recursos de la whitelist):\n" +
-                "- Admin_plataforma: ['Listar academias'].\n" +
-                "- Admin_academia: ['Ver cursos','Ver alumnos', 'Ver profesores'].\n" +
-                "- Profesor_academia: ['Ver mis cursos','Listar usuarios de mi academia','Ver cursos disponibles'].\n" +
-                "Si un recurso no está disponible (p. ej., 'alumnos'), sustituye por otro válido (p. ej., 'usuarios').\n"
-            );
-            // Mini-ejemplo de salida para reforzar nombres en castellano y summary_fields
-            systemPromptSb.append(
-                "\nEjemplo breve de salida (guía):\n" +
-                "Entrada: 'para cada academia, cuántos usuarios tiene'\n" +
-                "Salida (solo estructura): {\n" +
-                "  'text': 'He obtenido el número de usuarios por academia.',\n" +
-                "  'academias': [ { 'id': 1, 'nombre': 'Academia A', 'numero_usuarios': 12 } ],\n" +
-                "  'summary_fields': ['nombre','id'],\n" +
-                "  'suggestions': ['Ver detalles de una academia','Listar usuarios de una academia']\n" +
-                "}\n"
-            );
-            // Micro-ejemplo de tool_call batch (guía para el primer turno)
-            systemPromptSb.append(
-                "\nEjemplo call_api_batch (solo estructura):\n" +
-                "assistant.tool_call => name: 'call_api_batch', arguments: {\n" +
-                "  'calls': [\n" +
-                "    { 'name': 'academias.listar_academias', 'method': 'GET' },\n" +
-                "    { 'name': 'usuarios.listar_usuarios', 'method': 'GET', 'query': { 'academia_id': 308 } },\n" +
-                "    { 'name': 'usuarios.listar_usuarios', 'method': 'GET', 'query': { 'academia_id': 309 } }\n" +
-                "  ]\n" +
-                "}\n" +
-                "(Si hay muchas academias, limita a 3 y sugiere 'continuar' en 'suggestions').\n"
-            );
-            // Micro-ejemplo de recurso no disponible (evitar alucinaciones, tono no técnico)
-            systemPromptSb.append(
-                "\nEjemplo recurso no disponible (solo estructura):\n" +
-                "Entrada: 'dime el total de academias y el total de alumnos'\n" +
-                "Salida: {\n" +
-                "  'text': 'Tenemos 3 academias. Ahora mismo no dispongo de datos de alumnos en este sistema.',\n" +
-                "  'academias': [ { 'id': 308, 'nombre': 'Academia Central' } ],\n" +
-                "  'summary_fields': ['id','nombre'],\n" +
-                "  'suggestions': ['Listar academias','Ver usuarios']\n" +
-                "}\n"
-            );
-            String systemPrompt = systemPromptSb.toString();
+            String systemPrompt = promptBuilder.buildSystemPrompt(openai, claims, profileJsonForPrompt);
             if (xmlLogger != null) xmlLogger.addStep("ChatService", "System prompt construido y whitelist añadida");
             if (debug) {
                 System.out.println("[ChatService][DEBUG] System prompt constructed (trimmed): " + (systemPrompt.length() > 300 ? systemPrompt.substring(0, 300) + "..." : systemPrompt));
@@ -307,15 +272,42 @@ public class ChatService {
             if (profileJsonForPrompt != null && profileJsonForPrompt.trim().length() > 2 && !profileJsonForPrompt.trim().equals("{}")) {
                 seed.add(Map.of("role", "system", "content", "Perfil_usuario: " + profileJsonForPrompt));
             }
-            for (ChatRequest.Message m : incoming) {
+            // Sin store de paginación: la navegación se hará con ui_suggestions + contextToken
+            if (incoming != null) for (ChatRequest.Message m : incoming) {
                 String role = m.getRole();
                 if ("system".equals(role)) continue;
+                String content = m.getContent();
+                // Oculta el token de paginación del contexto del LLM para no contaminar el prompt ni pagar tokens extra
+                if (content != null) {
+                    String marker = "Paginacion_token:";
+                    int idx = content.indexOf(marker);
+                    if (idx >= 0) {
+                        String sanitized = content.substring(0, idx).trim();
+                        if (sanitized.isEmpty()) {
+                            // Si el mensaje era solo el token, lo omitimos por completo
+                            continue;
+                        } else {
+                            content = sanitized;
+                        }
+                    }
+                }
                 seed.add(Map.of(
                     "role", m.getRole(),
-                    "content", m.getContent()
+                    "content", content
                 ));
             }
             if (xmlLogger != null) xmlLogger.addStep("ChatService", "Mensajes de usuario preparados para OpenAI");
+            if (xmlLogger != null) {
+                try {
+                    int clientMsgs = incoming == null ? 0 : incoming.size();
+                    long seedBytes = 0L;
+                    for (Map<String,Object> m : seed) {
+                        Object cObj = m.get("content");
+                        if (cObj != null) seedBytes += String.valueOf(cObj).getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+                    }
+                    xmlLogger.addStep("Telemetry", "client_messages=" + clientMsgs + ", seed_messages=" + seed.size() + ", seed_bytes=" + seedBytes);
+                } catch (Exception ignore) { }
+            }
 
             // Removed local welcome shortcut: all messages now go through OpenAI
 
@@ -405,6 +397,7 @@ public class ChatService {
                     // Intentamos pedir al modelo que convierta la respuesta anterior en JSON válido siguiendo el contrato
                     if (debug) System.out.println("[ChatService][DEBUG] Content not JSON, requesting reformat to JSON from OpenAI");
                     try {
+                        boolean proceedWithToolCalls = false;
                         List<Map<String, Object>> reformatSeed = new ArrayList<>();
                         reformatSeed.add(systemMsg);
                         if (profileJsonForPrompt != null && profileJsonForPrompt.trim().length() > 2 && !profileJsonForPrompt.trim().equals("{}")) {
@@ -412,8 +405,7 @@ public class ChatService {
                         }
                         reformatSeed.add(Map.of("role", "assistant", "content", content));
                         // Instrucción clara y estricta para devolver JSON
-                        String reformatInstruction = "Por favor, devuelve únicamente un objeto JSON válido con al menos la propiedad 'text' (string). Opcionalmente puedes incluir 'suggestions' (array de strings), 'academia' (objeto) o 'academias' (array), cualquier lista bajo las claves exactas 'usuarios'|'academias'|'cursos'|'alumnos'|'profesores', y 'summary_fields' (array de 1–2 strings con nombres de campos existentes en los ítems). No incluyas explicaciones ni texto fuera del JSON. " +
-                            "Si ya había sugerencias inclúyelas en 'suggestions'. Si mencionas el nombre del usuario, ponlo dentro de 'text' o como parte del texto.";
+                        String reformatInstruction = promptBuilder.buildReformatInstruction();
                         reformatSeed.add(Map.of("role", "user", "content", reformatInstruction));
                         String reformatted = openai.callChatWithTools(reformatSeed, xmlLogger, authorization);
                         if (debug) {
@@ -431,19 +423,32 @@ public class ChatService {
                             // Si la respuesta es un objeto completo (con choices), extraer contenido
                             JsonNode rep = om.readTree(reformatted);
                             if (rep.has("choices")) {
-                                JsonNode rc = rep.path("choices").get(0).path("message").path("content");
+                                JsonNode msg2 = rep.path("choices").get(0).path("message");
+                                // 1) Si trae content JSON directo, úsalo
+                                JsonNode rc = msg2.path("content");
                                 String rcStr = rc.isMissingNode() ? "" : rc.asText("");
                                 try { JsonNode rcNode = om.readTree(rcStr); return buildEnvelopeFromContentNode(rcNode); } catch (Exception exx) { /* fall through */ }
+                                // 2) Si trae tool_calls, sustituimos assistantMsg y continuamos el flujo normal (ejecutar tools)
+                                if (msg2.has("tool_calls")) {
+                                    assistantMsg = msg2; // reutilizar variable para seguir por el flujo de tool_calls
+                                    proceedWithToolCalls = true;
+                                }
+                            }
+                            if (proceedWithToolCalls) {
+                                // Salimos del bloque 'no tool_calls' para continuar con la ejecución normal de tools
+                            } else {
+                                // Si la respuesta no contenía 'choices' o no devolvió JSON directo, intentamos parsearla como JSON directa
+                                try {
+                                    JsonNode reformNode = om.readTree(reformatted);
+                                    return buildEnvelopeFromContentNode(reformNode);
+                                } catch (Exception ex2) {
+                                    // Fallback: devolver el texto original envuelto en text
+                                    if (debug) System.out.println("[ChatService][DEBUG] Reformatting failed, returning fallback text JSON.");
+                                    return applyFinalFallback(ResponseEnvelope.success(content, DataSection.of("chat", List.of(), null), List.of(), List.of()));
+                                }
                             }
                         } catch (Exception ignore) {
-                        }
-                        // Si la respuesta no contenía 'choices' o no devolvió JSON directo, intentamos parsearla como JSON directa
-                        try {
-                            JsonNode reformNode = om.readTree(reformatted);
-                            return buildEnvelopeFromContentNode(reformNode);
-                        } catch (Exception ex2) {
-                            // Fallback: devolver el texto original envuelto en text
-                            if (debug) System.out.println("[ChatService][DEBUG] Reformatting failed, returning fallback text JSON.");
+                            // On parsing error, fallback
                             return applyFinalFallback(ResponseEnvelope.success(content, DataSection.of("chat", List.of(), null), List.of(), List.of()));
                         }
                     } catch (Exception ex) {
@@ -451,6 +456,7 @@ public class ChatService {
                         return applyFinalFallback(ResponseEnvelope.success(content, DataSection.of("chat", List.of(), null), List.of(), List.of()));
                     }
                 }
+                // Si llegamos aquí es porque reformat generó tool_calls y hemos reemplazado assistantMsg; continuamos flujo normal
             }
 
             // Delegated token: prefer the one created up-front (delegatedAuthUpfront) so we only create it once.
@@ -466,7 +472,7 @@ public class ChatService {
                 // If we don't have a delegated token, abort the chat flow when tool_calls are requested.
                 // We choose to return an explicit error JSON so clients/tests can detect the failure.
                 if (xmlLogger != null) xmlLogger.addStep("ChatService", "Delegated token not available - aborting tool_calls");
-                return ResponseEnvelope.error("Delegación deshabilitada","delegation_disabled","Delegation disabled or missing delegation secret - cannot proxy API calls", List.of());
+                return ResponseEnvelope.error("Delegación deshabilitada","delegation_disabled","Delegation disabled or missing delegation secret - cannot proxy API calls");
             }
 
             // 3) Resolver tool_calls
@@ -524,15 +530,66 @@ public class ChatService {
                                 Map<String, Object> epB = openai.getEndpointByName(endpointNameB);
                                 String apiResB;
                                 long c0 = System.currentTimeMillis();
+                                JsonNode qNormBForMeta = null;
                                 if (epB == null) {
                                     apiResB = "{\"error\":\"Endpoint no permitido: " + endpointNameB + "\"}";
                                 } else {
                                     try {
                                         String authToUseB = (delegatedAuth != null) ? delegatedAuth : authorization;
+                                        // Aplicar token/heurística de navegación si falta 'page' en la query
+                                        JsonNode qAppliedB = queryB;
+                                        try {
+                                            com.fasterxml.jackson.databind.node.ObjectNode qtemp = (qAppliedB != null && qAppliedB.isObject()) ? (com.fasterxml.jackson.databind.node.ObjectNode) qAppliedB.deepCopy() : om.createObjectNode();
+                                            boolean hasPageB = qtemp.has("page") && qtemp.get("page").canConvertToInt();
+                                            if (!hasPageB) {
+                                                com.fasterxml.jackson.databind.node.ObjectNode tokB = extractPaginationToken(incoming);
+                                                if (tokB != null) {
+                                                    String tokenB = tokB.has("token") && tokB.get("token").isTextual() ? tokB.get("token").asText() : null;
+                                                    Integer pageTokB = tokB.has("page") && tokB.get("page").canConvertToInt() ? tokB.get("page").asInt() : null;
+                                                    Integer sizeTokB = tokB.has("size") && tokB.get("size").canConvertToInt() ? tokB.get("size").asInt() : null;
+                                                    if (tokenB != null) {
+                                                        java.util.Map<String,Object> payloadB = contextTokenService.verify(tokenB);
+                                                        if (payloadB != null) {
+                                                            Integer targetPageB = null;
+                                                            try { Object tpB = payloadB.get("target_page"); if (tpB instanceof Number) targetPageB = ((Number) tpB).intValue(); } catch (Exception __i) {}
+                                                            if (targetPageB != null) { qtemp.put("page", Math.max(1, targetPageB)); }
+                                                            else if (pageTokB != null) { qtemp.put("page", Math.max(1, pageTokB)); }
+                                                            else if (payloadB.get("page") instanceof Number) { qtemp.put("page", Math.max(1, ((Number) payloadB.get("page")).intValue())); }
+                                                            if (sizeTokB != null) qtemp.put("size", Math.max(1, sizeTokB));
+                                                            else if (payloadB.get("size") instanceof Number) qtemp.put("size", Math.max(1, ((Number) payloadB.get("size")).intValue()));
+                                                            qAppliedB = qtemp;
+                                                        }
+                                                    }
+                                                }
+                                                // Si no hay token, usar heurística del historial
+                                                if (tokB == null) {
+                                                    try {
+                                                        NavContext navB = extractNavContext(incoming);
+                                                        if (navB != null) {
+                                                            qAppliedB = adjustQueryWithNavContext(epB, methodB, qtemp, navB);
+                                                        }
+                                                    } catch (Exception __i2) {}
+                                                }
+                                            }
+                                        } catch (Exception __bestEffort) {}
+                                        // Enforce pagination defaults/caps for paginated GETs
+                                        JsonNode qNormB = sanitizePagination(epB, methodB, qAppliedB);
+                                        qNormBForMeta = qNormB;
                                         if (xmlLogger != null) {
-                                            apiResB = apiProxy.executeSpecCall(epB, methodB, pathParamsB, queryB, bodyB, authToUseB, xmlLogger);
+                                            try {
+                                                String qpB = (qNormB == null) ? "null" : qNormB.toString();
+                                                String ppB = (pathParamsB == null) ? "null" : pathParamsB.toString();
+                                                String bdB = (bodyB == null) ? "null" : bodyB.toString();
+                                                xmlLogger.addStep("ApiProxyService", "[batch] Llamada a API: " + endpointNameB + " (" + methodB + ")" +
+                                                        "<br>pathParams=" + ppB + "<br>query=" + qpB + "<br>body=" + bdB);
+                                            } catch (Exception _ignore) {
+                                                xmlLogger.addStep("ApiProxyService", "[batch] Llamada a API: " + endpointNameB + " (" + methodB + ")");
+                                            }
+                                        }
+                                        if (xmlLogger != null) {
+                                            apiResB = apiProxy.executeSpecCall(epB, methodB, pathParamsB, qNormB, bodyB, authToUseB, xmlLogger);
                                         } else {
-                                            apiResB = apiProxy.executeSpecCall(epB, methodB, pathParamsB, queryB, bodyB, authToUseB);
+                                            apiResB = apiProxy.executeSpecCall(epB, methodB, pathParamsB, qNormB, bodyB, authToUseB);
                                         }
                                     } catch (Exception exInnerB) {
                                         Map<String, Object> errMapB = Map.of("error", "authorization_failure", "message", exInnerB.getMessage() == null ? "" : exInnerB.getMessage());
@@ -550,6 +607,13 @@ public class ChatService {
                                     metaB.method = methodB;
                                     metaB.apiResultNode = parsedB;
                                     metaB.raw = apiResB;
+                                    // Enlazar metadatos básicos
+                                    try {
+                                        // Guardar la query efectiva ejecutada (post token/nav + saneamiento)
+                                        metaB.querySnapshot = (qNormBForMeta == null) ? om.createObjectNode() : qNormBForMeta.deepCopy();
+                                    } catch (Exception __ignore) { metaB.querySnapshot = om.createObjectNode(); }
+                                    try { metaB.pathParamsSnapshot = (c.path("pathParams") == null) ? om.createObjectNode() : c.path("pathParams").deepCopy(); } catch (Exception __ignore) { metaB.pathParamsSnapshot = om.createObjectNode(); }
+                                    try { if (epB != null) metaB.endpointPath = String.valueOf(epB.getOrDefault("path","")); } catch (Exception __ignore) { metaB.endpointPath = null; }
                                     executed.add(metaB);
                                     boolean okB = !(parsedB.has("error") || (parsedB.has("ok") && !parsedB.path("ok").asBoolean(true)));
                                     batchResults.add(Map.of("ok", okB, "result", parsedB));
@@ -597,34 +661,49 @@ public class ChatService {
                 JsonNode pathParams    = args.path("pathParams");
                 JsonNode query         = args.path("query");
                 JsonNode body          = args.path("body");
-                // Fallback mínimo: si el modelo omite query.page en navegación y tenemos Contexto_paginacion, completar page/size
+                // Navegación con token: si el cliente aceptó una ui_suggestion de paginación y envió Paginacion_token, aplicar page/size
                 try {
-                    // Construir objeto mutable para query
                     com.fasterxml.jackson.databind.node.ObjectNode q = (query != null && query.isObject()) ? (com.fasterxml.jackson.databind.node.ObjectNode) query.deepCopy() : om.createObjectNode();
                     boolean hasPage = q.has("page") && q.get("page").canConvertToInt();
-                    // Extraer último comando del usuario y contexto de paginación del historial de entrada
-                    String lastUser = getLastUserUtterance(incoming);
-                    com.fasterxml.jackson.databind.node.ObjectNode ctx = extractPaginationContext(incoming);
-                    if (!hasPage && ctx != null && lastUser != null) {
-                        int curPage = ctx.has("page") && ctx.get("page").canConvertToInt() ? Math.max(1, ctx.get("page").asInt()) : 1;
-                        Integer next = ctx.has("next_page") && ctx.get("next_page").canConvertToInt() ? ctx.get("next_page").asInt() : null;
-                        Integer prev = ctx.has("prev_page") && ctx.get("prev_page").canConvertToInt() ? ctx.get("prev_page").asInt() : null;
-                        Integer size = ctx.has("size") && ctx.get("size").canConvertToInt() ? ctx.get("size").asInt() : null;
-                        Integer gotoN = extractGotoPage(lastUser);
-                        String lu = lastUser.toLowerCase(java.util.Locale.ROOT);
-                        if (gotoN != null && gotoN >= 1) {
-                            q.put("page", gotoN);
-                        } else if (lu.contains("siguiente")) {
-                            if (next != null) q.put("page", next);
-                            else q.put("page", curPage + 1);
-                        } else if (lu.contains("anterior")) {
-                            if (prev != null) q.put("page", Math.max(1, prev));
-                            else q.put("page", Math.max(1, curPage - 1));
+                    if (!hasPage) {
+                        com.fasterxml.jackson.databind.node.ObjectNode tok = extractPaginationToken(incoming);
+                        if (tok != null) {
+                            String token = tok.has("token") && tok.get("token").isTextual() ? tok.get("token").asText() : null;
+                            Integer pageTok = tok.has("page") && tok.get("page").canConvertToInt() ? tok.get("page").asInt() : null;
+                            Integer sizeTok = tok.has("size") && tok.get("size").canConvertToInt() ? tok.get("size").asInt() : null;
+                            if (token != null) {
+                                java.util.Map<String,Object> payload = contextTokenService.verify(token);
+                                if (payload != null) {
+                                    // Preferir target_page del token si está presente; si no, usar pageTok o payload.page
+                                    Integer targetPage = null;
+                                    try {
+                                        Object tp = payload.get("target_page");
+                                        if (tp instanceof Number) targetPage = ((Number) tp).intValue();
+                                    } catch (Exception ignore2) { }
+                                    if (targetPage != null) {
+                                        q.put("page", Math.max(1, targetPage));
+                                    } else if (pageTok != null) {
+                                        q.put("page", Math.max(1, pageTok));
+                                    } else if (payload.get("page") instanceof Number) {
+                                        q.put("page", Math.max(1, ((Number) payload.get("page")).intValue()));
+                                    }
+                                    if (sizeTok != null) q.put("size", Math.max(1, sizeTok));
+                                    else if (payload.get("size") instanceof Number) q.put("size", Math.max(1, ((Number) payload.get("size")).intValue()));
+                                    query = q;
+                                }
+                            }
                         }
-                        if (size != null && !q.has("size")) q.put("size", size);
-                        query = q; // sustituimos por la versión enriquecida
+                        // Si no hay token, heurística de navegación basada en historial (assistant+user)
+                        if (tok == null) {
+                            try {
+                                NavContext nav = extractNavContext(incoming);
+                                if (nav != null) {
+                                    query = adjustQueryWithNavContext(ep, methodFromModel, q, nav);
+                                }
+                            } catch (Exception ignore2) { }
+                        }
                     }
-                } catch (Exception ignore) { /* fallback best-effort */ }
+                } catch (Exception ignore) { /* best-effort token nav */ }
                 if (xmlLogger != null) {
                     try {
                         String qp = (query == null) ? "null" : query.toString();
@@ -689,10 +768,12 @@ public class ChatService {
                     try {
                         // Prefer delegated token if available, otherwise forward original authorization
                         String authToUse = (delegatedAuth != null) ? delegatedAuth : authorization;
+                        // Enforce pagination defaults/caps for paginated GET endpoints
+                        JsonNode qNorm = sanitizePagination(ep, methodFromModel, query);
                         if (xmlLogger != null) {
-                            apiResult = apiProxy.executeSpecCall(ep, methodFromModel, pathParams, query, body, authToUse, xmlLogger);
+                            apiResult = apiProxy.executeSpecCall(ep, methodFromModel, pathParams, qNorm, body, authToUse, xmlLogger);
                         } else {
-                            apiResult = apiProxy.executeSpecCall(ep, methodFromModel, pathParams, query, body, authToUse);
+                            apiResult = apiProxy.executeSpecCall(ep, methodFromModel, pathParams, qNorm, body, authToUse);
                         }
                     } catch (Exception exInner) {
                         // Ensure apiResult is always a JSON string describing the error
@@ -749,77 +830,33 @@ public class ChatService {
                 meta.method = methodFromModel;
                 meta.apiResultNode = parsedApiNode;
                 meta.raw = apiResult;
+                try {
+                    // Guardar la query efectiva usada (tras saneamiento de paginación)
+                    JsonNode qEff = sanitizePagination(ep, methodFromModel, (query == null) ? om.createObjectNode() : query);
+                    meta.querySnapshot = (qEff == null) ? om.createObjectNode() : qEff.deepCopy();
+                } catch (Exception __ignore) { meta.querySnapshot = om.createObjectNode(); }
+                try { meta.endpointPath = String.valueOf(ep.getOrDefault("path","")); } catch (Exception __ignore) { meta.endpointPath = null; }
                 executed.add(meta);
             }
 
 
-            // 4) Segundo turno ligero (preferido si procede): exactamente 1 tool_call, GET listado conocido, sin error y con returned/paginación
-            if (secondTurnLiteEnabled) {
-                try {
-                    ResponseEnvelope liteEnv = trySecondTurnLite(executed, seed, assistantMsg, xmlLogger, authorization);
-                    if (liteEnv != null) {
-                        if (xmlLogger != null) xmlLogger.addStep("ChatService", "Segundo turno ligero aplicado");
-                        if (debug) logger.debug("[ChatService] Second-turn LITE applied");
-                        return applyFinalFallback(liteEnv);
-                    }
-                } catch (Exception liteEx) {
-                    if (debug) logger.debug("[ChatService] Second-turn LITE failed: {}", liteEx.getMessage());
-                }
-            }
+            // 4) Segundo turno LITE desactivado: siempre delegamos el texto al modelo (no polish/backend)
 
-            // 5) Fast-path pre-2º turno configurable (por defecto desactivado para no decidir intenciones en backend)
-            if (parametros.isPreSecondFastpathEnabled() && fastpathEnabled && !executed.isEmpty()) {
-                try {
-                    ResponseEnvelope fastEnv = buildFastEnvelopeFromApi(executed);
-                    if (fastEnv != null) {
-                        if (xmlLogger != null) xmlLogger.addStep("ChatService", "Fast-path PRE-2º turno aplicado (flag ON)");
-                        if (debug) logger.debug("[ChatService] Pre-second fast-path applied (flag)");
-                        // Telemetría adicional: origen de sugerencias y señales de paginación del resultado base
-                        try {
-                            ExecMeta meta0 = executed.get(0);
-                            if (meta0 != null && meta0.apiResultNode != null && xmlLogger != null) {
-                                boolean hasMoreField = meta0.apiResultNode.has("has_more") && meta0.apiResultNode.get("has_more").isBoolean();
-                                boolean hasMoreVal = hasMoreField ? meta0.apiResultNode.get("has_more").asBoolean(false) : false;
-                                boolean nextPagePresent = meta0.apiResultNode.has("next_page");
-                                boolean nextPageIsNull = nextPagePresent && meta0.apiResultNode.get("next_page").isNull();
-                                boolean prevPagePresent = meta0.apiResultNode.has("prev_page");
-                                boolean prevPageIsNull = prevPagePresent && meta0.apiResultNode.get("prev_page").isNull();
-                                xmlLogger.addStep("Telemetry",
-                                    "fastpath_suggestions_source=backend, pag_flags has_more=" + hasMoreVal +
-                                    ", has_more_field=" + hasMoreField +
-                                    ", next_page_present=" + nextPagePresent +
-                                    ", next_page_is_null=" + nextPageIsNull +
-                                    ", prev_page_present=" + prevPagePresent +
-                                    ", prev_page_is_null=" + prevPageIsNull
-                                );
-                            }
-                        } catch (Exception ignore) { }
-                        // Opcional: LITE polish del texto del fast-path, sin tool_calls, con timebox y fallback
-                        ResponseEnvelope polished = tryPolishFastpathLite(fastEnv, xmlLogger, authorization, System.currentTimeMillis());
-                        return applyFinalFallback(polished == null ? fastEnv : polished);
-                    }
-                } catch (Exception fastEx) {
-                    if (debug) logger.debug("[ChatService] Pre-second fast-path failed: {}", fastEx.getMessage());
-                }
-            }
+            // 5) Fast-path pre-2º turno desactivado: no generamos texto/sugerencias desde backend
 
-            // 6) Segundo turno normal: antes de llamar, aplica time-budget fallback a fast-path si ya excedimos el umbral
+            // 6) Segundo turno normal: si excede presupuesto, lo marcamos en traza, pero seguimos y dejamos que el modelo redacte
             try {
                 long elapsedBeforeSecond = System.currentTimeMillis() - t0;
                 long budget = parametros.getSecondTurnBudgetMs();
-                // Si ya llevamos >budget y podemos construir fast-path, evitar la segunda llamada al LLM
-                if (fastpathEnabled && elapsedBeforeSecond > budget) {
-                    ResponseEnvelope fastBudget = buildFastEnvelopeFromApi(executed);
-                    if (fastBudget != null) {
-                        if (xmlLogger != null) xmlLogger.addStep("ChatService", "Time-budget alcanzado antes del 2º turno: aplicando fast-path");
-                        if (debug) logger.debug("[ChatService] Time-budget exceeded ({} ms > {}). Returning fast-path envelope.", elapsedBeforeSecond, budget);
-                        return applyFinalFallback(fastBudget);
-                    }
+                if (elapsedBeforeSecond > budget && xmlLogger != null) {
+                    xmlLogger.addStep("Telemetry", "decision_budget_exceeded=true budget_ms=" + budget + " elapsed_ms=" + elapsedBeforeSecond);
                 }
             } catch (Exception ignore) { /* best-effort budget check */ }
 
             // 6) Segundo turno normal: reinyectamos el assistant con sus tool_calls + los outputs
             List<Map<String, Object>> followup = new ArrayList<>(seed);
+            // Sin inserción/almacenado de Contexto_paginacion: navegación será por ui_suggestions + contextToken
+
             Map<String, Object> assistantEcho = new HashMap<>();
             assistantEcho.put("role", "assistant");
             assistantEcho.put("content",
@@ -903,7 +940,16 @@ public class ChatService {
                 if (debug) {
                     System.out.println("[ChatService][DEBUG] Calling OpenAI with followup messages: " + followup);
                 }
-            if (xmlLogger != null) xmlLogger.addStep("Telemetry", "api_ms_total=" + totalApiMs + ", calls_in_batch=" + totalCallsInBatch + ", reinject_payload_bytes=" + reinjectPayloadBytes);
+            if (xmlLogger != null) {
+                try {
+                    long followupBytes = 0L;
+                    for (Map<String,Object> m : followup) {
+                        Object cObj = m.get("content");
+                        if (cObj != null) followupBytes += String.valueOf(cObj).getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+                    }
+                    xmlLogger.addStep("Telemetry", "api_ms_total=" + totalApiMs + ", calls_in_batch=" + totalCallsInBatch + ", reinject_payload_bytes=" + reinjectPayloadBytes + ", followup_messages=" + followup.size() + ", followup_bytes=" + followupBytes);
+                } catch (Exception ignore) { }
+            }
             long secondStartMs = System.currentTimeMillis();
             JsonNode second = om.readTree(openai.callChatWithTools(followup, xmlLogger, authorization));
             if (xmlLogger != null) xmlLogger.addStep("Telemetry", "second_ms=" + (System.currentTimeMillis() - secondStartMs));
@@ -918,7 +964,19 @@ public class ChatService {
                     System.out.println("[ChatService][DEBUG] OpenAI second response: " + second);
                 }
             }
-            JsonNode finalMsg = second.path("choices").get(0).path("message");
+            // Defensive: ensure we have choices; if not, return a safe error envelope
+            JsonNode finalMsg;
+            try {
+                JsonNode choices2 = second.path("choices");
+                if (choices2 == null || !choices2.isArray() || choices2.size() == 0) {
+                    if (xmlLogger != null) xmlLogger.addStep("OpenAIClient", "Segunda respuesta sin choices: devolviendo envelope de error controlado");
+                    return applyFinalFallback(ResponseEnvelope.error("No se pudo completar la respuesta (segunda fase)", "openai_empty_response", "Segunda respuesta sin choices"));
+                }
+                finalMsg = choices2.get(0).path("message");
+            } catch (Exception ex) {
+                if (xmlLogger != null) xmlLogger.addStep("OpenAIClient", "Excepción accediendo a choices: " + ex.getMessage());
+                return applyFinalFallback(ResponseEnvelope.error("Error al procesar respuesta", "openai_parse_error", ex.getMessage()));
+            }
             // Bucle limitado: si el 2º turno devuelve tool_calls, ejecútalos y vuelve a llamar (máx 2 iteraciones o 8s presupuesto)
             int extraIters = 0;
             final long iterationBudgetMs = parametros.getSecondTurnBudgetMs();
@@ -967,10 +1025,47 @@ public class ChatService {
                                     } else {
                                         try {
                                             String authToUseB = (delegatedAuth != null) ? delegatedAuth : authorization;
+                                            // Aplicar token/heurística de navegación si falta 'page' en la query
+                                            JsonNode qAppliedB = queryB;
+                                            try {
+                                                com.fasterxml.jackson.databind.node.ObjectNode qtemp = (qAppliedB != null && qAppliedB.isObject()) ? (com.fasterxml.jackson.databind.node.ObjectNode) qAppliedB.deepCopy() : om.createObjectNode();
+                                                boolean hasPageB = qtemp.has("page") && qtemp.get("page").canConvertToInt();
+                                                if (!hasPageB) {
+                                                    com.fasterxml.jackson.databind.node.ObjectNode tokB = extractPaginationToken(incoming);
+                                                    if (tokB != null) {
+                                                        String tokenB = tokB.has("token") && tokB.get("token").isTextual() ? tokB.get("token").asText() : null;
+                                                        Integer pageTokB = tokB.has("page") && tokB.get("page").canConvertToInt() ? tokB.get("page").asInt() : null;
+                                                        Integer sizeTokB = tokB.has("size") && tokB.get("size").canConvertToInt() ? tokB.get("size").asInt() : null;
+                                                        if (tokenB != null) {
+                                                            java.util.Map<String,Object> payloadB = contextTokenService.verify(tokenB);
+                                                            if (payloadB != null) {
+                                                                Integer targetPageB = null;
+                                                                try { Object tpB = payloadB.get("target_page"); if (tpB instanceof Number) targetPageB = ((Number) tpB).intValue(); } catch (Exception __i) {}
+                                                                if (targetPageB != null) { qtemp.put("page", Math.max(1, targetPageB)); }
+                                                                else if (pageTokB != null) { qtemp.put("page", Math.max(1, pageTokB)); }
+                                                                else if (payloadB.get("page") instanceof Number) { qtemp.put("page", Math.max(1, ((Number) payloadB.get("page")).intValue())); }
+                                                                if (sizeTokB != null) qtemp.put("size", Math.max(1, sizeTokB));
+                                                                else if (payloadB.get("size") instanceof Number) qtemp.put("size", Math.max(1, ((Number) payloadB.get("size")).intValue()));
+                                                                qAppliedB = qtemp;
+                                                            }
+                                                        }
+                                                    }
+                                                    if (tokB == null) {
+                                                        try {
+                                                            NavContext navB = extractNavContext(incoming);
+                                                            if (navB != null) {
+                                                                qAppliedB = adjustQueryWithNavContext(epB, methodB, qtemp, navB);
+                                                            }
+                                                        } catch (Exception __i2) {}
+                                                    }
+                                                }
+                                            } catch (Exception __bestEffort) {}
+                                            // Enforce pagination defaults/caps for paginated GETs
+                                            JsonNode qNormB = sanitizePagination(epB, methodB, qAppliedB);
                                             if (xmlLogger != null) {
-                                                apiResB = apiProxy.executeSpecCall(epB, methodB, pathParamsB, queryB, bodyB, authToUseB, xmlLogger);
+                                                apiResB = apiProxy.executeSpecCall(epB, methodB, pathParamsB, qNormB, bodyB, authToUseB, xmlLogger);
                                             } else {
-                                                apiResB = apiProxy.executeSpecCall(epB, methodB, pathParamsB, queryB, bodyB, authToUseB);
+                                                apiResB = apiProxy.executeSpecCall(epB, methodB, pathParamsB, qNormB, bodyB, authToUseB);
                                             }
                                         } catch (Exception exInnerB) {
                                             Map<String, Object> errMapB = Map.of("error", "authorization_failure", "message", exInnerB.getMessage() == null ? "" : exInnerB.getMessage());
@@ -987,6 +1082,10 @@ public class ChatService {
                                         metaB.method = methodB;
                                         metaB.apiResultNode = parsedB;
                                         metaB.raw = apiResB;
+                                        try {
+                                            JsonNode qEff = sanitizePagination(epB, methodB, (c.path("query") == null) ? om.createObjectNode() : c.path("query"));
+                                            metaB.querySnapshot = (qEff == null) ? om.createObjectNode() : qEff.deepCopy();
+                                        } catch (Exception __ignore) { metaB.querySnapshot = om.createObjectNode(); }
                                         executed.add(metaB);
                                         boolean okB = !(parsedB.has("error") || (parsedB.has("ok") && !parsedB.path("ok").asBoolean(true)));
                                         batchResults.add(Map.of("ok", okB, "result", parsedB));
@@ -1083,6 +1182,9 @@ public class ChatService {
                     meta.method = methodFromModel;
                     meta.apiResultNode = parsedApiNode;
                     meta.raw = apiResult;
+                    try { meta.querySnapshot = (query == null) ? om.createObjectNode() : query.deepCopy(); } catch (Exception __ignore) { meta.querySnapshot = om.createObjectNode(); }
+                    try { meta.endpointPath = String.valueOf(ep.getOrDefault("path","")); } catch (Exception __ignore) { meta.endpointPath = null; }
+                    try { meta.pathParamsSnapshot = (pathParams == null) ? om.createObjectNode() : pathParams.deepCopy(); } catch (Exception __ignore) { meta.pathParamsSnapshot = om.createObjectNode(); }
                     executed.add(meta);
                 }
                 // Construir nuevo followup para la siguiente iteración (aplicando también eco recortado)
@@ -1190,8 +1292,79 @@ public class ChatService {
             // Si finalContent es JSON válido, lo enriquecemos con items/paginación reales si procede
             try {
                 JsonNode node = om.readTree(finalContent);
-                JsonNode enriched = maybeEnrichWithExecutedItems(node, executed);
+                JsonNode enriched;
+                try {
+                    enriched = coerceWithBackendResults(node, executed, incoming);
+                } catch (Exception __coerce) {
+                    // Fallback defensivo
+                    enriched = maybeEnrichWithExecutedItems(node, executed);
+                }
                 ResponseEnvelope env = buildEnvelopeFromContentNode(enriched);
+                // 1) Si falta total y hay paginación, intentar conteo lazy (opcional)
+                try {
+                    if (env.getData() != null && env.getData().getPagination() != null) {
+                        PaginationInfo p = env.getData().getPagination();
+                        if (p.getTotal() == null) {
+                            ExecMeta metaSel = selectExecMetaForPagination(executed, incoming);
+                            Integer totalLazy = computeLazyTotal(openai, apiProxy, metaSel, p, authorization, null, xmlLogger);
+                            if (totalLazy != null) env.getData().getPagination().setTotal(totalLazy);
+                        }
+                    }
+                } catch (Exception ignore) {
+                    // Fallback genérico: si algo falla durante el post-procesado, construir el envelope directamente
+                    // a partir de los resultados reales del/los tool_call ejecutados.
+                    ExecMeta metaSel = selectExecMetaForPagination(executed, incoming);
+                    ResponseEnvelope envFallback = buildEnvelopeFromContentNode(metaSel == null ? om.createObjectNode() : metaSel.apiResultNode);
+                    // Total lazy si falta
+                    try {
+                        if (envFallback.getData() != null && envFallback.getData().getPagination() != null) {
+                            PaginationInfo p = envFallback.getData().getPagination();
+                            if (p.getTotal() == null) {
+                                Integer totalLazy = computeLazyTotal(openai, apiProxy, metaSel, p, authorization, null, xmlLogger);
+                                if (totalLazy != null) envFallback.getData().getPagination().setTotal(totalLazy);
+                            }
+                        }
+                    } catch (Exception __tl) { /* ignore */ }
+                    // Componer mensaje con conteos
+                    try { envFallback.setMessage(composePaginatedMessage(envFallback.getMessage(), envFallback.getData() == null ? null : envFallback.getData().getPagination())); } catch (Exception __m) { }
+                    // Crear/enriquecer sugerencias y tokens
+                    try { if (envFallback.getData() != null && envFallback.getData().getPagination() != null) ensurePaginationSuggestions(envFallback, envFallback.getData().getPagination(), metaSel); } catch (Exception __s) { }
+                    if (xmlLogger != null) xmlLogger.addStep("ChatService", "Fallback aplicado: envelope construido desde resultados reales por contenido no-JSON del modelo.");
+                    if (xmlLogger != null) xmlLogger.addStep("Telemetry", "render_ms=" + (System.currentTimeMillis() - t0));
+                    if (debug) logger.debug("[Telemetry] render_ms={} (since start)", (System.currentTimeMillis() - t0));
+                    return applyFinalFallback(envFallback);
+                }
+                // 2) Componer mensaje final con conteos
+                try {
+                    String finalMsgText = composePaginatedMessage(env.getMessage(), env.getData() == null ? null : env.getData().getPagination());
+                    env.setMessage(finalMsgText);
+                } catch (Exception ignore) {}
+                // 3) Auto-crear y enriquecer sugerencias de paginación si procede (token expandido)
+                try {
+                    if (env.getData() != null && env.getData().getPagination() != null) {
+                        ExecMeta metaSel = selectExecMetaForPagination(executed, incoming);
+                        ensurePaginationSuggestions(env, env.getData().getPagination(), metaSel);
+                        // Telemetría: resumen de sugerencias generadas
+                        if (xmlLogger != null) {
+                            try {
+                                StringBuilder sb = new StringBuilder();
+                                sb.append("ui_suggestions_pagination: [");
+                                boolean firstSug = true;
+                                for (Suggestion s2 : env.getUiSuggestions()) {
+                                    if (s2 == null || !"Paginacion".equalsIgnoreCase(s2.getType())) continue;
+                                    if (!firstSug) sb.append(", ");
+                                    firstSug = false;
+                                    String dir = (s2.getPagination() == null || s2.getPagination().getDirection() == null) ? "?" : s2.getPagination().getDirection();
+                                    Integer tp = (s2.getPagination() == null) ? null : s2.getPagination().getPage();
+                                    boolean hasTok = (s2.getContextToken() != null && !s2.getContextToken().isBlank());
+                                    sb.append("{").append(dir).append("->").append(String.valueOf(tp)).append(", token=").append(hasTok).append("}");
+                                }
+                                sb.append("]");
+                                xmlLogger.addStep("Telemetry", sb.toString());
+                            } catch (Exception __sug) { /* ignore */ }
+                        }
+                    }
+                } catch (Exception ignore) {}
                 if (xmlLogger != null) {
                     int itemsReturned = 0;
                     try { itemsReturned = env.getData() != null && env.getData().getItems() != null ? env.getData().getItems().size() : 0; } catch (Exception ignore) {}
@@ -1212,16 +1385,27 @@ public class ChatService {
                 }
                 return applyFinalFallback(env);
             } catch (Exception e) {
-                ResponseEnvelope env = ResponseEnvelope.success(finalContent, DataSection.of("chat", List.of(), null), List.of(), List.of());
+                // Contenido final no es JSON válido: construir envelope desde resultados reales del/los tool_call
+                ExecMeta metaSel = selectExecMetaForPagination(executed, incoming);
+                ResponseEnvelope envFallback = buildEnvelopeFromContentNode(metaSel == null ? om.createObjectNode() : metaSel.apiResultNode);
+                // Total lazy si falta
+                try {
+                    if (envFallback.getData() != null && envFallback.getData().getPagination() != null) {
+                        PaginationInfo p = envFallback.getData().getPagination();
+                        if (p.getTotal() == null) {
+                            Integer totalLazy = computeLazyTotal(openai, apiProxy, metaSel, p, authorization, null, xmlLogger);
+                            if (totalLazy != null) envFallback.getData().getPagination().setTotal(totalLazy);
+                        }
+                    }
+                } catch (Exception __tl) { /* ignore */ }
+                // Componer mensaje con conteos
+                try { envFallback.setMessage(composePaginatedMessage(envFallback.getMessage(), envFallback.getData() == null ? null : envFallback.getData().getPagination())); } catch (Exception __m) { }
+                // Crear/enriquecer sugerencias y tokens
+                try { if (envFallback.getData() != null && envFallback.getData().getPagination() != null) ensurePaginationSuggestions(envFallback, envFallback.getData().getPagination(), metaSel); } catch (Exception __s) { }
+                if (xmlLogger != null) xmlLogger.addStep("ChatService", "Fallback aplicado: envelope construido desde resultados reales (final content no JSON). Texto final ignorado para contrato.");
                 if (xmlLogger != null) xmlLogger.addStep("Telemetry", "render_ms=" + (System.currentTimeMillis() - t0));
                 if (debug) logger.debug("[Telemetry] render_ms={} (since start)", (System.currentTimeMillis() - t0));
-                if (debug) {
-                    try {
-                        String prettyEnv = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(env);
-                        System.out.println("[ChatService][DEBUG] Envelope(final_plain_text):\n" + prettyEnv);
-                    } catch (Exception ignore) {}
-                }
-                return applyFinalFallback(env);
+                return applyFinalFallback(envFallback);
             }
 
         } catch (Exception e) {
@@ -1230,196 +1414,48 @@ public class ChatService {
                 System.out.println("[ChatService][DEBUG] Exception in runChat: " + e.getMessage());
                 e.printStackTrace();
             }
-            return ResponseEnvelope.error("Error en runChat","internal_error", e.getMessage(), List.of());
+            return ResponseEnvelope.error("Error en runChat","internal_error", e.getMessage());
         }
     }
 
-    // Extrae el último mensaje del usuario (role="user") del historial; devuelve null si no existe
-    private String getLastUserUtterance(List<ChatRequest.Message> incoming) {
-        if (incoming == null || incoming.isEmpty()) return null;
-        for (int i = incoming.size() - 1; i >= 0; i--) {
-            ChatRequest.Message m = incoming.get(i);
-            try {
-                if (m != null && "user".equalsIgnoreCase(m.getRole())) {
-                    String c = m.getContent();
-                    if (c != null && !c.isBlank()) return c;
-                }
-            } catch (Exception ignore) { /* best-effort */ }
-        }
-        return null;
-    }
+    // Tratamiento de saludos unificado en el prompt; no se requiere refuerzo vía mensaje especial
+    // Convención: incluir en el historial un assistant con contenido que empiece por "Saludo_refuerzo:" y contenga "true"
+    // Ej.: { role: 'assistant', content: 'Saludo_refuerzo: true' }
+    // Tratamiento de saludos unificado en el prompt; no se requiere refuerzo vía mensaje especial
 
-    // Busca en el historial un assistant con prefijo "Contexto_paginacion: { ... }" y devuelve el JSON como ObjectNode
-    private com.fasterxml.jackson.databind.node.ObjectNode extractPaginationContext(List<ChatRequest.Message> incoming) {
+    // Busca en el historial un mensaje (assistant o system) con prefijo "Paginacion_token: { ... }" y devuelve el JSON como ObjectNode
+    private com.fasterxml.jackson.databind.node.ObjectNode extractPaginationToken(List<ChatRequest.Message> incoming) {
         if (incoming == null || incoming.isEmpty()) return null;
-        String marker = "Contexto_paginacion:";
-        // buscamos el último que aparezca para que tenga prioridad el más reciente
+        String marker = "Paginacion_token:";
         for (int i = incoming.size() - 1; i >= 0; i--) {
             ChatRequest.Message m = incoming.get(i);
             try {
                 if (m == null) continue;
+                // Aceptamos el token proveniente de assistant (respuesta anterior) o system (mensaje auxiliar del cliente)
                 String role = m.getRole();
-                if (!"assistant".equalsIgnoreCase(role)) continue;
-                String content = m.getContent();
-                if (content == null) continue;
-                int idx = content.indexOf(marker);
-                if (idx < 0) continue;
-                String after = content.substring(idx + marker.length()).trim();
-                // si viene entrecomillado, intenta quitar comillas exteriores
-                if (after.startsWith("\"") && after.endsWith("\"")) {
-                    after = after.substring(1, after.length() - 1);
+                if (!"assistant".equalsIgnoreCase(role) && !"system".equalsIgnoreCase(role)) continue;
+                String c = m.getContent();
+                if (c == null) continue;
+                int idx = c.indexOf(marker);
+                if (idx >= 0) {
+                    String json = c.substring(idx + marker.length()).trim();
+                    if (json.startsWith("{")) {
+                        JsonNode parsed = om.readTree(json);
+                        if (parsed != null && parsed.isObject()) {
+                            return (com.fasterxml.jackson.databind.node.ObjectNode) parsed;
+                        }
+                    }
                 }
-                // intenta localizar el bloque JSON desde la primera '{' hasta la última '}'
-                int open = after.indexOf('{');
-                int close = after.lastIndexOf('}');
-                String json = (open >= 0 && close > open) ? after.substring(open, close + 1) : after;
-                JsonNode parsed = om.readTree(json);
-                if (parsed != null && parsed.isObject()) {
-                    return (com.fasterxml.jackson.databind.node.ObjectNode) parsed;
-                }
-            } catch (Exception ignore) { /* si falla el parse, sigue buscando */ }
+            } catch (Exception ignore) { }
         }
         return null;
     }
 
-    // Intenta extraer un número de página de instrucciones tipo "Ir a página N" (admite variantes con/ sin acento y "pag")
-    private Integer extractGotoPage(String text) {
-        if (text == null) return null;
-        String t = text.trim();
-        if (t.isEmpty()) return null;
-        try {
-            // Patrones comunes en castellano
-            java.util.regex.Pattern p1 = java.util.regex.Pattern.compile("(?i)\\b(?:ir\\s+a(?:\\s+la)?)?\\s*(?:p[áa]g(?:ina)?|pag\\.?|pagina|página)\\s*(\\d+)\\b");
-            java.util.regex.Matcher m1 = p1.matcher(t);
-            if (m1.find()) {
-                int n = Integer.parseInt(m1.group(1));
-                return n >= 1 ? n : 1;
-            }
-            // También admitir mensajes del tipo "página 3" sin el "ir a"
-            java.util.regex.Pattern p2 = java.util.regex.Pattern.compile("(?i)\\b(?:p[áa]gina|pagina|pag)\\s*(\\d+)\\b");
-            java.util.regex.Matcher m2 = p2.matcher(t);
-            if (m2.find()) {
-                int n = Integer.parseInt(m2.group(1));
-                return n >= 1 ? n : 1;
-            }
-            // Como último recurso, si el mensaje es solo un número
-            java.util.regex.Pattern p3 = java.util.regex.Pattern.compile("^\\s*(\\d+)\\s*$");
-            java.util.regex.Matcher m3 = p3.matcher(t);
-            if (m3.find()) {
-                int n = Integer.parseInt(m3.group(1));
-                return n >= 1 ? n : 1;
-            }
-        } catch (Exception ignore) { }
-        return null;
-    }
+    
 
     // (Eliminado) Lógica de detección de intención de agregación: el backend es un orquestador puro.
 
-    // Intenta aplicar el segundo turno ligero; devuelve null si no procede
-    private ResponseEnvelope trySecondTurnLite(List<ExecMeta> executed, List<Map<String,Object>> seed, JsonNode assistantMsg,
-                                               com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) throws Exception {
-        if (executed == null) return null;
-        if (parametros.isRequireSingleToolCall() && executed.size() != 1) return null;
-        ExecMeta meta = executed.isEmpty() ? null : executed.get(0);
-        if (meta == null || meta.apiResultNode == null) return null;
-        // Método GET y sin error
-        if (meta.method == null || parametros.getAllowedMethodsForLite().stream().noneMatch(m -> m.equalsIgnoreCase(meta.method))) return null;
-        if (isErrorResponse(meta.apiResultNode)) return null;
-        // Detectar target e items
-        String target = extractTargetFromEndpointName(meta.endpointName);
-        ItemsAndPagination ip = findItemsArray(meta.apiResultNode, target);
-        if (ip == null || ip.items == null) return null;
-        // Debe ser listado (0+ items) y elementos objeto o vacío
-        if (ip.items.size() > 0 && !ip.items.get(0).isObject()) return null;
-        // Fallback: si no pudimos extraer target del nombre del endpoint, intenta inferirlo por los campos de los ítems
-        if (target == null) {
-            String guessed = guessTargetFromItems(ip.items);
-            if (guessed != null) target = guessed;
-        }
-        // Podemos determinar returned
-        int returned = ip.items.size();
-        // Construir descriptor compacto
-        com.fasterxml.jackson.databind.node.ObjectNode descriptor = buildCompactDescriptor(target, returned, ip, meta.apiResultNode);
-        // Mensajes followup: seed + assistant echo + user con instrucción + descriptor
-        List<Map<String,Object>> followup = new ArrayList<>(seed);
-        Map<String, Object> assistantEcho = new HashMap<>();
-        assistantEcho.put("role", "assistant");
-        assistantEcho.put("content", assistantMsg.path("content").isMissingNode() ? "" : assistantMsg.path("content").asText(""));
-        assistantEcho.put("tool_calls", om.convertValue(assistantMsg.path("tool_calls"), List.class));
-        followup.add(assistantEcho);
-        String instruction = "Usa únicamente el descriptor anterior para redactar: 'text' (breve), 'suggestions' (2–5), 'summary_fields' (1–2). No repitas ni inventes la lista ni devuelvas arrays. Devuelve solo un objeto JSON válido con esas claves. Descriptor:";
-        followup.add(Map.of("role","user","content", instruction + "\n" + descriptor.toString()));
-    // response_format json_schema (parametrizado)
-    Map<String,Object> schema = Map.of(
-            "type","object",
-            "additionalProperties", false,
-            "properties", Map.of(
-        "text", Map.of("type","string","maxLength", presentacion.getTextMaxLength()),
-        "suggestions", Map.of(
-            "type","array",
-            "items", Map.of("type","string","maxLength", presentacion.getSuggestionItemMaxLen()),
-            "minItems", presentacion.getSuggestionsMin(),
-            "maxItems", presentacion.getSuggestionsMax()
-        ),
-        "summary_fields", Map.of(
-            "type","array",
-            "items", Map.of("type","string"),
-            "minItems", presentacion.getSummaryFieldsMin(),
-            "maxItems", presentacion.getSummaryFieldsMax()
-        )
-            ),
-            "required", List.of("text")
-        );
-        Map<String,Object> extras = Map.of(
-            "response_format", Map.of(
-                "type","json_schema",
-                "json_schema", Map.of("name","lite_second_turn","schema", schema)
-            )
-        );
-        String raw = openai.callChatWithToolsWithExtras(followup, extras, xmlLogger, authorization);
-        JsonNode second = om.readTree(raw == null ? "" : raw);
-        JsonNode finalMsg = second.path("choices").get(0).path("message");
-        String finalContent = finalMsg.path("content").asText("");
-        JsonNode liteNode;
-        try { liteNode = om.readTree(finalContent); } catch (Exception ex) { return null; }
-        // Construir directamente el envelope: usamos items/paginación reales y el copy del 2º turno
-        // Mensaje
-        String msg = liteNode.has("text") && liteNode.get("text").isTextual() ? liteNode.get("text").asText("") : "";
-        // Sugerencias
-        List<String> sugg = new ArrayList<>();
-        try {
-            JsonNode sNode = liteNode.get("suggestions");
-            if (sNode != null && sNode.isArray())
-                for (JsonNode s : sNode) if (s.isTextual()) sugg.add(s.asText());
-        } catch (Exception ignore) {}
-        // Paginación
-        PaginationInfo pagination = null;
-        if (ip.pagination != null && ip.pagination.isObject()) {
-            JsonNode p = ip.pagination;
-            pagination = PaginationInfo.of(
-                p.path("page").isNumber()? p.get("page").asInt() : null,
-                p.path("size").isNumber()? p.get("size").asInt() : null,
-                p.path("returned").isNumber()? p.get("returned").asInt() : ip.items.size(),
-                p.path("has_more").isBoolean()? p.get("has_more").asBoolean() : null,
-                p.path("next_page").isNumber()? p.get("next_page").asInt() : null,
-                p.path("prev_page").isNumber()? p.get("prev_page").asInt() : null,
-                p.path("total").isNumber()? p.get("total").asInt() : null
-            );
-        }
-        if (target == null) target = guessTargetFromItems(ip.items);
-        String type = (target != null) ? target : "chat";
-        DataSection data = DataSection.of(type, ip.items, pagination);
-        // summary_fields
-        try {
-            JsonNode sf = liteNode.get("summary_fields");
-            if (sf != null && sf.isArray() && !ip.items.isEmpty()) {
-                List<String> sfl = new ArrayList<>();
-                for (JsonNode sfi : sf) if (sfi.isTextual()) sfl.add(sfi.asText());
-                if (!sfl.isEmpty()) data.setSummaryFields(sfl);
-            }
-        } catch (Exception ignore) {}
-        return ResponseEnvelope.success(msg, data, sugg, List.of());
-    }
+    // Modo LITE eliminado: no existe segundo turno específico
 
     // Heurística simple para inferir el tipo de recurso a partir de los campos presentes en los ítems
     private String guessTargetFromItems(List<JsonNode> items) {
@@ -1446,12 +1482,7 @@ public class ChatService {
     }
 
     // Detecta errores comunes en la respuesta
-    private boolean isErrorResponse(JsonNode node) {
-        if (node == null || node.isNull()) return true;
-        if (node.has("error")) return true;
-        if (node.has("ok") && !node.path("ok").asBoolean(true)) return true;
-        return false;
-    }
+    // Helper de error de respuesta eliminado (no usado)
 
     // Extrae el target por nombre de endpoint (último match)
     private String extractTargetFromEndpointName(String endpointName) {
@@ -1468,7 +1499,7 @@ public class ChatService {
         ItemsAndPagination(List<JsonNode> items, com.fasterxml.jackson.databind.node.ObjectNode pagination) { this.items = items; this.pagination = pagination; }
     }
 
-    // Busca el array de items con prioridad: node[target] -> node[items] -> (target==academias && node[result])
+    // Busca el array de items con prioridad: node[target] -> node[items] -> (fallbacks: node[result], node[results], node[data].items)
     private ItemsAndPagination findItemsArray(JsonNode node, String target) {
         if (node == null || node.isNull()) return null;
         JsonNode arr = null;
@@ -1482,6 +1513,15 @@ public class ChatService {
             List<String> tks = parametros.getTargetSpecificArrayKeys().getOrDefault(target, List.of());
             for (String tk : tks) {
                 if (node.has(tk) && node.get(tk).isArray()) { arr = node.get(tk); break; }
+            }
+        }
+        // Fallbacks genéricos muy comunes en APIs
+        if (arr == null) {
+            if (node.has("result") && node.get("result").isArray()) arr = node.get("result");
+            else if (node.has("results") && node.get("results").isArray()) arr = node.get("results");
+            else if (node.has("data") && node.get("data").isObject()) {
+                JsonNode dn = node.get("data");
+                if (dn.has("items") && dn.get("items").isArray()) arr = dn.get("items");
             }
         }
         if (arr == null || !arr.isArray()) return null;
@@ -1501,276 +1541,39 @@ public class ChatService {
         return new ItemsAndPagination(list, pag);
     }
 
-    // Construye el descriptor compacto siguiendo el documento
-    private com.fasterxml.jackson.databind.node.ObjectNode buildCompactDescriptor(String target, int returned, ItemsAndPagination ip, JsonNode fullNode) {
-        com.fasterxml.jackson.databind.node.ObjectNode d = om.createObjectNode();
-        if (target != null) d.put("target", target);
-        d.put("count", returned);
-        // fields_present
-        Set<String> keys = new LinkedHashSet<>();
-    int scan = Math.min(ip.items.size(), presentacion.getFieldsScanLimit());
-        for (int i=0;i<scan;i++) {
-            JsonNode it = ip.items.get(i);
-            if (it != null && it.isObject()) it.fieldNames().forEachRemaining(keys::add);
-        }
-        com.fasterxml.jackson.databind.node.ArrayNode fp = om.createArrayNode();
-        for (String k : keys) fp.add(k);
-        d.set("fields_present", fp);
-        // sample_items (2–3, primitivas y truncado)
-        com.fasterxml.jackson.databind.node.ArrayNode samples = om.createArrayNode();
-    int sampleCount = Math.min(presentacion.getSampleItemsMax(), ip.items.size());
-        for (int i=0;i<sampleCount;i++) {
-            JsonNode it = ip.items.get(i);
-            if (it != null && it.isObject()) samples.add(truncateAndRedact(it));
-        }
-        d.set("sample_items", samples);
-        if (ip.pagination != null) d.set("pagination", ip.pagination);
-        return d;
-    }
+    // Eliminados helpers exclusivos del modo LITE (descriptor/truncado/merge)
 
-    // Trunca strings a 50, ofusca emails y evita anidar objetos/arrays
-    private com.fasterxml.jackson.databind.node.ObjectNode truncateAndRedact(JsonNode obj) {
-        com.fasterxml.jackson.databind.node.ObjectNode out = om.createObjectNode();
-        obj.fieldNames().forEachRemaining(fn -> {
-            JsonNode v = obj.get(fn);
-            if (v.isTextual()) {
-                String s = v.asText("");
-                String t = s.length()>presentacion.getTruncateStringLength() ? s.substring(0,presentacion.getTruncateStringLength())+"…" : s;
-                if (presentacion.isObfuscateEmails() && t.contains("@")) {
-                    int at = t.indexOf('@');
-                    if (at>0) t = t.substring(0, Math.min(at, t.length())) + "@…";
-                }
-                out.put(fn, t);
-            } else if (v.isNumber()) {
-                out.put(fn, v.asText());
-            } else if (v.isBoolean()) {
-                out.put(fn, v.asBoolean());
-            } else {
-                // Ignorar objetos/arrays anidados para mantenerlo compacto
-            }
-        });
-        return out;
-    }
+    
 
-    // Fusiona los resultados del 2º turno (lite) con items/pagination reales
-    @SuppressWarnings("unused")
-    private com.fasterxml.jackson.databind.node.ObjectNode mergeLiteWithItems(String target, ItemsAndPagination ip, JsonNode lite) {
-        com.fasterxml.jackson.databind.node.ObjectNode out = om.createObjectNode();
-        // Copiar arrays de recurso reales
-        if (target == null) {
-            // Intento de última oportunidad: inferir target a partir de los ítems
-            try {
-                String guessed = guessTargetFromItems(ip.items);
-                if (guessed != null) target = guessed;
-            } catch (Exception ignore) { }
-        }
-        if (target != null) {
-            com.fasterxml.jackson.databind.node.ArrayNode arr = om.createArrayNode();
-            for (JsonNode it : ip.items) arr.add(it);
-            out.set(target, arr);
-        } else {
-            // fallback a clave genérica si no hay target (no debería aplicarse en LITE)
-            com.fasterxml.jackson.databind.node.ArrayNode arr = om.createArrayNode();
-            for (JsonNode it : ip.items) arr.add(it);
-            out.set("items", arr);
-        }
-        if (ip.pagination != null) out.set("pagination", ip.pagination);
-        if (lite != null && lite.isObject()) {
-            if (lite.has("text")) out.set("text", lite.get("text"));
-            if (lite.has("suggestions")) out.set("suggestions", lite.get("suggestions"));
-            if (lite.has("summary_fields")) out.set("summary_fields", lite.get("summary_fields"));
-        }
-        return out;
-    }
+    // tryPolishFastpathLite eliminado: mantenemos orquestación pura (el modelo redacta el texto)
 
-    // Construye un envelope sin segunda llamada al LLM a partir de los resultados de tools.
-    // Regresa null si no puede determinar el tipo o el formato.
-    private ResponseEnvelope buildFastEnvelopeFromApi(List<ExecMeta> executed) {
+    // Enforce conservative pagination defaults for paginated GET endpoints using whitelist metadata
+    private JsonNode sanitizePagination(Map<String, Object> endpoint, String method, JsonNode query) {
         try {
-            if (executed == null || executed.isEmpty()) return null;
-            // Para simplicidad, solo soportamos 1 tool_call en fast-path; si hay más, delegamos al LLM.
-            if (executed.size() != 1) return null;
-            ExecMeta meta = executed.get(0);
-            if (meta == null || meta.apiResultNode == null) return null;
-
-            String endpoint = meta.endpointName == null ? "" : meta.endpointName;
-            JsonNode node = meta.apiResultNode;
-
-            // Detectar listado de usuarios: API devuelve { items: [...], page?, size?, next_page?, prev_page?, has_more? }
-            if (endpoint.toLowerCase(Locale.ROOT).contains("usuarios") && node.has("items") && node.get("items").isArray()) {
-                com.fasterxml.jackson.databind.node.ObjectNode out = om.createObjectNode();
-                // text corto
-                int n = node.get("items").size();
-                out.put("text", n > 0 ? "He obtenido " + n + " usuarios." : "No hay usuarios con ese criterio.");
-                out.set("usuarios", node.get("items"));
-                // pagination
-                com.fasterxml.jackson.databind.node.ObjectNode pag = om.createObjectNode();
-                pag.set("page", node.get("page") != null && node.get("page").isNumber()? node.get("page") : null);
-                pag.set("size", node.get("size") != null && node.get("size").isNumber()? node.get("size") : null);
-                pag.put("returned", n);
-                if (node.has("has_more") && node.get("has_more").isBoolean()) pag.set("has_more", node.get("has_more"));
-                if (node.has("next_page") && node.get("next_page").canConvertToInt()) pag.set("next_page", node.get("next_page"));
-                if (node.has("prev_page") && node.get("prev_page").canConvertToInt()) pag.set("prev_page", node.get("prev_page"));
-                if (node.has("total") && node.get("total").canConvertToInt()) pag.set("total", node.get("total"));
-                out.set("pagination", pag);
-                // summary_fields heurístico
-                List<String> sfs = new ArrayList<>();
-                try {
-                    JsonNode first = node.get("items").size() > 0 ? node.get("items").get(0) : null;
-                    if (first != null) {
-                        if (first.has("nombre")) sfs.add("nombre");
-                        if (first.has("email")) sfs.add("email");
-                        if (sfs.isEmpty() && first.has("id")) sfs.add("id");
-                    }
-                } catch (Exception ignore) {}
-                if (!sfs.isEmpty()) {
-                    com.fasterxml.jackson.databind.node.ArrayNode sf = om.createArrayNode();
-                    for (String k : sfs) sf.add(k);
-                    out.set("summary_fields", sf);
-                }
-                // suggestions
-                com.fasterxml.jackson.databind.node.ArrayNode sugg = om.createArrayNode();
-                boolean hasMore = node.path("has_more").asBoolean(false) || node.has("next_page");
-                if (hasMore) sugg.add("Siguiente página");
-                if (node.has("prev_page") && !node.get("prev_page").isNull()) sugg.add("Anterior");
-                sugg.add("Exportar a CSV");
-                sugg.add("Exportar a Excel");
-                out.set("suggestions", sugg);
-                return buildEnvelopeFromContentNode(out);
-            }
-
-            // Detectar listado de academias: API devuelve { ok: true, result: [ ... ] }
-            if (endpoint.toLowerCase(Locale.ROOT).contains("academias") && node.has("result") && node.get("result").isArray()) {
-                com.fasterxml.jackson.databind.node.ObjectNode out = om.createObjectNode();
-                int n = node.get("result").size();
-                out.put("text", n > 0 ? "He obtenido el listado de academias disponibles." : "No hay academias.");
-                out.set("academias", node.get("result"));
-                // summary_fields
-                com.fasterxml.jackson.databind.node.ArrayNode sf = om.createArrayNode();
-                sf.add("id");
-                sf.add("nombre");
-                out.set("summary_fields", sf);
-                // suggestions
-                com.fasterxml.jackson.databind.node.ArrayNode sugg = om.createArrayNode();
-                sugg.add("Consultar detalles de una academia");
-                sugg.add("Crear una nueva academia");
-                sugg.add("Eliminar una academia");
-                sugg.add("Modificar una academia existente");
-                out.set("suggestions", sugg);
-                return buildEnvelopeFromContentNode(out);
-            }
-
-            return null;
+            if (endpoint == null) return query;
+            Object pag = endpoint.get("paginated");
+            boolean isPaginated = (pag instanceof Boolean) ? (Boolean) pag : false;
+            if (!isPaginated) return query;
+            if (method == null || !"GET".equalsIgnoreCase(method)) return query;
+            com.fasterxml.jackson.databind.node.ObjectNode q = (query == null || query.isNull()) ? om.createObjectNode() : (query.isObject() ? (com.fasterxml.jackson.databind.node.ObjectNode) query.deepCopy() : om.createObjectNode());
+            int page = 1;
+            try { if (q.has("page") && q.get("page").canConvertToInt()) page = Math.max(1, q.get("page").asInt()); } catch (Exception ignore) { }
+            q.put("page", page);
+            int size = 50;
+            try { if (q.has("size") && q.get("size").canConvertToInt()) size = q.get("size").asInt(); } catch (Exception ignore) { }
+            if (size <= 0) size = 50;
+            if (size > 50) size = 50;
+            q.put("size", size);
+            return q;
         } catch (Exception e) {
-            // En caso de cualquier problema, devolver null para seguir con el flujo normal
-            return null;
+            return query;
         }
-    }
-
-    // LITE polish del fast-path: timeboxed, sin tool_calls, mejora 'text' y 'suggestions' sin alterar arrays/paginación
-    private ResponseEnvelope tryPolishFastpathLite(ResponseEnvelope base, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization, long startMs) {
-        try {
-            if (base == null || !"success".equals(base.getStatus())) return null;
-            if (!parametros.isFastpathPolishEnabled()) return null;
-            // Heurística opcional: si está activada, aplicar sólo si text es corto o items <= N
-            if (parametros.isFastpathPolishHeuristicEnabled()) {
-                int textLen = base.getMessage() == null ? 0 : base.getMessage().length();
-                int items = (base.getData() == null || base.getData().getItems() == null) ? 0 : base.getData().getItems().size();
-                if (xmlLogger != null) xmlLogger.addStep("Telemetry", "polish_try=true heuristic_enabled=true text_len=" + textLen + ", items=" + items + ", timeout_ms=" + parametros.getFastpathPolishTimeoutMs());
-                if (!(textLen < Math.max(0, parametros.getFastpathPolishMinTextLen()) || items <= Math.max(0, parametros.getFastpathPolishMaxItems()))) {
-                    if (xmlLogger != null) xmlLogger.addStep("Telemetry", "polish_skip_heuristic=true");
-                    return null; // no cumple heurística => no pulimos
-                }
-            }
-            if (!parametros.isFastpathPolishHeuristicEnabled() && xmlLogger != null) {
-                int textLen = base.getMessage() == null ? 0 : base.getMessage().length();
-                int items = (base.getData() == null || base.getData().getItems() == null) ? 0 : base.getData().getItems().size();
-                xmlLogger.addStep("Telemetry", "polish_try=true heuristic_enabled=false text_len=" + textLen + ", items=" + items + ", timeout_ms=" + parametros.getFastpathPolishTimeoutMs());
-            }
-            // Construir prompt mínimo y schema de salida
-            Map<String,Object> sys = Map.of("role","system","content",
-                "Reformula únicamente el campo 'text' a un tono cercano y claro (no técnico), en castellano de España. " +
-                "No inventes datos ni cambies las listas ni la paginación. Devuelve solo un JSON con 'text' y opcionalmente 'suggestions' (2–5 frases cortas y útiles). " +
-                "No realices tool_calls."
-            );
-            // Descriptor compacto del base (solo lo necesario)
-            com.fasterxml.jackson.databind.node.ObjectNode desc = om.createObjectNode();
-            desc.put("text", base.getMessage() == null ? "" : base.getMessage());
-            com.fasterxml.jackson.databind.node.ArrayNode suggIn = om.createArrayNode();
-            if (base.getSuggestions() != null) for (String s : base.getSuggestions()) suggIn.add(s);
-            desc.set("suggestions", suggIn);
-            com.fasterxml.jackson.databind.node.ObjectNode pag = null;
-            if (base.getData() != null && base.getData().getPagination() != null) {
-                pag = om.createObjectNode();
-                var p = base.getData().getPagination();
-                if (p.getPage()!=null) pag.put("page", p.getPage());
-                if (p.getSize()!=null) pag.put("size", p.getSize());
-                if (p.getReturned()!=null) pag.put("returned", p.getReturned());
-                if (p.getHasMore()!=null) pag.put("has_more", p.getHasMore());
-                if (p.getNextPage()!=null) pag.put("next_page", p.getNextPage());
-                if (p.getPrevPage()!=null) pag.put("prev_page", p.getPrevPage());
-                if (p.getTotal()!=null) pag.put("total", p.getTotal());
-                desc.set("pagination", pag);
-            }
-            // Mensajes
-            List<Map<String,Object>> msgs = new ArrayList<>();
-            msgs.add(sys);
-            msgs.add(Map.of("role","user","content","Pulir este mensaje y sugerencias manteniendo el mismo contenido:\n" + desc.toString()));
-            // Schema LITE de salida
-            Map<String,Object> schema = Map.of(
-                "type","object",
-                "additionalProperties", false,
-                "properties", Map.of(
-                    "text", Map.of("type","string","maxLength", presentacion.getTextMaxLength()),
-                    "suggestions", Map.of(
-                        "type","array",
-                        "items", Map.of("type","string","maxLength", presentacion.getSuggestionItemMaxLen()),
-                        "minItems", presentacion.getSuggestionsMin(),
-                        "maxItems", presentacion.getSuggestionsMax()
-                    )
-                ),
-                "required", List.of("text")
-            );
-            Map<String,Object> extras = Map.of(
-                "response_format", Map.of(
-                    "type","json_schema",
-                    "json_schema", Map.of("name","fastpath_polish","schema", schema)
-                )
-            );
-            // Timebox duro: si excede, devolvemos null para hacer fallback inmediato
-            long tStart = System.currentTimeMillis();
-            String raw;
-            try {
-                raw = openai.callChatWithToolsWithExtras(msgs, extras, xmlLogger, authorization);
-            } catch (Exception ex) {
-                if (xmlLogger != null) xmlLogger.addStep("Telemetry", "polish_fallback=true reason=call_error error=" + ex.getMessage());
-                return null;
-            }
-            long elapsed = System.currentTimeMillis() - tStart;
-            if (xmlLogger != null) xmlLogger.addStep("Telemetry", "polish_ms=" + elapsed + ", polish_timeout_hit=" + (elapsed > parametros.getFastpathPolishTimeoutMs()));
-            if (elapsed > parametros.getFastpathPolishTimeoutMs()) { if (xmlLogger != null) xmlLogger.addStep("Telemetry", "polish_fallback=true reason=timeout"); return null; }
-            JsonNode resp = om.readTree(raw == null ? "" : raw);
-            JsonNode msg = resp.path("choices").get(0).path("message").path("content");
-            String content = msg.isMissingNode() ? "" : msg.asText("");
-            JsonNode node;
-            try { node = om.readTree(content); } catch (Exception ex) { if (xmlLogger != null) xmlLogger.addStep("Telemetry", "polish_fallback=true reason=parse_error"); return null; }
-            String newText = node.has("text") && node.get("text").isTextual()? node.get("text").asText("") : null;
-            List<String> newSugg = new ArrayList<>();
-            JsonNode ns = node.get("suggestions");
-            if (ns != null && ns.isArray()) for (JsonNode s : ns) if (s.isTextual()) newSugg.add(s.asText());
-            if (newText == null || newText.isBlank()) return null;
-            // Construir nuevo envelope con el mismo data y las secciones pulidas
-            ResponseEnvelope out = ResponseEnvelope.success(newText, base.getData(), newSugg.isEmpty()? base.getSuggestions() : newSugg, base.getMessages());
-            if (xmlLogger != null) xmlLogger.addStep("Telemetry", "polish_applied=true");
-            return out;
-        } catch (Exception ignore) { return null; }
     }
     
-    // Fallback final: si el mensaje sale vacío y no hay items, devolvemos un saludo útil y sugerencias por defecto
+    // Fallback final: no altera el texto ni genera sugerencias; la IA es la responsable del copy
     private ResponseEnvelope applyFinalFallback(ResponseEnvelope env) {
         try {
             if (env != null && "success".equals(env.getStatus())) {
-                String msg = env.getMessage() == null ? "" : env.getMessage().trim();
                 boolean noItems = (env.getData() == null) || (env.getData().getItems() == null) || env.getData().getItems().isEmpty();
                 // Si hay items pero el tipo es "chat", intenta inferir un tipo más específico (usuarios, cursos, etc.)
                 try {
@@ -1782,20 +1585,294 @@ public class ChatService {
                         }
                     }
                 } catch (Exception ignore) { }
-                if (msg.isEmpty() && noItems) {
-                    env.setMessage("Hola, ¿en qué puedo ayudarte hoy?");
-                    if (env.getSuggestions() == null || env.getSuggestions().isEmpty()) {
-                        env.setSuggestions(List.of(
-                            "Ver academias",
-                            "Buscar profesores",
-                            "Buscar alumnos",
-                            "Ver mis cursos"
-                        ));
+                // No modificar message en blanco; el prompt debe garantizar un texto adecuado
+            }
+        } catch (Exception ignore) { }
+        return env;
+    }
+
+    // Asegura que, si el modelo devolvió arrays truncados por el eco (sample) o sin 'pagination',
+    // la salida final usa los items y metadatos reales del último tool_call ejecutado.
+    private JsonNode coerceWithBackendResults(JsonNode modelNode, List<ExecMeta> executed, List<ChatRequest.Message> incoming) {
+        try {
+            if (modelNode == null || !modelNode.isObject()) return modelNode;
+            if (executed == null || executed.isEmpty()) return modelNode;
+            // Seleccionar ejecución según contexto de navegación si existe
+            ExecMeta meta = selectExecMetaForPagination(executed, incoming);
+            ItemsAndPagination ip = findItemsArray(meta.apiResultNode, extractTargetFromEndpointName(meta.endpointName));
+            // Fallback: si la selección no contiene items (p. ej., batch con llamadas auxiliares), elegir la primera ejecución con items reales empezando por la última
+            if (ip == null || ip.items == null || ip.items.isEmpty()) {
+                for (int i = executed.size() - 1; i >= 0; i--) {
+                    ExecMeta cand = executed.get(i);
+                    ItemsAndPagination ipCand = findItemsArray(cand.apiResultNode, extractTargetFromEndpointName(cand.endpointName));
+                    if (ipCand != null && ipCand.items != null && !ipCand.items.isEmpty()) {
+                        meta = cand;
+                        ip = ipCand;
+                        break;
+                    }
+                }
+            }
+            if (ip == null || ip.items == null || ip.items.isEmpty()) return modelNode;
+            // Detecta si el modelo ya trae un array grande y coherente; si no, sobrescribe con los reales
+            String knownKey = null;
+            for (String k : parametros.getAllowedTargetsPlural()) {
+                JsonNode arr = modelNode.get(k);
+                if (arr != null && arr.isArray()) { knownKey = k; break; }
+            }
+            com.fasterxml.jackson.databind.node.ObjectNode out = modelNode.deepCopy();
+            com.fasterxml.jackson.databind.node.ArrayNode arrReal = om.createArrayNode();
+            for (JsonNode it : ip.items) arrReal.add(it);
+            String target = (knownKey != null) ? knownKey : extractTargetFromEndpointName(meta.endpointName);
+            if (target == null) target = guessTargetFromItems(ip.items);
+            if (target == null) target = "items";
+            out.set(target, arrReal);
+            // Completar/inyectar metadatos de paginación fiables
+            if (ip.pagination != null) {
+                // Completar con page/size desde querySnapshot si faltan
+                com.fasterxml.jackson.databind.node.ObjectNode pag = ip.pagination.deepCopy();
+                try {
+                    if (!pag.has("page") && meta.querySnapshot != null && meta.querySnapshot.has("page") && meta.querySnapshot.get("page").canConvertToInt()) {
+                        pag.put("page", meta.querySnapshot.get("page").asInt());
+                    }
+                    if (!pag.has("size") && meta.querySnapshot != null && meta.querySnapshot.has("size") && meta.querySnapshot.get("size").canConvertToInt()) {
+                        pag.put("size", meta.querySnapshot.get("size").asInt());
+                    }
+                    // Si no hay 'has_more', inferirlo de returned y size
+                    if (!pag.has("has_more") && pag.has("returned") && pag.has("size") && pag.get("returned").canConvertToInt() && pag.get("size").canConvertToInt()) {
+                        boolean hasMore = pag.get("returned").asInt() >= pag.get("size").asInt();
+                        pag.put("has_more", hasMore);
+                    }
+                } catch (Exception ignore) { }
+                out.set("pagination", pag);
+            }
+            return out;
+        } catch (Exception ignore) { return modelNode; }
+    }
+
+    // Selecciona la ejecución a usar para paginación en base al historial; por defecto, la última
+    private ExecMeta selectExecMetaForPagination(List<ExecMeta> executed, List<ChatRequest.Message> incoming) {
+        ExecMeta meta = executed.get(executed.size() - 1);
+        try {
+            NavContext nav = extractNavContext(incoming);
+            if (nav != null) {
+                int desired = "next".equals(nav.direction) ? nav.currentPage + 1 : Math.max(1, nav.currentPage - 1);
+                for (int i = executed.size() - 1; i >= 0; i--) {
+                    ExecMeta cand = executed.get(i);
+                    JsonNode q = cand.querySnapshot;
+                    if (q != null && q.has("page") && q.get("page").canConvertToInt()) {
+                        if (q.get("page").asInt() == desired) { meta = cand; break; }
                     }
                 }
             }
         } catch (Exception ignore) { }
-        return env;
+        return meta;
+    }
+
+    // Elimina page/size de una query para firmar solo filtros/sort en el token
+    private JsonNode stripPageSizeFromQuery(JsonNode q) {
+        try {
+            com.fasterxml.jackson.databind.node.ObjectNode out = (q == null || q.isNull()) ? om.createObjectNode() : (com.fasterxml.jackson.databind.node.ObjectNode) q.deepCopy();
+            out.remove("page");
+            out.remove("size");
+            return out;
+        } catch (Exception ignore) { return om.createObjectNode(); }
+    }
+
+    // Cómputo lazy del total cuando la API no lo da. Usa estrategia exponencial + binaria con límites.
+    private Integer computeLazyTotal(OpenAICallApiService openaiSvc, ApiProxyService apiSvc, ExecMeta base, PaginationInfo pag, String authorization, String delegatedAuth, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger) {
+        try {
+            if (base == null || pag == null) return null;
+            Integer page = pag.getPage();
+            Integer size = pag.getSize();
+            Integer returned = pag.getReturned();
+            Boolean hasMore = pag.getHasMore();
+            if (page == null || size == null || returned == null) return null;
+            // Si ya estamos en última página, total inmediato
+            if (hasMore != null && !hasMore) {
+                return Math.max(0, (page - 1) * size + returned);
+            }
+            Map<String,Object> ep = openaiSvc.getEndpointByName(base.endpointName);
+            if (ep == null) return null;
+            // Helpers locales
+            java.util.function.Function<Integer, ItemsAndPagination> fetchPage = (Integer targetPage) -> {
+                try {
+                    com.fasterxml.jackson.databind.node.ObjectNode q = (base.querySnapshot == null || base.querySnapshot.isNull()) ? om.createObjectNode() : (com.fasterxml.jackson.databind.node.ObjectNode) base.querySnapshot.deepCopy();
+                    q.put("page", Math.max(1, targetPage));
+                    q.put("size", size);
+                    String authToUse = (delegatedAuth != null) ? delegatedAuth : authorization;
+                    String res = (xmlLogger != null)
+                            ? apiSvc.executeSpecCall(ep, base.method, base.pathParamsSnapshot, q, null, authToUse, xmlLogger)
+                            : apiSvc.executeSpecCall(ep, base.method, base.pathParamsSnapshot, q, null, authToUse);
+                    JsonNode node = om.readTree(res);
+                    return findItemsArray(node, extractTargetFromEndpointName(base.endpointName));
+                } catch (Exception ex) { return null; }
+            };
+            // Exponencial: duplicar hasta encontrar una página sin más
+            int lo = page;
+            int hi = page;
+            int maxExp = 6; // ~64x
+            ItemsAndPagination ipHi = null;
+            for (int i=0;i<maxExp;i++) {
+                hi = (i==0) ? Math.max(page+1, 2) : (hi * 2);
+                ipHi = fetchPage.apply(hi);
+                if (ipHi == null) break;
+                boolean hm = false;
+                if (ipHi.pagination != null && ipHi.pagination.has("has_more") && ipHi.pagination.get("has_more").isBoolean()) hm = ipHi.pagination.get("has_more").asBoolean();
+                int ret = (ipHi.items == null) ? 0 : ipHi.items.size();
+                if (!hm || ret < size) {
+                    break; // hi está en la última o pasada
+                } else {
+                    lo = hi; // todavía hay más
+                }
+            }
+            // Binaria entre lo..hi
+            int left = lo;
+            int right = hi;
+            ItemsAndPagination ipLast = null;
+            int maxBin = 8;
+            while (left <= right && maxBin-- > 0) {
+                int mid = left + (right - left)/2;
+                ItemsAndPagination ip = fetchPage.apply(mid);
+                if (ip == null) break;
+                boolean hm = false;
+                if (ip.pagination != null && ip.pagination.has("has_more") && ip.pagination.get("has_more").isBoolean()) hm = ip.pagination.get("has_more").asBoolean();
+                int ret = (ip.items == null) ? 0 : ip.items.size();
+                if (!hm || ret < size) {
+                    ipLast = ip; // candidato a última
+                    right = mid - 1;
+                } else {
+                    left = mid + 1;
+                }
+            }
+            if (ipLast != null) {
+                int lastPage = (ipLast.pagination != null && ipLast.pagination.has("page") && ipLast.pagination.get("page").canConvertToInt())
+                    ? ipLast.pagination.get("page").asInt()
+                    : left; // mejor esfuerzo
+                int lastReturned = (ipLast.items == null) ? 0 : ipLast.items.size();
+                return Math.max(0, (lastPage - 1) * size + lastReturned);
+            }
+            return null;
+        } catch (Exception ignore) { return null; }
+    }
+
+    // Crear auto-sugerencias Prev/Sig si faltan y enriquecerlas con token ampliado
+    private void ensurePaginationSuggestions(ResponseEnvelope env, PaginationInfo pagination, ExecMeta meta) {
+        if (env == null || pagination == null) return;
+        if (env.getUiSuggestions() == null) env.setUiSuggestions(new java.util.ArrayList<>());
+        java.util.Set<String> have = new java.util.HashSet<>();
+        for (Suggestion s : env.getUiSuggestions()) {
+            if (s == null) continue;
+            String t = s.getType() == null ? "" : s.getType();
+            String dt = s.getDisplayText() == null ? "" : s.getDisplayText().toLowerCase();
+            if ("Paginacion".equalsIgnoreCase(t)) {
+                if (dt.contains("siguiente") || dt.contains("next")) have.add("next");
+                if (dt.contains("anterior") || dt.contains("prev")) have.add("prev");
+            }
+        }
+        java.util.List<Suggestion> list = new java.util.ArrayList<>();
+        // Filtrar sugerencias inválidas aportadas por el modelo
+        Integer cur = pagination.getPage();
+        Integer size = pagination.getSize();
+        Boolean hasMore = pagination.getHasMore();
+        for (Suggestion s : env.getUiSuggestions()) {
+            if (s == null) continue;
+            if (!"Paginacion".equalsIgnoreCase(s.getType())) { list.add(s); continue; }
+            String dt = s.getDisplayText() == null ? "" : s.getDisplayText().toLowerCase();
+            boolean isPrev = dt.contains("anterior") || dt.contains("prev");
+            boolean isNext = dt.contains("siguiente") || dt.contains("next");
+            if (isPrev && cur != null && cur <= 1) {
+                // descartar 'Anterior' en primera página
+                continue;
+            }
+            if (isNext && hasMore != null && !hasMore) {
+                // descartar 'Siguiente' si no hay más
+                continue;
+            }
+            list.add(s);
+        }
+        // Recalcular 'have' tras filtro
+        have.clear();
+        for (Suggestion s : list) {
+            if (s == null) continue;
+            String t = s.getType() == null ? "" : s.getType();
+            String dt2 = s.getDisplayText() == null ? "" : s.getDisplayText().toLowerCase();
+            if ("Paginacion".equalsIgnoreCase(t)) {
+                if (dt2.contains("siguiente") || dt2.contains("next")) have.add("next");
+                if (dt2.contains("anterior") || dt2.contains("prev")) have.add("prev");
+            }
+        }
+        if (cur != null && size != null) {
+            if ((hasMore != null && hasMore) && !have.contains("next")) {
+                Suggestion s = new Suggestion();
+                s.setId("pg-next"); s.setDisplayText("Siguiente"); s.setType("Paginacion");
+                s.setPagination(new Suggestion.PaginationSuggestion("next", cur+1, size));
+                list.add(s);
+            }
+            if (cur > 1 && !have.contains("prev")) {
+                Suggestion s = new Suggestion();
+                s.setId("pg-prev"); s.setDisplayText("Anterior"); s.setType("Paginacion");
+                s.setPagination(new Suggestion.PaginationSuggestion("prev", cur-1, size));
+                list.add(s);
+            }
+        }
+        env.setUiSuggestions(list);
+        // Enriquecer con token ampliado
+        try { enrichPaginationSuggestionsWithTokensExpanded(env, env.getData() == null ? null : env.getData().getType(), pagination, meta); } catch (Exception ignore) {}
+    }
+
+    // Versión expandida: añade endpoint, path, method, filtros/baseQuery y total al token
+    private void enrichPaginationSuggestionsWithTokensExpanded(ResponseEnvelope env, String type, PaginationInfo pag, ExecMeta meta) {
+        if (env == null || env.getUiSuggestions() == null || pag == null) return;
+        Integer cur = pag.getPage(); Integer size = pag.getSize(); Integer next = pag.getNextPage(); Integer prev = pag.getPrevPage(); Boolean hasMore = pag.getHasMore();
+        if (cur == null || size == null) return;
+        JsonNode baseQuery = stripPageSizeFromQuery(meta == null ? null : meta.querySnapshot);
+        for (Suggestion s : env.getUiSuggestions()) {
+            if (s == null || !"Paginacion".equalsIgnoreCase(s.getType())) continue;
+            if (s.getContextToken() != null && !s.getContextToken().isBlank()) continue;
+            String direction = null; Integer targetPage = null;
+            if (s.getPagination() != null && s.getPagination().getDirection() != null) {
+                String dir = s.getPagination().getDirection().toLowerCase();
+                if ("next".equals(dir)) { direction = "next"; targetPage = (next != null) ? next : (hasMore != null && hasMore ? cur + 1 : null); }
+                if ("prev".equals(dir) || "previous".equals(dir)) { direction = "prev"; targetPage = (prev != null) ? prev : (cur > 1 ? cur - 1 : null); }
+            }
+            if (direction == null) {
+                String text = s.getDisplayText() == null ? "" : s.getDisplayText().toLowerCase();
+                if (text.contains("siguiente") || text.contains("next")) { direction = "next"; targetPage = (next != null) ? next : (hasMore != null && hasMore ? cur + 1 : null); }
+                else if (text.contains("anterior") || text.contains("prev")) { direction = "prev"; targetPage = (prev != null) ? prev : (cur > 1 ? cur - 1 : null); }
+            }
+            if (direction != null && targetPage != null) {
+                java.util.Map<String,Object> payload = new java.util.HashMap<>();
+                payload.put("type", type);
+                payload.put("page", cur);
+                payload.put("size", size);
+                payload.put("target_page", targetPage);
+                if (meta != null) {
+                    payload.put("endpoint_name", meta.endpointName);
+                    payload.put("method", meta.method);
+                    payload.put("endpoint_path", meta.endpointPath);
+                    payload.put("filters", baseQuery == null ? new java.util.HashMap<>() : om.convertValue(baseQuery, java.util.Map.class));
+                    if (meta.pathParamsSnapshot != null) payload.put("path_params", om.convertValue(meta.pathParamsSnapshot, java.util.Map.class));
+                }
+                if (pag.getTotal() != null) payload.put("total", pag.getTotal());
+                String token = contextTokenService.sign(payload);
+                s.setContextToken(token);
+            }
+        }
+    }
+
+    private String composePaginatedMessage(String original, PaginationInfo p) {
+        try {
+            String base = (original == null) ? "" : original.trim();
+            if (p == null) return base;
+            Integer page = p.getPage(); Integer returned = p.getReturned(); Integer total = p.getTotal();
+            String suffix;
+            if (total != null && total >= 0) suffix = " (" + (returned == null ? 0 : returned) + " de " + total + ")";
+            else suffix = " (" + (returned == null ? 0 : returned) + " en esta página)";
+            if (base.isEmpty()) {
+                return (page != null ? ("Mostrando página " + page + ".") : "Listado.") + suffix;
+            }
+            return base + suffix;
+        } catch (Exception ignore) { return original; }
     }
 
     // Enriquecimiento ligero de presentación: renombra claves de conteo a labels amigables y rellena summary_fields si faltan
@@ -1912,13 +1989,6 @@ public class ChatService {
         }
         // Tomar 'text' exactamente como venga de la IA; si no viene, dejar vacío
         String message = contentNode.has("text") && contentNode.get("text").isTextual() ? contentNode.get("text").asText("") : "";
-        // suggestions
-        List<String> suggestions = new ArrayList<>();
-        JsonNode sNode = contentNode.get("suggestions");
-        if (sNode != null && sNode.isArray()) {
-            for (JsonNode s : sNode) if (s.isTextual()) suggestions.add(s.asText());
-        }
-        // No auto-generar suggestions: si la IA no las envía, se quedan vacías
         DataSection data = DataSection.of(typeDetected, items, pagination);
         // Map optional summary_fields -> data.summaryFields only when items exist
         try {
@@ -1929,7 +1999,26 @@ public class ChatService {
                 if (!sfl.isEmpty()) data.setSummaryFields(sfl);
             }
         } catch (Exception ignore) {}
-        ResponseEnvelope env = ResponseEnvelope.success(message, data, suggestions, List.of());
+    // Mapear opcionalmente ui_suggestions del primer turno si vienen en el JSON del modelo
+    java.util.List<com.workers.profesores.chat.dto.response.Suggestion> uiFirst = new java.util.ArrayList<>();
+    try {
+        JsonNode uiNode = contentNode.get("ui_suggestions");
+        if (uiNode != null && uiNode.isArray()) {
+            for (int i = 0; i < uiNode.size(); i++) {
+                JsonNode it = uiNode.get(i);
+                com.workers.profesores.chat.dto.response.Suggestion s = new com.workers.profesores.chat.dto.response.Suggestion();
+                if (it.has("id") && it.get("id").isTextual()) s.setId(it.get("id").asText()); else s.setId("sg-" + (i+1));
+                if (it.has("display_text")) s.setDisplayText(it.get("display_text").asText());
+                if (it.has("type")) s.setType(it.get("type").asText());
+                if (it.has("recordAction")) s.setRecordAction(it.get("recordAction").asText());
+                uiFirst.add(s);
+            }
+        }
+    } catch (Exception ignore) {}
+    ResponseEnvelope env = ResponseEnvelope.success(message, data, uiFirst, List.of());
+    env.setUiSuggestionsVersion(1);
+    // Enriquecer sugerencias de paginación del primer turno con tokens si faltan
+    try { enrichPaginationSuggestionsWithTokens(env, typeDetected, pagination); } catch (Exception ignore) {}
         if (debug) {
             try {
                 String prettyEnv = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(env);
@@ -1939,18 +2028,64 @@ public class ChatService {
         return env;
     }
 
-    // Inferir tipo de recurso a partir del nombre del endpoint usado en tool_call
-    @SuppressWarnings("unused")
-    private String inferTypeFromEndpoint(String endpointName) {
-        if (endpointName == null) return "object";
-        String e = endpointName.toLowerCase(Locale.ROOT);
-        if (e.contains("usuarios")) return "usuarios";
-        if (e.contains("academias")) return "academias";
-        if (e.contains("cursos")) return "cursos";
-        if (e.contains("alumnos")) return "alumnos";
-        if (e.contains("profesores")) return "profesores";
-        return "object"; // fallback estándar
+    // Añade contextToken a ui_suggestions de tipo Paginacion si falta y existe paginación real
+    private void enrichPaginationSuggestionsWithTokens(ResponseEnvelope env, String type, PaginationInfo pagination) {
+        if (env == null || env.getUiSuggestions() == null || pagination == null) return;
+        Integer cur = pagination.getPage();
+        Integer size = pagination.getSize();
+        Integer next = pagination.getNextPage();
+        Integer prev = pagination.getPrevPage();
+        Boolean hasMore = pagination.getHasMore();
+        if (cur == null || size == null) return;
+        for (Suggestion s : env.getUiSuggestions()) {
+            if (s == null) continue;
+            if (!"Paginacion".equalsIgnoreCase(s.getType())) continue;
+            if (s.getContextToken() != null && !s.getContextToken().isBlank()) continue; // ya tiene token
+            String direction = null;
+            Integer targetPage = null;
+            // Intentar leer direction desde los metadatos de la sugerencia
+            if (s.getPagination() != null && s.getPagination().getDirection() != null) {
+                String dir = s.getPagination().getDirection().toLowerCase();
+                if ("next".equals(dir)) {
+                    direction = "next";
+                    targetPage = (next != null) ? next : (hasMore != null && hasMore ? cur + 1 : null);
+                } else if ("prev".equals(dir) || "previous".equals(dir)) {
+                    direction = "prev";
+                    targetPage = (prev != null) ? prev : (cur > 1 ? cur - 1 : null);
+                }
+            }
+            // Heurística por displayText si no se detectó
+            if (direction == null) {
+                String text = s.getDisplayText() == null ? "" : s.getDisplayText().toLowerCase();
+                if (text.contains("siguiente") || text.contains("ver más") || text.contains("ver mas") || text.contains("next")) {
+                    direction = "next";
+                    targetPage = (next != null) ? next : (hasMore != null && hasMore ? cur + 1 : null);
+                } else if (text.contains("anterior") || text.contains("previo") || text.contains("previous")) {
+                    direction = "prev";
+                    targetPage = (prev != null) ? prev : (cur > 1 ? cur - 1 : null);
+                }
+            }
+            if (direction != null && targetPage != null) {
+                java.util.Map<String,Object> payload = new java.util.HashMap<>();
+                payload.put("type", type != null ? type : (env.getData() != null ? env.getData().getType() : ""));
+                payload.put("page", cur);
+                payload.put("size", size);
+                payload.put("target_page", targetPage);
+                String token = contextTokenService.sign(payload);
+                s.setContextToken(token);
+                // Asegurar coherencia en los metadatos de la sugerencia
+                if (s.getPagination() == null) {
+                    s.setPagination(new Suggestion.PaginationSuggestion(direction, targetPage, size));
+                } else {
+                    s.getPagination().setDirection(direction);
+                    s.getPagination().setPage(targetPage);
+                    s.getPagination().setSize(size);
+                }
+            }
+        }
     }
+
+    
 
     // Se eliminaron las utilidades de renderizado Markdown/ficha para devolver siempre JSON/texto-encapsulado
 }

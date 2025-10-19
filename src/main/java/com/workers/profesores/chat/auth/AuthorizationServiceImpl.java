@@ -15,7 +15,7 @@ public class AuthorizationServiceImpl implements AuthorizationService {
         if (claims == null) throw new RuntimeException("Forbidden: no claims provided");
         if (endpoint == null) endpoint = Map.of();
         // If x-permissions present, honor allowed_roles if defined
-        Object xp = endpoint == null ? null : endpoint.get("x-permissions");
+        Object xp = endpoint.get("x-permissions");
         if (xp instanceof Map<?, ?>) {
             Map<?, ?> xperm = (Map<?, ?>) xp;
             Object allowed = xperm.get("allowed_roles");
