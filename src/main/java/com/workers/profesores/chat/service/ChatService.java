@@ -419,7 +419,28 @@ public class ChatService {
                                 java.util.List<java.util.Map<String, Object>> followup = new java.util.ArrayList<>(seed);
                                 followup.add(assistantEcho);
                                 followup.add(toolOutput);
-                                if (xmlLogger != null) xmlLogger.addStep("OpenAIClient", "Segunda llamada (post-planner) a OpenAI con reformat/schema");
+                                // Añadir instrucción explícita de segundo turno con un breve resumen de ejecución
+                                try {
+                                    StringBuilder sb = new StringBuilder();
+                                    sb.append("planner: 1 llamada ");
+                                    sb.append(methodFromModel).append(' ').append(String.valueOf(ep.getOrDefault("name", epName)));
+                                    int returned = (items == null) ? 0 : items.size();
+                                    Integer page = (qEff != null && qEff.has("page") && qEff.get("page").canConvertToInt()) ? qEff.get("page").asInt() : null;
+                                    Integer size = (qEff != null && qEff.has("size") && qEff.get("size").canConvertToInt()) ? qEff.get("size").asInt() : null;
+                                    Boolean hasMore = (pagination == null) ? null : pagination.getHasMore();
+                                    Integer nextPage = (pagination == null) ? null : pagination.getNextPage();
+                                    Integer prevPage = (pagination == null) ? null : pagination.getPrevPage();
+                                    Integer total = (pagination == null) ? null : pagination.getTotal();
+                                    sb.append("; returned=").append(returned);
+                                    if (page != null) sb.append("; page=").append(page);
+                                    if (size != null) sb.append("; size=").append(size);
+                                    if (hasMore != null) sb.append("; has_more=").append(hasMore);
+                                    if (nextPage != null) sb.append("; next=").append(nextPage);
+                                    if (prevPage != null) sb.append("; prev=").append(prevPage);
+                                    if (total != null) sb.append("; total=").append(total);
+                                    followup.add(java.util.Map.of("role","user","content", promptBuilder.buildSecondTurnInstruction(sb.toString())));
+                                } catch (Exception __ignoreSecondInstr) { /* best-effort */ }
+                                if (xmlLogger != null) xmlLogger.addStep("OpenAIClient", "Segunda llamada (post-planner) a OpenAI con reformat/schema + instrucción segundo turno");
                                 String secondRaw = openai.callChatNoToolsWithExtras(followup, openai.buildChatResponseSchemaExtras(), xmlLogger, authorization);
                                 JsonNode secondNode = om.readTree(secondRaw);
                                 JsonNode ch = secondNode.path("choices");
@@ -1167,8 +1188,55 @@ public class ChatService {
                     xmlLogger.addStep("Telemetry", "api_ms_total=" + totalApiMs + ", calls_in_batch=" + totalCallsInBatch + ", reinject_payload_bytes=" + reinjectPayloadBytes + ", followup_messages=" + followup.size() + ", followup_bytes=" + followupBytes);
                 } catch (Exception ignore) { }
             }
+            // Inyección de instrucción de segundo turno con resumen compacto
+            try {
+                StringBuilder sb = new StringBuilder();
+                sb.append("ejecuciones: ").append(executed == null ? 0 : executed.size());
+                if (executed != null && !executed.isEmpty()) {
+                    int i=0; for (ExecMeta em : executed) {
+                        if (em == null) continue; i++; if (i>3) { sb.append("; …"); break; }
+                        sb.append("; ").append(em.method == null?"":em.method).append(' ').append(String.valueOf(em.endpointName));
+                        try {
+                            JsonNode ip = em.apiResultNode;
+                            int ret = 0; Integer page=null,size=null,total=null,next=null,prev=null; Boolean hasMore=null;
+                            if (ip != null) {
+                                ItemsAndPagination f = findItemsArray(ip, extractTargetFromEndpointName(em.endpointName));
+                                if (f != null && f.items != null) ret = f.items.size();
+                                if (f != null && f.pagination != null && f.pagination.isObject()) {
+                                    JsonNode p = f.pagination;
+                                    if (p.has("page") && p.get("page").canConvertToInt()) page = p.get("page").asInt();
+                                    if (p.has("size") && p.get("size").canConvertToInt()) size = p.get("size").asInt();
+                                    if (p.has("total") && p.get("total").canConvertToInt()) total = p.get("total").asInt();
+                                    if (p.has("has_more") && p.get("has_more").isBoolean()) hasMore = p.get("has_more").asBoolean();
+                                    if (p.has("next_page") && p.get("next_page").canConvertToInt()) next = p.get("next_page").asInt();
+                                    if (p.has("prev_page") && p.get("prev_page").canConvertToInt()) prev = p.get("prev_page").asInt();
+                                }
+                            }
+                            sb.append(" returned=").append(ret);
+                            if (page!=null) sb.append("; page=").append(page);
+                            if (size!=null) sb.append("; size=").append(size);
+                            if (hasMore!=null) sb.append("; has_more=").append(hasMore);
+                            if (next!=null) sb.append("; next=").append(next);
+                            if (prev!=null) sb.append("; prev=").append(prev);
+                            if (total!=null) sb.append("; total=").append(total);
+                        } catch (Exception __i) { }
+                    }
+                }
+                followup.add(java.util.Map.of("role","user","content", promptBuilder.buildSecondTurnInstruction(sb.toString())));
+            } catch (Exception __ignoreInstr2) { /* best-effort */ }
             long secondStartMs = System.currentTimeMillis();
-            JsonNode second = om.readTree(openai.callChatNoToolsWithExtras(followup, openai.buildChatResponseSchemaExtras(), xmlLogger, authorization));
+            String secondRawSafe = null;
+            JsonNode second = null;
+            try {
+                secondRawSafe = openai.callChatNoToolsWithExtras(followup, openai.buildChatResponseSchemaExtras(), xmlLogger, authorization);
+                if (secondRawSafe == null || secondRawSafe.isBlank()) {
+                    if (xmlLogger != null) xmlLogger.addStep("OpenAIClient", "Segunda llamada devolvió cuerpo vacío/null; usando fallback seguro");
+                } else {
+                    second = om.readTree(secondRawSafe);
+                }
+            } catch (Exception exSecond) {
+                if (xmlLogger != null) xmlLogger.addStep("OpenAIClient", "Excepción en segunda llamada/parsing: " + exSecond.getMessage());
+            }
             if (xmlLogger != null) xmlLogger.addStep("Telemetry", "second_ms=" + (System.currentTimeMillis() - secondStartMs));
             // Telemetría: fin de la primera llamada del segundo turno
             if (xmlLogger != null) xmlLogger.addStep("Telemetry", "decision_ms_first_second_turn=" + (System.currentTimeMillis() - t0));
@@ -1178,12 +1246,27 @@ public class ChatService {
                     String prettySecond = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(second);
                     System.out.println("[ChatService][DEBUG] OpenAI second response (pretty):\n" + prettySecond);
                 } catch (Exception ignore) {
-                    System.out.println("[ChatService][DEBUG] OpenAI second response: " + second);
+                    System.out.println("[ChatService][DEBUG] OpenAI second response: " + (secondRawSafe == null ? "<null>" : secondRawSafe));
                 }
             }
             // Defensive: ensure we have choices; if not, return a safe error envelope
             JsonNode finalMsg;
             try {
+                if (second == null) {
+                    if (xmlLogger != null) xmlLogger.addStep("OpenAIClient", "Segunda respuesta nula; devolviendo envelope de fallback seguro");
+                    ExecMeta metaSel = selectExecMetaForPagination(executed, incoming);
+                    ResponseEnvelope envFallback = buildEnvelopeFromContentNode(metaSel == null ? om.createObjectNode() : metaSel.apiResultNode);
+                    try {
+                        if (parametros.isLazyTotalEnabled() && envFallback.getData() != null && envFallback.getData().getPagination() != null && envFallback.getData().getPagination().getTotal() == null) {
+                            PaginationInfo p = envFallback.getData().getPagination();
+                            Integer totalLazy = computeLazyTotal(openai, apiProxy, metaSel, p, authorization, null, xmlLogger);
+                            if (totalLazy != null) envFallback.getData().getPagination().setTotal(totalLazy);
+                        }
+                    } catch (Exception __tl) {}
+                    try { envFallback.setMessage(composePaginatedMessage(envFallback.getMessage(), envFallback.getData() == null ? null : envFallback.getData().getPagination())); } catch (Exception __m) {}
+                    try { if (envFallback.getData() != null && envFallback.getData().getPagination() != null) ensurePaginationSuggestions(envFallback, envFallback.getData().getPagination(), metaSel); } catch (Exception __s) {}
+                    return applyFinalFallback(envFallback);
+                }
                 JsonNode choices2 = second.path("choices");
                 if (choices2 == null || !choices2.isArray() || choices2.size() == 0) {
                     if (xmlLogger != null) xmlLogger.addStep("OpenAIClient", "Segunda respuesta sin choices: devolviendo envelope de error controlado");
@@ -1479,16 +1562,32 @@ public class ChatService {
                     } catch (Exception _ignore) {}
                     followup.add(to2);
                 }
-                // Nueva llamada a OpenAI con los nuevos tool outputs
+                // Nueva llamada a OpenAI con los nuevos tool outputs (inyectando instrucción de segundo turno)
                 if (xmlLogger != null) xmlLogger.addStep("Telemetry", "[iter] api_ms_total=" + iterApiMs + ", reinject_payload_bytes=" + iterReinjectBytes);
                 long iterSecondStart = System.currentTimeMillis();
-                second = om.readTree(openai.callChatNoToolsWithExtras(followup, openai.buildChatResponseSchemaExtras(), xmlLogger, authorization));
+                try {
+                    StringBuilder sb2 = new StringBuilder();
+                    sb2.append("iter=").append(extraIters+1).append(" ejecuciones: ");
+                    sb2.append(executed == null ? 0 : executed.size());
+                    followup.add(java.util.Map.of("role","user","content", promptBuilder.buildSecondTurnInstruction(sb2.toString())));
+                } catch (Exception __ignoreIterInstr) {}
+                String iterSecondRaw = null;
+                try {
+                    iterSecondRaw = openai.callChatNoToolsWithExtras(followup, openai.buildChatResponseSchemaExtras(), xmlLogger, authorization);
+                    second = (iterSecondRaw == null || iterSecondRaw.isBlank()) ? null : om.readTree(iterSecondRaw);
+                } catch (Exception __iterSecondEx) {
+                    if (xmlLogger != null) xmlLogger.addStep("OpenAIClient", "Excepción en segunda llamada (iter): " + __iterSecondEx.getMessage());
+                    second = null;
+                }
                 if (xmlLogger != null) xmlLogger.addStep("Telemetry", "[iter] second_ms=" + (System.currentTimeMillis() - iterSecondStart));
                 if (debug) {
                     try {
                         String prettySecondIter = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(second);
                         System.out.println("[ChatService][DEBUG] OpenAI second response (iter " + (extraIters+1) + "):\n" + prettySecondIter);
                     } catch (Exception ignore) {}
+                }
+                if (second == null || !second.has("choices") || !second.get("choices").isArray() || second.get("choices").size() == 0) {
+                    break; // salir del bucle; usaremos el contenido anterior/fallback
                 }
                 finalMsg = second.path("choices").get(0).path("message");
                 extraIters++;

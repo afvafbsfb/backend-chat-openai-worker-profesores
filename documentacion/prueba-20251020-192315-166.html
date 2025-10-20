@@ -2,48 +2,88 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Flujo de la prueba: prueba-20251019-223708-665</title>
+<title>Flujo de la prueba: prueba-20251020-192315-166</title>
 <style>body{font-family:sans-serif;} table{border-collapse:collapse;width:100%;margin-top:1em;} th,td{border:1px solid #ccc;padding:8px;text-align:left;} th{background:#f0f0f0;} tr:nth-child(even){background:#fafafa;} .step{margin-bottom:1em;} .timestamp{color:#888;font-size:0.9em;} td.desc{white-space:pre-wrap;}</style>
 </head><body>
-<h2>Flujo de la prueba: prueba-20251019-223708-665</h2>
+<h2>Flujo de la prueba: prueba-20251020-192315-166</h2>
 <table>
 <thead><tr><th>Paso</th><th>Descripción</th><th>Timestamp</th></tr></thead>
 <tbody>
-<tr class='step'><td>1. ChatController</td><td class='desc'>Recibida petición POST /chat - Mensajes recibidos (3):
-[1] assistant: Mostrando página 2 de usuarios
-[2] assistant: Paginacion_token: {&quot;token&quot;:&quot;eyJ0YXJnZXRfcGFnZSI6MSwic2l6ZSI6NTAsInBhZ2UiOjIsInR5cGUiOiJ1c3VhcmlvcyJ9.&quot;}
-[3] user: Anterior
-</td><td class='timestamp'>2025-10-19 22:37:08.666</td></tr>
-<tr class='step'><td>2. ChatController</td><td class='desc'>JWT válido: usuarioId=1496, roles=[Admin_plataforma], academiaId=null</td><td class='timestamp'>2025-10-19 22:37:08.666</td></tr>
-<tr class='step'><td>3. ChatService</td><td class='desc'>Inicio de runChat</td><td class='timestamp'>2025-10-19 22:37:08.668</td></tr>
-<tr class='step'><td>4. ChatService</td><td class='desc'>Delegated token creado: preview=Bearer e..., token_sha4=10b8c060</td><td class='timestamp'>2025-10-19 22:37:08.671</td></tr>
-<tr class='step'><td>5. ChatService</td><td class='desc'>System prompt construido y whitelist añadida</td><td class='timestamp'>2025-10-19 22:37:08.672</td></tr>
-<tr class='step'><td>6. ChatService</td><td class='desc'>Mensajes de usuario preparados para OpenAI</td><td class='timestamp'>2025-10-19 22:37:08.672</td></tr>
-<tr class='step'><td>7. Planner</td><td class='desc'>Planner round intento=1 (tool_choice=require plan_api, temp=0)</td><td class='timestamp'>2025-10-19 22:37:08.672</td></tr>
-<tr class='step'><td>8. OpenAI</td><td class='desc'>Llamada a OpenAI (iteración 0) - mensajes: [system] Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), brev... | [system] Perfil_usuario: {&quot;nombre&quot;:&quot;Admin Plataforma&quot;,&quot;id&quot;:1496} | [assistant] Mostrando página 2 de usuarios | [user] Anterior | [system] ROL: Eres un planificador de llamadas a API. Tu objetivo es decidir si corresponde planificar una llamada real a la API ... | </td><td class='timestamp'>2025-10-19 22:37:08.673</td></tr>
-<tr class='step'><td>9. Planner</td><td class='desc'>Plan ejecutado directamente: usuarios.listar_usuarios</td><td class='timestamp'>2025-10-19 22:37:09.886</td></tr>
-<tr class='step'><td>10. Telemetry</td><td class='desc'>planner_success=true attempt=1</td><td class='timestamp'>2025-10-19 22:37:09.886</td></tr>
-<tr class='step'><td>11. OpenAIClient</td><td class='desc'>Segunda llamada (post-planner) a OpenAI con reformat/schema</td><td class='timestamp'>2025-10-19 22:37:09.886</td></tr>
-<tr class='step'><td>12. OpenAI</td><td class='desc'>Llamada a OpenAI (sin herramientas) - mensajes: [system] Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), brev... | [system] Perfil_usuario: {&quot;nombre&quot;:&quot;Admin Plataforma&quot;,&quot;id&quot;:1496} | [assistant] Mostrando página 2 de usuarios | [user] Anterior | [assistant]  tool_calls: [{function={name=call_api, arguments={&quot;method&quot;:&quot;GET&quot;,&quot;pathParams&quot;:{},&quot;query&quot;:{&quot;page&quot;:1,&quot;size&quot;:50},&quot;name&quot;:&quot;usuarios.listar_usuarios&quot;,&quot;body&quot;:{}}}, id=planner_call_1, type=function}] | [tool] {
-  &quot;has_more&quot;: true,
+<tr class='step'><td>1. ChatController</td><td class='desc'>Recibida petición POST /chat - Mensajes recibidos (1):
+[1] user: quería saber el total de academias activas y el total de usuarios activos que están registrados
+</td><td class='timestamp'>2025-10-20 19:23:15.166</td></tr>
+<tr class='step'><td>2. ChatController</td><td class='desc'>JWT válido: usuarioId=1496, roles=[Admin_plataforma], academiaId=null</td><td class='timestamp'>2025-10-20 19:23:15.167</td></tr>
+<tr class='step'><td>3. ChatService</td><td class='desc'>Inicio de runChat</td><td class='timestamp'>2025-10-20 19:23:15.174</td></tr>
+<tr class='step'><td>4. ChatService</td><td class='desc'>Delegated token creado: preview=Bearer e..., token_sha4=d3b2ed98</td><td class='timestamp'>2025-10-20 19:23:15.181</td></tr>
+<tr class='step'><td>5. ChatService</td><td class='desc'>System prompt construido y whitelist añadida</td><td class='timestamp'>2025-10-20 19:23:15.181</td></tr>
+<tr class='step'><td>6. ChatService</td><td class='desc'>Mensajes de usuario preparados para OpenAI</td><td class='timestamp'>2025-10-20 19:23:15.181</td></tr>
+<tr class='step'><td>7. Planner</td><td class='desc'>Planner round intento=1 (tool_choice=require plan_api, temp=0)</td><td class='timestamp'>2025-10-20 19:23:15.181</td></tr>
+<tr class='step'><td>8. OpenAI</td><td class='desc'>Llamada a OpenAI (iteración 0) - mensajes: [system] Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), brev... | [system] Perfil_usuario: {&quot;nombre&quot;:&quot;Admin Plataforma&quot;,&quot;id&quot;:1496} | [user] quería saber el total de academias activas y el total de usuarios activos que están registrados | [system] ROL: Eres un planificador de llamadas a API. Tu objetivo es decidir si corresponde planificar una llamada real a la API ... | </td><td class='timestamp'>2025-10-20 19:23:15.184</td></tr>
+<tr class='step'><td>9. Planner</td><td class='desc'>Planner sin plan válido; continuamos con flujo actual</td><td class='timestamp'>2025-10-20 19:23:16.329</td></tr>
+<tr class='step'><td>10. Telemetry</td><td class='desc'>client_messages=1, seed_messages=3, seed_bytes=14915</td><td class='timestamp'>2025-10-20 19:23:16.329</td></tr>
+<tr class='step'><td>11. OpenAIClient</td><td class='desc'>Primera llamada a OpenAI (seedSize=3)</td><td class='timestamp'>2025-10-20 19:23:16.330</td></tr>
+<tr class='step'><td>12. Telemetry</td><td class='desc'>seed_ms=1159</td><td class='timestamp'>2025-10-20 19:23:16.330</td></tr>
+<tr class='step'><td>13. OpenAIClient</td><td class='desc'>Primera llamada a OpenAI (callChatWithTools)</td><td class='timestamp'>2025-10-20 19:23:16.330</td></tr>
+<tr class='step'><td>14. OpenAI</td><td class='desc'>Llamada a OpenAI (iteración 0) - mensajes: [system] Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), brev... | [system] Perfil_usuario: {&quot;nombre&quot;:&quot;Admin Plataforma&quot;,&quot;id&quot;:1496} | [user] quería saber el total de academias activas y el total de usuarios activos que están registrados | </td><td class='timestamp'>2025-10-20 19:23:16.332</td></tr>
+<tr class='step'><td>15. OpenAIClient</td><td class='desc'>OpenAI primera respuesta parseada a JSON</td><td class='timestamp'>2025-10-20 19:23:18.312</td></tr>
+<tr class='step'><td>16. Telemetry</td><td class='desc'>parse_ms=3141</td><td class='timestamp'>2025-10-20 19:23:18.312</td></tr>
+<tr class='step'><td>17. OpenAIClient</td><td class='desc'>Procesando tool_call: call_api</td><td class='timestamp'>2025-10-20 19:23:18.312</td></tr>
+<tr class='step'><td>18. ApiProxyService</td><td class='desc'>Llamada a API: academias.listar_academias (GET)&lt;br&gt;pathParams=&lt;br&gt;query=&lt;br&gt;body=</td><td class='timestamp'>2025-10-20 19:23:18.312</td></tr>
+<tr class='step'><td>19. ApiProxyService</td><td class='desc'>Authorization preview=Bearer e..., token_sha4=d3b2ed98</td><td class='timestamp'>2025-10-20 19:23:18.312</td></tr>
+<tr class='step'><td>20. Telemetry</td><td class='desc'>api_call_ms=207 (single)</td><td class='timestamp'>2025-10-20 19:23:18.520</td></tr>
+<tr class='step'><td>21. ApiProxyService</td><td class='desc'>Respuesta recibida de API: academias.listar_academias (result_snippet={
+  &quot;ok&quot;: true,
+  &quot;result&quot;: [
+    {
+      &quot;id&quot;: 311,
+      &quot;nombre&quot;: &quot;Academia Central&quot;
+    },
+    {
+      &quot;id&quot;: 312,
+      &quot;nombre&quot;: &quot;Academia 1&quot;
+    },
+    {
+      &quot;id&quot;: 313,
+      &quot;nombre&quot;: &quot;Academ...)</td><td class='timestamp'>2025-10-20 19:23:18.520</td></tr>
+<tr class='step'><td>22. OpenAIClient</td><td class='desc'>Procesando tool_call: call_api</td><td class='timestamp'>2025-10-20 19:23:18.520</td></tr>
+<tr class='step'><td>23. ApiProxyService</td><td class='desc'>Llamada a API: usuarios.listar_usuarios (GET)&lt;br&gt;pathParams=&lt;br&gt;query={&quot;estado&quot;:&quot;activo&quot;}&lt;br&gt;body=</td><td class='timestamp'>2025-10-20 19:23:18.522</td></tr>
+<tr class='step'><td>24. ApiProxyService</td><td class='desc'>Authorization preview=Bearer e..., token_sha4=d3b2ed98</td><td class='timestamp'>2025-10-20 19:23:18.522</td></tr>
+<tr class='step'><td>25. Telemetry</td><td class='desc'>api_call_ms=298 (single)</td><td class='timestamp'>2025-10-20 19:23:18.821</td></tr>
+<tr class='step'><td>26. ApiProxyService</td><td class='desc'>Respuesta recibida de API: usuarios.listar_usuarios (result_snippet={
+  &quot;has_more&quot;: false,
   &quot;items&quot;: [
     {
       &quot;academia_id&quot;: 311,
       &quot;email&quot;: &quot;activo@academia.com&quot;,
-      &quot;estado&quot;:... tool_call_id: planner_call_1 | </td><td class='timestamp'>2025-10-19 22:37:09.886</td></tr>
-<tr class='step'><td>13. Planner</td><td class='desc'>Fallo en post-planner second turn: argument &quot;content&quot; is null</td><td class='timestamp'>2025-10-19 22:37:10.200</td></tr>
-<tr class='step'><td>14. OpenAI</td><td class='desc'>Llamada a OpenAI (sin herramientas) - mensajes: [system] Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), brev... | [system] Perfil_usuario: {&quot;nombre&quot;:&quot;Admin Plataforma&quot;,&quot;id&quot;:1496} | [assistant] Mostrando página 2 de usuarios | [user] Anterior | [assistant]  tool_calls: [{function={name=call_api, arguments={&quot;method&quot;:&quot;GET&quot;,&quot;pathParams&quot;:{},&quot;query&quot;:{&quot;page&quot;:1,&quot;size&quot;:50},&quot;name&quot;:&quot;usuarios.listar_usuarios&quot;,&quot;body&quot;:{}}}, id=planner_call_1, type=function}] | [tool] {
-  &quot;has_more&quot;: true,
-  &quot;items&quot;: [
+      &quot;estado&quot;: &quot;Activo&quot;,
+      &quot;fecha_alta&quot;: &quot;2025-10-18T22:06:54&quot;,
+      &quot;id&quot;: 1493,
+      &quot;...)</td><td class='timestamp'>2025-10-20 19:23:18.821</td></tr>
+<tr class='step'><td>27. OpenAIClient</td><td class='desc'>Segunda llamada a OpenAI (reinyectando resultados de tools)</td><td class='timestamp'>2025-10-20 19:23:18.822</td></tr>
+<tr class='step'><td>28. Telemetry</td><td class='desc'>api_ms_total=505, calls_in_batch=0, reinject_payload_bytes=668, followup_messages=6, followup_bytes=15583</td><td class='timestamp'>2025-10-20 19:23:18.825</td></tr>
+<tr class='step'><td>29. OpenAI</td><td class='desc'>Llamada a OpenAI (sin herramientas) - mensajes: [system] Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), brev... | [system] Perfil_usuario: {&quot;nombre&quot;:&quot;Admin Plataforma&quot;,&quot;id&quot;:1496} | [user] quería saber el total de academias activas y el total de usuarios activos que están registrados | [assistant]  tool_calls: [{id=call_j5YjvykDPU3QMVoGdGQrhevA, type=function, function={name=call_api, arguments={&quot;method&quot;: &quot;GET&quot;, &quot;name&quot;: &quot;academias.listar_academias&quot;}}}, {id=call_iujNjjAn1aadIj63BX41qHPN, type=function, function={name=call_api, arguments={&quot;method&quot;: &quot;GET&quot;, &quot;name&quot;: &quot;usuarios.listar_usuarios&quot;, &quot;query&quot;: {&quot;estado&quot;: &quot;activo&quot;}}}}] | [tool] {
+  &quot;ok&quot;: true,
+  &quot;result&quot;: [
     {
-      &quot;academia_id&quot;: 311,
-      &quot;email&quot;: &quot;activo@academia.com&quot;,
-      &quot;estado&quot;:... tool_call_id: planner_call_1 | [user] Por favor, devuelve únicamente un objeto JSON válido con al menos la propiedad &#39;text&#39; (string) y que &#39;text&#39; NO esté vací... | </td><td class='timestamp'>2025-10-19 22:37:10.200</td></tr>
-<tr class='step'><td>15. ChatController</td><td class='desc'>runChat() completado (controller_ms_desde_inicio=1857, run_ms=1856)</td><td class='timestamp'>2025-10-19 22:37:10.522</td></tr>
-<tr class='step'><td>16. ChatController</td><td class='desc'>Respuesta generada por ChatService (pretty)=
+      &quot;id&quot;: 311,
+      &quot;nombre&quot;: &quot;Academia Central&quot;
+    },
+    {
+      &quot;id&quot;: 312,
+  ... tool_call_id: call_j5YjvykDPU3QMVoGdGQrhevA | [tool] {&quot;has_more&quot;:false,&quot;items&quot;:[{&quot;academia_id&quot;:311,&quot;email&quot;:&quot;activo@academia.com&quot;,&quot;estado&quot;:&quot;Activo&quot;,&quot;fecha_alta&quot;:&quot;2025-10-18T2... tool_call_id: call_iujNjjAn1aadIj63BX41qHPN | [user] Segundo turno (redacción final, sin herramientas):
+- Devuelve SOLO un objeto JSON válido con &#39;text&#39; (no vacío) y, cuando... | </td><td class='timestamp'>2025-10-20 19:23:18.826</td></tr>
+<tr class='step'><td>30. Telemetry</td><td class='desc'>second_ms=2392</td><td class='timestamp'>2025-10-20 19:23:21.217</td></tr>
+<tr class='step'><td>31. Telemetry</td><td class='desc'>decision_ms_first_second_turn=6046</td><td class='timestamp'>2025-10-20 19:23:21.217</td></tr>
+<tr class='step'><td>32. Telemetry</td><td class='desc'>decision_ms=6048</td><td class='timestamp'>2025-10-20 19:23:21.219</td></tr>
+<tr class='step'><td>33. OpenAIClient</td><td class='desc'>Respuesta final generada por OpenAI</td><td class='timestamp'>2025-10-20 19:23:21.219</td></tr>
+<tr class='step'><td>34. Telemetry</td><td class='desc'>ui_suggestions_pagination: []</td><td class='timestamp'>2025-10-20 19:23:21.224</td></tr>
+<tr class='step'><td>35. Telemetry</td><td class='desc'>summary seed_ms+api_ms+second_ms decision_ms=6053, items_returned=46, calls_in_batch=0</td><td class='timestamp'>2025-10-20 19:23:21.224</td></tr>
+<tr class='step'><td>36. Telemetry</td><td class='desc'>render_ms=6053</td><td class='timestamp'>2025-10-20 19:23:21.224</td></tr>
+<tr class='step'><td>37. ChatController</td><td class='desc'>runChat() completado (controller_ms_desde_inicio=6060, run_ms=6055)</td><td class='timestamp'>2025-10-20 19:23:21.226</td></tr>
+<tr class='step'><td>38. ChatController</td><td class='desc'>Respuesta generada por ChatService (pretty)=
 {
   &quot;status&quot; : &quot;success&quot;,
-  &quot;message&quot; : &quot;Mostrando página 1. (50 en esta página)&quot;,
+  &quot;message&quot; : &quot;He obtenido el total de academias activas, que son 3, y el total de usuarios activos, que son 46. Si necesitas más información sobre alguna academia o usuario en particular, házmelo saber. (46 en esta página)&quot;,
   &quot;data&quot; : {
     &quot;type&quot; : &quot;usuarios&quot;,
     &quot;items&quot; : [ {
@@ -53,22 +93,6 @@
       &quot;fecha_alta&quot; : &quot;2025-10-18T22:06:54&quot;,
       &quot;id&quot; : 1493,
       &quot;nombre&quot; : &quot;Usuario Activo&quot;,
-      &quot;rol&quot; : &quot;Admin_plataforma&quot;
-    }, {
-      &quot;academia_id&quot; : 311,
-      &quot;email&quot; : &quot;bloqueado@academia.com&quot;,
-      &quot;estado&quot; : &quot;Bloqueado&quot;,
-      &quot;fecha_alta&quot; : &quot;2025-10-18T22:06:54&quot;,
-      &quot;id&quot; : 1494,
-      &quot;nombre&quot; : &quot;Usuario Bloqueado&quot;,
-      &quot;rol&quot; : &quot;Admin_plataforma&quot;
-    }, {
-      &quot;academia_id&quot; : 311,
-      &quot;email&quot; : &quot;baja@academia.com&quot;,
-      &quot;estado&quot; : &quot;Baja&quot;,
-      &quot;fecha_alta&quot; : &quot;2025-10-18T22:06:54&quot;,
-      &quot;id&quot; : 1495,
-      &quot;nombre&quot; : &quot;Usuario Baja&quot;,
       &quot;rol&quot; : &quot;Admin_plataforma&quot;
     }, {
       &quot;academia_id&quot; : null,
@@ -95,14 +119,6 @@
       &quot;nombre&quot; : &quot;Admin Plataforma 1&quot;,
       &quot;rol&quot; : &quot;Admin_plataforma&quot;
     }, {
-      &quot;academia_id&quot; : null,
-      &quot;email&quot; : &quot;admin_plataforma_2@academia.com&quot;,
-      &quot;estado&quot; : &quot;Bloqueado&quot;,
-      &quot;fecha_alta&quot; : &quot;2025-10-18T22:06:57&quot;,
-      &quot;id&quot; : 1499,
-      &quot;nombre&quot; : &quot;Admin Plataforma 2&quot;,
-      &quot;rol&quot; : &quot;Admin_plataforma&quot;
-    }, {
       &quot;academia_id&quot; : 312,
       &quot;email&quot; : &quot;admin_academia_1@academia.com&quot;,
       &quot;estado&quot; : &quot;Activo&quot;,
@@ -110,22 +126,6 @@
       &quot;id&quot; : 1500,
       &quot;nombre&quot; : &quot;Admin Academia 1&quot;,
       &quot;rol&quot; : &quot;Admin_academia&quot;
-    }, {
-      &quot;academia_id&quot; : 312,
-      &quot;email&quot; : &quot;user_academia_1_1@academia.com&quot;,
-      &quot;estado&quot; : &quot;Bloqueado&quot;,
-      &quot;fecha_alta&quot; : &quot;2025-10-18T22:06:58&quot;,
-      &quot;id&quot; : 1501,
-      &quot;nombre&quot; : &quot;User Academia 1.1&quot;,
-      &quot;rol&quot; : &quot;Profesor_academia&quot;
-    }, {
-      &quot;academia_id&quot; : 312,
-      &quot;email&quot; : &quot;user_academia_1_2@academia.com&quot;,
-      &quot;estado&quot; : &quot;Bloqueado&quot;,
-      &quot;fecha_alta&quot; : &quot;2025-10-18T22:06:58&quot;,
-      &quot;id&quot; : 1502,
-      &quot;nombre&quot; : &quot;User Academia 1.2&quot;,
-      &quot;rol&quot; : &quot;Profesor_academia&quot;
     }, {
       &quot;academia_id&quot; : 313,
       &quot;email&quot; : &quot;admin_academia_2@academia.com&quot;,
@@ -190,14 +190,6 @@
       &quot;id&quot; : 1510,
       &quot;nombre&quot; : &quot;Reserve Admin Academia 2&quot;,
       &quot;rol&quot; : &quot;Admin_academia&quot;
-    }, {
-      &quot;academia_id&quot; : null,
-      &quot;email&quot; : &quot;reserve_admin_plataforma_2@academia.com&quot;,
-      &quot;estado&quot; : &quot;Bloqueado&quot;,
-      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:01&quot;,
-      &quot;id&quot; : 1511,
-      &quot;nombre&quot; : &quot;Reserve Admin Plataforma 2&quot;,
-      &quot;rol&quot; : &quot;Admin_plataforma&quot;
     }, {
       &quot;academia_id&quot; : 312,
       &quot;email&quot; : &quot;profesor_test_1@academia.com&quot;,
@@ -446,28 +438,46 @@
       &quot;id&quot; : 1542,
       &quot;nombre&quot; : &quot;Profesor A2 07&quot;,
       &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 313,
+      &quot;email&quot; : &quot;prof_a2_08@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:10&quot;,
+      &quot;id&quot; : 1543,
+      &quot;nombre&quot; : &quot;Profesor A2 08&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 313,
+      &quot;email&quot; : &quot;prof_a2_09@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:10&quot;,
+      &quot;id&quot; : 1544,
+      &quot;nombre&quot; : &quot;Profesor A2 09&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
     } ],
     &quot;pagination&quot; : {
       &quot;page&quot; : 1,
       &quot;size&quot; : 50,
-      &quot;returned&quot; : 50,
-      &quot;hasMore&quot; : true,
-      &quot;nextPage&quot; : 2
+      &quot;returned&quot; : 46,
+      &quot;hasMore&quot; : false
     }
   },
   &quot;uiSuggestions&quot; : [ {
-    &quot;id&quot; : &quot;pg-next&quot;,
-    &quot;displayText&quot; : &quot;Siguiente&quot;,
-    &quot;type&quot; : &quot;Paginacion&quot;,
-    &quot;pagination&quot; : {
-      &quot;direction&quot; : &quot;next&quot;,
-      &quot;page&quot; : 2,
-      &quot;size&quot; : 50
-    },
-    &quot;contextToken&quot; : &quot;eyJ0YXJnZXRfcGFnZSI6Miwic2l6ZSI6NTAsInBhZ2UiOjEsInR5cGUiOiJ1c3VhcmlvcyJ9.&quot;
+    &quot;id&quot; : &quot;sg-g-list-academias&quot;,
+    &quot;displayText&quot; : &quot;Listar academias&quot;,
+    &quot;type&quot; : &quot;Generica&quot;
+  }, {
+    &quot;id&quot; : &quot;sg-g-list-usuarios&quot;,
+    &quot;displayText&quot; : &quot;Listar usuarios&quot;,
+    &quot;type&quot; : &quot;Generica&quot;
+  }, {
+    &quot;id&quot; : &quot;sg-g-filter-rol-estado&quot;,
+    &quot;displayText&quot; : &quot;Filtrar por rol/estado&quot;,
+    &quot;type&quot; : &quot;Generica&quot;
   } ],
+  &quot;uiSuggestionsVersion&quot; : 1,
   &quot;messages&quot; : [ ]
-}</td><td class='timestamp'>2025-10-19 22:37:10.525</td></tr>
-<tr class='step'><td>17. ChatController</td><td class='desc'>HTTP listo (server_total_ms=1860, serialize_ms=3, items=50, type=&#39;usuarios&#39;, envelope_chars=13278, envelope_bytes=13280)</td><td class='timestamp'>2025-10-19 22:37:10.525</td></tr>
+}</td><td class='timestamp'>2025-10-20 19:23:21.228</td></tr>
+<tr class='step'><td>39. ChatController</td><td class='desc'>HTTP listo (server_total_ms=6062, serialize_ms=2, items=46, type=&#39;usuarios&#39;, envelope_chars=12453, envelope_bytes=12457)</td><td class='timestamp'>2025-10-20 19:23:21.228</td></tr>
 </tbody></table>
 </body></html>

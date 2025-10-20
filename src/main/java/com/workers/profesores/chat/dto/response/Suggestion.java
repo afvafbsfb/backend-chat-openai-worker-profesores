@@ -8,7 +8,7 @@ public class Suggestion {
     private String displayText;
     // "Paginacion" | "Registro" | "Generica"
     private String type;
-    // Solo si type="Registro": "Consulta" | "Modificacion" | "Borrado" | "Alta"
+    // Solo si type="Registro": "Consulta" | "Modificacion" | "Baja" | "Alta"
     private String recordAction;
     private RecordRef record; // Solo si type="Registro"
     private PaginationSuggestion pagination; // Solo si type="Paginacion"

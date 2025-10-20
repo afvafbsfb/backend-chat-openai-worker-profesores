@@ -264,12 +264,14 @@ public class OpenAICallApiService {
         if (debug) {
             logger.debug("[OpenAICallApiService] callChatNoToolsWithExtras called messagesCount={} extrasKeys={} authorizationPresent={}", messages == null ? 0 : messages.size(), (extraBodyProps==null?0:extraBodyProps.keySet()), authorization != null);
         }
-        // Build extras ensuring tool_choice none
+        // Build extras for a NO-TOOLS call. IMPORTANT: Do NOT include 'tool_choice' at all when there are no tools,
+        // because OpenAI rejects requests that specify tool_choice without tools.
         Map<String,Object> extras = new HashMap<>();
-        if (extraBodyProps != null) extras.putAll(extraBodyProps);
-        // If caller didn't set a tool_choice, enforce none to avoid the model emitting tool_calls
-        if (!extras.containsKey("tool_choice")) {
-            extras.put("tool_choice", "none");
+        if (extraBodyProps != null) {
+            extras.putAll(extraBodyProps);
+            // Remove any accidental tool_choice/tools hints from caller
+            extras.remove("tool_choice");
+            extras.remove("tools");
         }
         Map<String, Object> requestBody = buildRequestBodyNoTools(messages, extras);
         if (xmlLogger != null) {
