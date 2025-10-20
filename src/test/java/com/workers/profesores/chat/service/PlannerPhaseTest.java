@@ -36,6 +36,15 @@ public class PlannerPhaseTest {
     static class DummyOpenAIPlanner extends OpenAICallApiService {
         final ObjectMapper om = new ObjectMapper();
         @Override
+        public String callChatWithTools(List<Map<String, Object>> messages, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) {
+            // Evita llamadas reales en la ruta genérica: devolver una respuesta mínima sin tool_calls
+            return toJson(Map.of(
+                "choices", List.of(Map.of(
+                    "message", Map.of("content", "{\\\"text\\\":\\\"ok\\\"}")
+                ))
+            ));
+        }
+        @Override
         public String callPlannerStrict(List<Map<String, Object>> messages, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) {
             // Devuelve un tool_call plan_api con endpoint válido y query vacía
             Map<String,Object> args = new HashMap<>();
@@ -46,6 +55,17 @@ public class PlannerPhaseTest {
             Map<String,Object> message = Map.of("role","assistant","tool_calls", List.of(toolCall));
             Map<String,Object> root = Map.of("choices", List.of(Map.of("message", message)));
             return toJson(root);
+        }
+        @Override
+        public String callChatNoToolsWithExtras(List<Map<String, Object>> messages, Map<String,Object> responseSchemaExtras, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) {
+            // Evita llamadas reales a OpenAI en el segundo turno devolviendo un JSON contractual mínimo
+            // Devuelve content como string JSON con al menos {"text": "..."}
+            String contentJson = "{\\\"text\\\":\\\"Listado\\\"}";
+            return toJson(Map.of(
+                "choices", List.of(Map.of(
+                    "message", Map.of("content", contentJson)
+                ))
+            ));
         }
         @Override
         public List<Map<String, Object>> getEndpoints() { return super.getEndpoints(); }
@@ -86,6 +106,18 @@ public class PlannerPhaseTest {
         public String callPlannerStrict(List<Map<String, Object>> messages, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) {
             // Devuelve un mensaje sin tool_calls -> forzar fallback al flujo existente
             return "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"sin plan\"}}]}";
+        }
+        @Override
+        public String callChatNoToolsWithExtras(List<Map<String, Object>> messages, Map<String,Object> responseSchemaExtras, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) {
+            // Devuelve un JSON contractual simple para el segundo turno de reformateo
+            String contentJson = "{\\\"text\\\":\\\"Listado\\\"}";
+            try {
+                return new ObjectMapper().writeValueAsString(Map.of(
+                    "choices", List.of(Map.of(
+                        "message", Map.of("content", contentJson)
+                    ))
+                ));
+            } catch (Exception e) { return "{}"; }
         }
     }
 

@@ -447,8 +447,21 @@ public class ChatService {
                                 if (ch != null && ch.isArray() && ch.size() > 0) {
                                     String c = ch.get(0).path("message").path("content").asText("");
                                     try {
+                                        // Enriquecer el JSON del modelo con los resultados reales ejecutados para garantizar pagination y tokens
                                         JsonNode cNode = om.readTree(c);
-                                        return applyFinalFallback(buildEnvelopeFromContentNode(cNode));
+                                        ExecMeta metaForCoerce = new ExecMeta();
+                                        metaForCoerce.endpointName = epName;
+                                        metaForCoerce.method = methodFromModel;
+                                        metaForCoerce.apiResultNode = apiNode;
+                                        metaForCoerce.raw = apiRaw;
+                                        try { metaForCoerce.querySnapshot = (qEff == null) ? om.createObjectNode() : qEff.deepCopy(); } catch (Exception __ignore) { metaForCoerce.querySnapshot = om.createObjectNode(); }
+                                        try { metaForCoerce.pathParamsSnapshot = (pathParams == null) ? om.createObjectNode() : pathParams.deepCopy(); } catch (Exception __ignore) { metaForCoerce.pathParamsSnapshot = om.createObjectNode(); }
+                                        try { metaForCoerce.endpointPath = String.valueOf(ep.getOrDefault("path","")); } catch (Exception __ignore) { metaForCoerce.endpointPath = null; }
+                                        JsonNode enrichedNode = coerceWithBackendResults(cNode, java.util.List.of(metaForCoerce), incoming);
+                                        ResponseEnvelope env2 = buildEnvelopeFromContentNode(enrichedNode);
+                                        try { env2.setMessage(composePaginatedMessage(env2.getMessage(), env2.getData() == null ? null : env2.getData().getPagination())); } catch (Exception __m) { }
+                                        try { if (env2.getData() != null && env2.getData().getPagination() != null) ensurePaginationSuggestions(env2, env2.getData().getPagination(), metaForCoerce); } catch (Exception __s) { }
+                                        return applyFinalFallback(env2);
                                     } catch (Exception __p3) {
                                         // Si el contenido no es JSON contractual utilizable, priorizar el envelope con datos reales del plan ejecutado
                                         return applyFinalFallback(env);
@@ -1103,14 +1116,32 @@ public class ChatService {
             assistantEcho.put("tool_calls", om.convertValue(assistantMsg.path("tool_calls"), List.class));
             followup.add(assistantEcho);
             // Eco recortado: limitar arrays en toolOutputs a una muestra pequeña + metadatos
+            // Dinámico: si detectamos listados grandes en la ejecución (size>=30 o returned>=30), reducir aún más la muestra
             int sampleN = Math.max(0, parametros.getModelEchoSampleSize());
+            int sampleNUsed = sampleN;
+            boolean largeListContext = false;
+            try {
+                if (executed != null && !executed.isEmpty()) {
+                    for (ExecMeta em : executed) {
+                        if (em == null || em.apiResultNode == null) continue;
+                        ItemsAndPagination f = findItemsArray(em.apiResultNode, extractTargetFromEndpointName(em.endpointName));
+                        int ret = (f == null || f.items == null) ? 0 : f.items.size();
+                        int sz = 0;
+                        try { if (em.querySnapshot != null && em.querySnapshot.has("size") && em.querySnapshot.get("size").canConvertToInt()) sz = em.querySnapshot.get("size").asInt(); } catch (Exception __i) {}
+                        if (sz >= 30 || ret >= 30) { largeListContext = true; break; }
+                    }
+                }
+                if (largeListContext) {
+                    sampleNUsed = Math.min(sampleN, 3);
+                }
+            } catch (Exception __dynEcho) { /* best-effort */ }
             long reinjectPayloadBytes = 0L;
             for (Map<String,Object> to : toolOutputs) {
                 try {
                     Object contentObj = to.get("content");
                     String contentStr = contentObj == null ? null : String.valueOf(contentObj);
                     JsonNode cnode = contentStr == null ? null : om.readTree(contentStr);
-                    if (sampleN > 0 && cnode != null && cnode.isObject()) {
+                    if (sampleNUsed > 0 && cnode != null && cnode.isObject()) {
                         // Caso A: wrapper batch => results[].result.{array}
                         if (cnode.has("results") && cnode.get("results").isArray()) {
                             com.fasterxml.jackson.databind.node.ObjectNode trimmedBatch = (com.fasterxml.jackson.databind.node.ObjectNode) cnode.deepCopy();
@@ -1126,16 +1157,16 @@ public class ChatService {
                                             if (rObj.has(k) && rObj.get(k).isArray()) { items = rObj.get(k); break; }
                                         }
                                         if (items == null && rObj.has("items") && rObj.get("items").isArray()) items = rObj.get("items");
-                                        if (items != null && items.isArray() && items.size() > sampleN) {
+                                        if (items != null && items.isArray() && items.size() > sampleNUsed) {
                                             com.fasterxml.jackson.databind.node.ArrayNode arr = om.createArrayNode();
-                                            for (int i=0;i<sampleN;i++) arr.add(items.get(i));
+                                            for (int i=0;i<sampleNUsed;i++) arr.add(items.get(i));
                                             boolean replaced = false;
                                             for (String k : parametros.getAllowedTargetsPlural()) {
                                                 if (rObj.has(k) && rObj.get(k).isArray()) { rObj.set(k, arr); replaced = true; break; }
                                             }
                                             if (!replaced && rObj.has("items") && rObj.get("items").isArray()) rObj.set("items", arr);
                                             rObj.put("returned", items.size());
-                                            rObj.put("sample_of", sampleN);
+                                            rObj.put("sample_of", sampleNUsed);
                                             ((com.fasterxml.jackson.databind.node.ObjectNode) riNode).set("result", rObj);
                                         }
                                     }
@@ -1150,17 +1181,17 @@ public class ChatService {
                                 if (cnode.has(k) && cnode.get(k).isArray()) { items = cnode.get(k); break; }
                             }
                             if (items == null && cnode.has("items") && cnode.get("items").isArray()) items = cnode.get("items");
-                            if (items != null && items.size() > sampleN) {
+                            if (items != null && items.size() > sampleNUsed) {
                                 com.fasterxml.jackson.databind.node.ObjectNode trimmed = (com.fasterxml.jackson.databind.node.ObjectNode) cnode.deepCopy();
                                 com.fasterxml.jackson.databind.node.ArrayNode arr = om.createArrayNode();
-                                for (int i=0;i<sampleN;i++) arr.add(items.get(i));
+                                for (int i=0;i<sampleNUsed;i++) arr.add(items.get(i));
                                 boolean replaced = false;
                                 for (String k : parametros.getAllowedTargetsPlural()) {
                                     if (trimmed.has(k) && trimmed.get(k).isArray()) { trimmed.set(k, arr); replaced = true; break; }
                                 }
                                 if (!replaced && trimmed.has("items") && trimmed.get("items").isArray()) trimmed.set("items", arr);
                                 trimmed.put("returned", items.size());
-                                trimmed.put("sample_of", sampleN);
+                                trimmed.put("sample_of", sampleNUsed);
                                 to = new HashMap<>(to);
                                 to.put("content", om.writeValueAsString(trimmed));
                             }
@@ -1186,6 +1217,7 @@ public class ChatService {
                         if (cObj != null) followupBytes += String.valueOf(cObj).getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
                     }
                     xmlLogger.addStep("Telemetry", "api_ms_total=" + totalApiMs + ", calls_in_batch=" + totalCallsInBatch + ", reinject_payload_bytes=" + reinjectPayloadBytes + ", followup_messages=" + followup.size() + ", followup_bytes=" + followupBytes);
+                    xmlLogger.addStep("Telemetry", "echo_sample_used=" + sampleNUsed + ", large_list_context=" + largeListContext);
                 } catch (Exception ignore) { }
             }
             // Inyección de instrucción de segundo turno con resumen compacto
@@ -1494,13 +1526,30 @@ public class ChatService {
                 iterAssistantEcho.put("tool_calls", om.convertValue(finalMsg.path("tool_calls"), List.class));
                 followup.add(iterAssistantEcho);
                 int sampleN2 = Math.max(0, parametros.getModelEchoSampleSize());
+                int sampleN2Used = sampleN2;
+                boolean largeListContext2 = false;
+                try {
+                    if (executed != null && !executed.isEmpty()) {
+                        for (ExecMeta em : executed) {
+                            if (em == null || em.apiResultNode == null) continue;
+                            ItemsAndPagination f = findItemsArray(em.apiResultNode, extractTargetFromEndpointName(em.endpointName));
+                            int ret = (f == null || f.items == null) ? 0 : f.items.size();
+                            int sz = 0;
+                            try { if (em.querySnapshot != null && em.querySnapshot.has("size") && em.querySnapshot.get("size").canConvertToInt()) sz = em.querySnapshot.get("size").asInt(); } catch (Exception __i) {}
+                            if (sz >= 30 || ret >= 30) { largeListContext2 = true; break; }
+                        }
+                    }
+                    if (largeListContext2) {
+                        sampleN2Used = Math.min(sampleN2, 3);
+                    }
+                } catch (Exception __dynEcho2) { /* best-effort */ }
                 long iterReinjectBytes = 0L;
                 for (Map<String,Object> to2 : iterToolOutputs) {
                     try {
                         Object contentObj = to2.get("content");
                         String contentStr = contentObj == null ? null : String.valueOf(contentObj);
                         JsonNode cnode = contentStr == null ? null : om.readTree(contentStr);
-                        if (sampleN2 > 0 && cnode != null && cnode.isObject()) {
+                        if (sampleN2Used > 0 && cnode != null && cnode.isObject()) {
                             if (cnode.has("results") && cnode.get("results").isArray()) {
                                 com.fasterxml.jackson.databind.node.ObjectNode trimmedBatch = (com.fasterxml.jackson.databind.node.ObjectNode) cnode.deepCopy();
                                 com.fasterxml.jackson.databind.node.ArrayNode results = (com.fasterxml.jackson.databind.node.ArrayNode) trimmedBatch.get("results");
@@ -1515,16 +1564,16 @@ public class ChatService {
                                                 if (rObj.has(k) && rObj.get(k).isArray()) { items = rObj.get(k); break; }
                                             }
                                             if (items == null && rObj.has("items") && rObj.get("items").isArray()) items = rObj.get("items");
-                                            if (items != null && items.isArray() && items.size() > sampleN2) {
+                                            if (items != null && items.isArray() && items.size() > sampleN2Used) {
                                                 com.fasterxml.jackson.databind.node.ArrayNode arr = om.createArrayNode();
-                                                for (int i=0;i<sampleN2;i++) arr.add(items.get(i));
+                                                for (int i=0;i<sampleN2Used;i++) arr.add(items.get(i));
                                                 boolean replaced = false;
                                                 for (String k : parametros.getAllowedTargetsPlural()) {
                                                     if (rObj.has(k) && rObj.get(k).isArray()) { rObj.set(k, arr); replaced = true; break; }
                                                 }
                                                 if (!replaced && rObj.has("items") && rObj.get("items").isArray()) rObj.set("items", arr);
                                                 rObj.put("returned", items.size());
-                                                rObj.put("sample_of", sampleN2);
+                                                rObj.put("sample_of", sampleN2Used);
                                                 ((com.fasterxml.jackson.databind.node.ObjectNode) riNode).set("result", rObj);
                                             }
                                         }
@@ -1538,17 +1587,17 @@ public class ChatService {
                                     if (cnode.has(k) && cnode.get(k).isArray()) { items = cnode.get(k); break; }
                                 }
                                 if (items == null && cnode.has("items") && cnode.get("items").isArray()) items = cnode.get("items");
-                                if (items != null && items.size() > sampleN2) {
+                                if (items != null && items.size() > sampleN2Used) {
                                     com.fasterxml.jackson.databind.node.ObjectNode trimmed = (com.fasterxml.jackson.databind.node.ObjectNode) cnode.deepCopy();
                                     com.fasterxml.jackson.databind.node.ArrayNode arr = om.createArrayNode();
-                                    for (int i=0;i<sampleN2;i++) arr.add(items.get(i));
+                                    for (int i=0;i<sampleN2Used;i++) arr.add(items.get(i));
                                     boolean replaced = false;
                                     for (String k : parametros.getAllowedTargetsPlural()) {
                                         if (trimmed.has(k) && trimmed.get(k).isArray()) { trimmed.set(k, arr); replaced = true; break; }
                                     }
                                     if (!replaced && trimmed.has("items") && trimmed.get("items").isArray()) trimmed.set("items", arr);
                                     trimmed.put("returned", items.size());
-                                    trimmed.put("sample_of", sampleN2);
+                                    trimmed.put("sample_of", sampleN2Used);
                                     to2 = new HashMap<>(to2);
                                     to2.put("content", om.writeValueAsString(trimmed));
                                 }
@@ -1563,7 +1612,10 @@ public class ChatService {
                     followup.add(to2);
                 }
                 // Nueva llamada a OpenAI con los nuevos tool outputs (inyectando instrucción de segundo turno)
-                if (xmlLogger != null) xmlLogger.addStep("Telemetry", "[iter] api_ms_total=" + iterApiMs + ", reinject_payload_bytes=" + iterReinjectBytes);
+                if (xmlLogger != null) {
+                    xmlLogger.addStep("Telemetry", "[iter] api_ms_total=" + iterApiMs + ", reinject_payload_bytes=" + iterReinjectBytes);
+                    xmlLogger.addStep("Telemetry", "[iter] echo_sample_used=" + sampleN2Used + ", large_list_context=" + largeListContext2);
+                }
                 long iterSecondStart = System.currentTimeMillis();
                 try {
                     StringBuilder sb2 = new StringBuilder();
@@ -2132,6 +2184,8 @@ public class ChatService {
             }
         }
         env.setUiSuggestions(list);
+        // Asegurar versión de sugerencias coherente cuando existan uiSuggestions
+        try { if (env.getUiSuggestions() != null && !env.getUiSuggestions().isEmpty()) env.setUiSuggestionsVersion(1); } catch (Exception __v) {}
         // Enriquecer con token ampliado
         try { enrichPaginationSuggestionsWithTokensExpanded(env, env.getData() == null ? null : env.getData().getType(), pagination, meta); } catch (Exception ignore) {}
     }
@@ -2172,6 +2226,14 @@ public class ChatService {
                 if (pag.getTotal() != null) payload.put("total", pag.getTotal());
                 String token = contextTokenService.sign(payload);
                 s.setContextToken(token);
+                // Asegurar coherencia en los metadatos de la sugerencia (direction/page/size)
+                if (s.getPagination() == null) {
+                    s.setPagination(new Suggestion.PaginationSuggestion(direction, targetPage, size));
+                } else {
+                    s.getPagination().setDirection(direction);
+                    s.getPagination().setPage(targetPage);
+                    s.getPagination().setSize(size);
+                }
             }
         }
     }
@@ -2327,6 +2389,22 @@ public class ChatService {
                 if (it.has("display_text")) s.setDisplayText(it.get("display_text").asText());
                 if (it.has("type")) s.setType(it.get("type").asText());
                 if (it.has("recordAction")) s.setRecordAction(it.get("recordAction").asText());
+                // Mapear subobjeto 'pagination' si viene del modelo (el modelo no debe aportar contextToken)
+                try {
+                    JsonNode pagNode2 = it.get("pagination");
+                    if (pagNode2 != null && pagNode2.isObject()) {
+                        String dir2 = pagNode2.has("direction") && pagNode2.get("direction").isTextual() ? pagNode2.get("direction").asText() : null;
+                        Integer pg2 = pagNode2.has("page") && pagNode2.get("page").canConvertToInt() ? pagNode2.get("page").asInt() : null;
+                        Integer sz2 = pagNode2.has("size") && pagNode2.get("size").canConvertToInt() ? pagNode2.get("size").asInt() : null;
+                        if (dir2 != null || pg2 != null || sz2 != null) {
+                            com.workers.profesores.chat.dto.response.Suggestion.PaginationSuggestion ps2 = new com.workers.profesores.chat.dto.response.Suggestion.PaginationSuggestion();
+                            if (dir2 != null) ps2.setDirection(dir2);
+                            if (pg2 != null) ps2.setPage(pg2);
+                            if (sz2 != null) ps2.setSize(sz2);
+                            s.setPagination(ps2);
+                        }
+                    }
+                } catch (Exception __mapPag) { /* ignore bad shape */ }
                 uiFirst.add(s);
             }
         }

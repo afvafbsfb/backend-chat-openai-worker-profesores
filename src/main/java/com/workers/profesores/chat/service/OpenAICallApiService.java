@@ -273,6 +273,8 @@ public class OpenAICallApiService {
             extras.remove("tool_choice");
             extras.remove("tools");
         }
+        // Apply a conservative cap of max_tokens to avoid long generations in the second turn
+        extras.putIfAbsent("max_tokens", 400);
         Map<String, Object> requestBody = buildRequestBodyNoTools(messages, extras);
         if (xmlLogger != null) {
             xmlLogger.addStep("OpenAI", "Llamada a OpenAI (sin herramientas) - mensajes: " + messagesToLogString(messages));

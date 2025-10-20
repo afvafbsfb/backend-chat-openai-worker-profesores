@@ -15,9 +15,20 @@ public class ChatServiceGreetingFallbackTest {
 
     static class DummyOpenAI_EmptyMessage extends OpenAICallApiService {
         @Override
+        public String callPlannerStrict(List<Map<String, Object>> messages, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) {
+            // No planner: fuerza que el flujo continue sin plan y sin red
+            return "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"sin plan\"}}]}";
+        }
+        @Override
         public String callChatWithTools(List<Map<String, Object>> messages, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) {
             // Simula un modelo que devuelve un objeto válido pero con text vacío y sin arrays
             String contentJson = "{\"text\":\"\",\"ui_suggestions\":[]}";
+            return "{\"choices\":[{\"message\":{\"content\":" + quote(contentJson) + "}}]}";
+        }
+        @Override
+        public String callChatNoToolsWithExtras(List<Map<String, Object>> messages, Map<String,Object> responseSchemaExtras, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) {
+            // Evita llamadas reales: devolver un JSON contractual mínimo (deja text vacío para no alterar el test)
+            String contentJson = "{\\\"text\\\":\\\"\\\"}";
             return "{\"choices\":[{\"message\":{\"content\":" + quote(contentJson) + "}}]}";
         }
         private String quote(String s){ return "\"" + s.replace("\\","\\\\").replace("\"","\\\"") + "\""; }
