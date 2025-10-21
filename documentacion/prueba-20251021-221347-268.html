@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Flujo de la prueba: prueba-20251021-221347-268</title>
+<style>body{font-family:sans-serif;} table{border-collapse:collapse;width:100%;margin-top:1em;} th,td{border:1px solid #ccc;padding:8px;text-align:left;} th{background:#f0f0f0;} tr:nth-child(even){background:#fafafa;} .step{margin-bottom:1em;} .timestamp{color:#888;font-size:0.9em;} td.desc{white-space:pre-wrap;}</style>
+</head><body>
+<h2>Flujo de la prueba: prueba-20251021-221347-268</h2>
+<table>
+<thead><tr><th>Paso</th><th>Descripción</th><th>Timestamp</th></tr></thead>
+<tbody>
+<tr class='step'><td>1. ChatController</td><td class='desc'>Recibida petición POST /chat - Mensajes recibidos (1):
+[1] user: Listar usuarios
+</td><td class='timestamp'>2025-10-21 22:13:47.268</td></tr>
+<tr class='step'><td>2. ChatController</td><td class='desc'>JWT válido: usuarioId=1496, roles=[Admin_plataforma], academiaId=null</td><td class='timestamp'>2025-10-21 22:13:47.269</td></tr>
+<tr class='step'><td>3. ChatService</td><td class='desc'>Inicio de runChat</td><td class='timestamp'>2025-10-21 22:13:47.270</td></tr>
+<tr class='step'><td>4. ChatService</td><td class='desc'>Delegated token creado: preview=Bearer e..., token_sha4=c5647ba5</td><td class='timestamp'>2025-10-21 22:13:47.272</td></tr>
+<tr class='step'><td>5. ChatService</td><td class='desc'>System prompt construido y whitelist añadida</td><td class='timestamp'>2025-10-21 22:13:47.272</td></tr>
+<tr class='step'><td>6. ChatService</td><td class='desc'>Mensajes de usuario preparados para OpenAI</td><td class='timestamp'>2025-10-21 22:13:47.273</td></tr>
+<tr class='step'><td>7. Telemetry</td><td class='desc'>client_messages=1, seed_messages=3, seed_bytes=16063</td><td class='timestamp'>2025-10-21 22:13:47.273</td></tr>
+<tr class='step'><td>8. OpenAIClient</td><td class='desc'>Primera llamada a OpenAI (seedSize=3)</td><td class='timestamp'>2025-10-21 22:13:47.274</td></tr>
+<tr class='step'><td>9. Telemetry</td><td class='desc'>seed_ms=4</td><td class='timestamp'>2025-10-21 22:13:47.274</td></tr>
+<tr class='step'><td>10. OpenAIClient</td><td class='desc'>Primera llamada a OpenAI (callChatWithTools)</td><td class='timestamp'>2025-10-21 22:13:47.274</td></tr>
+<tr class='step'><td>11. OpenAI</td><td class='desc'>Llamada a OpenAI (iteración 0) - mensajes: [system] Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), brev... | [system] Perfil_usuario: {&quot;nombre&quot;:&quot;Admin Plataforma&quot;,&quot;id&quot;:1496} | [user] Listar usuarios | </td><td class='timestamp'>2025-10-21 22:13:47.277</td></tr>
+<tr class='step'><td>12. OpenAIClient</td><td class='desc'>OpenAI primera respuesta parseada a JSON</td><td class='timestamp'>2025-10-21 22:13:48.843</td></tr>
+<tr class='step'><td>13. Telemetry</td><td class='desc'>parse_ms=1573</td><td class='timestamp'>2025-10-21 22:13:48.843</td></tr>
+<tr class='step'><td>14. OpenAIClient</td><td class='desc'>Procesando tool_call: call_api</td><td class='timestamp'>2025-10-21 22:13:48.843</td></tr>
+<tr class='step'><td>15. ApiProxyService</td><td class='desc'>Llamada a API: usuarios.listar_usuarios (GET)&lt;br&gt;pathParams=&lt;br&gt;query={}&lt;br&gt;body=</td><td class='timestamp'>2025-10-21 22:13:48.844</td></tr>
+<tr class='step'><td>16. ApiProxyService</td><td class='desc'>Authorization preview=Bearer e..., token_sha4=c5647ba5</td><td class='timestamp'>2025-10-21 22:13:48.844</td></tr>
+<tr class='step'><td>17. Telemetry</td><td class='desc'>api_call_ms=316 (single)</td><td class='timestamp'>2025-10-21 22:13:49.161</td></tr>
+<tr class='step'><td>18. ApiProxyService</td><td class='desc'>Respuesta recibida de API: usuarios.listar_usuarios (result_snippet={
+  &quot;has_more&quot;: true,
+  &quot;items&quot;: [
+    {
+      &quot;academia_id&quot;: 311,
+      &quot;email&quot;: &quot;activo@academia.com&quot;,
+      &quot;estado&quot;: &quot;Activo&quot;,
+      &quot;fecha_alta&quot;: &quot;2025-10-18T22:06:54&quot;,
+      &quot;id&quot;: 1493,
+      &quot;n...)</td><td class='timestamp'>2025-10-21 22:13:49.161</td></tr>
+<tr class='step'><td>19. OpenAIClient</td><td class='desc'>Segunda llamada a OpenAI (reinyectando resultados de tools)</td><td class='timestamp'>2025-10-21 22:13:49.165</td></tr>
+<tr class='step'><td>20. Telemetry</td><td class='desc'>api_ms_total=316, calls_in_batch=0, reinject_payload_bytes=372, followup_messages=4, followup_bytes=2119</td><td class='timestamp'>2025-10-21 22:13:49.166</td></tr>
+<tr class='step'><td>21. Telemetry</td><td class='desc'>echo_sample_used=2, large_list_context=true</td><td class='timestamp'>2025-10-21 22:13:49.167</td></tr>
+<tr class='step'><td>22. OpenAI</td><td class='desc'>Llamada a OpenAI (sin herramientas) - mensajes: [system] Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), brev... | [system] Perfil_usuario: {&quot;nombre&quot;:&quot;Admin Plataforma&quot;,&quot;id&quot;:1496} | [assistant]  tool_calls: [{id=call_I35oVBADbJCFkmlL6EnBV92h, type=function, function={name=call_api, arguments={&quot;name&quot;:&quot;usuarios.listar_usuarios&quot;,&quot;method&quot;:&quot;GET&quot;,&quot;query&quot;:{}}}}] | [tool] {&quot;has_more&quot;:true,&quot;items&quot;:[{&quot;id&quot;:1493,&quot;nombre&quot;:&quot;Usuario Activo&quot;,&quot;email&quot;:&quot;activo@academia.com&quot;,&quot;estado&quot;:&quot;Activo&quot;,&quot;rol&quot;:&quot;Ad... tool_call_id: call_I35oVBADbJCFkmlL6EnBV92h | [user] Segundo turno (sin herramientas). Devuelve SOLO un JSON con: &#39;text&#39; (no vacío) y, si procede, &#39;ui_suggestions&#39; (2–3).
+Si... | </td><td class='timestamp'>2025-10-21 22:13:49.167</td></tr>
+<tr class='step'><td>23. Telemetry</td><td class='desc'>second_ms=3401</td><td class='timestamp'>2025-10-21 22:13:52.568</td></tr>
+<tr class='step'><td>24. Telemetry</td><td class='desc'>decision_ms_first_second_turn=5298</td><td class='timestamp'>2025-10-21 22:13:52.568</td></tr>
+<tr class='step'><td>25. Telemetry</td><td class='desc'>decision_ms=5300</td><td class='timestamp'>2025-10-21 22:13:52.570</td></tr>
+<tr class='step'><td>26. OpenAIClient</td><td class='desc'>Respuesta final generada por OpenAI</td><td class='timestamp'>2025-10-21 22:13:52.570</td></tr>
+<tr class='step'><td>27. Telemetry</td><td class='desc'>summary seed_ms+api_ms+second_ms decision_ms=5312, items_returned=50, calls_in_batch=0</td><td class='timestamp'>2025-10-21 22:13:52.582</td></tr>
+<tr class='step'><td>28. Telemetry</td><td class='desc'>render_ms=5312</td><td class='timestamp'>2025-10-21 22:13:52.582</td></tr>
+<tr class='step'><td>29. ChatController</td><td class='desc'>runChat() completado (controller_ms_desde_inicio=5319, run_ms=5317)</td><td class='timestamp'>2025-10-21 22:13:52.587</td></tr>
+<tr class='step'><td>30. ChatController</td><td class='desc'>Respuesta generada por ChatService (pretty)=
+{
+  &quot;status&quot; : &quot;success&quot;,
+  &quot;message&quot; : &quot;Se han encontrado usuarios en la plataforma.&quot;,
+  &quot;data&quot; : {
+    &quot;type&quot; : &quot;usuarios&quot;,
+    &quot;items&quot; : [ {
+      &quot;academia_id&quot; : 311,
+      &quot;email&quot; : &quot;activo@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:06:54&quot;,
+      &quot;id&quot; : 1493,
+      &quot;nombre&quot; : &quot;Usuario Activo&quot;,
+      &quot;rol&quot; : &quot;Admin_plataforma&quot;
+    }, {
+      &quot;academia_id&quot; : 311,
+      &quot;email&quot; : &quot;bloqueado@academia.com&quot;,
+      &quot;estado&quot; : &quot;Bloqueado&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:06:54&quot;,
+      &quot;id&quot; : 1494,
+      &quot;nombre&quot; : &quot;Usuario Bloqueado&quot;,
+      &quot;rol&quot; : &quot;Admin_plataforma&quot;
+    }, {
+      &quot;academia_id&quot; : 311,
+      &quot;email&quot; : &quot;baja@academia.com&quot;,
+      &quot;estado&quot; : &quot;Baja&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:06:54&quot;,
+      &quot;id&quot; : 1495,
+      &quot;nombre&quot; : &quot;Usuario Baja&quot;,
+      &quot;rol&quot; : &quot;Admin_plataforma&quot;
+    }, {
+      &quot;academia_id&quot; : null,
+      &quot;email&quot; : &quot;admin_plataforma@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:06:54&quot;,
+      &quot;id&quot; : 1496,
+      &quot;nombre&quot; : &quot;Admin Plataforma&quot;,
+      &quot;rol&quot; : &quot;Admin_plataforma&quot;
+    }, {
+      &quot;academia_id&quot; : 311,
+      &quot;email&quot; : &quot;admin_academia@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:06:55&quot;,
+      &quot;id&quot; : 1497,
+      &quot;nombre&quot; : &quot;Admin Academia&quot;,
+      &quot;rol&quot; : &quot;Admin_academia&quot;
+    }, {
+      &quot;academia_id&quot; : null,
+      &quot;email&quot; : &quot;admin_plataforma_1@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:06:56&quot;,
+      &quot;id&quot; : 1498,
+      &quot;nombre&quot; : &quot;Admin Plataforma 1&quot;,
+      &quot;rol&quot; : &quot;Admin_plataforma&quot;
+    }, {
+      &quot;academia_id&quot; : null,
+      &quot;email&quot; : &quot;admin_plataforma_2@academia.com&quot;,
+      &quot;estado&quot; : &quot;Bloqueado&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:06:57&quot;,
+      &quot;id&quot; : 1499,
+      &quot;nombre&quot; : &quot;Admin Plataforma 2&quot;,
+      &quot;rol&quot; : &quot;Admin_plataforma&quot;
+    }, {
+      &quot;academia_id&quot; : 312,
+      &quot;email&quot; : &quot;admin_academia_1@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:06:57&quot;,
+      &quot;id&quot; : 1500,
+      &quot;nombre&quot; : &quot;Admin Academia 1&quot;,
+      &quot;rol&quot; : &quot;Admin_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 312,
+      &quot;email&quot; : &quot;user_academia_1_1@academia.com&quot;,
+      &quot;estado&quot; : &quot;Bloqueado&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:06:58&quot;,
+      &quot;id&quot; : 1501,
+      &quot;nombre&quot; : &quot;User Academia 1.1&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 312,
+      &quot;email&quot; : &quot;user_academia_1_2@academia.com&quot;,
+      &quot;estado&quot; : &quot;Bloqueado&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:06:58&quot;,
+      &quot;id&quot; : 1502,
+      &quot;nombre&quot; : &quot;User Academia 1.2&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 313,
+      &quot;email&quot; : &quot;admin_academia_2@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:06:58&quot;,
+      &quot;id&quot; : 1503,
+      &quot;nombre&quot; : &quot;Admin Academia 2&quot;,
+      &quot;rol&quot; : &quot;Admin_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 313,
+      &quot;email&quot; : &quot;user_academia_2_1@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:06:59&quot;,
+      &quot;id&quot; : 1504,
+      &quot;nombre&quot; : &quot;User Academia 2.1&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 313,
+      &quot;email&quot; : &quot;user_academia_2_2@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:06:59&quot;,
+      &quot;id&quot; : 1505,
+      &quot;nombre&quot; : &quot;User Academia 2.2&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : null,
+      &quot;email&quot; : &quot;reserve_activo@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:00&quot;,
+      &quot;id&quot; : 1506,
+      &quot;nombre&quot; : &quot;Reserve Activo&quot;,
+      &quot;rol&quot; : &quot;Admin_plataforma&quot;
+    }, {
+      &quot;academia_id&quot; : 312,
+      &quot;email&quot; : &quot;reserve_user_academia_1_1@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:00&quot;,
+      &quot;id&quot; : 1507,
+      &quot;nombre&quot; : &quot;Reserve User A1.1&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : null,
+      &quot;email&quot; : &quot;reserve_admin_plataforma@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:00&quot;,
+      &quot;id&quot; : 1508,
+      &quot;nombre&quot; : &quot;Reserve Admin Plataforma&quot;,
+      &quot;rol&quot; : &quot;Admin_plataforma&quot;
+    }, {
+      &quot;academia_id&quot; : 312,
+      &quot;email&quot; : &quot;reserve_admin_academia_1@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:01&quot;,
+      &quot;id&quot; : 1509,
+      &quot;nombre&quot; : &quot;Reserve Admin Academia 1&quot;,
+      &quot;rol&quot; : &quot;Admin_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 313,
+      &quot;email&quot; : &quot;reserve_admin_academia_2@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:01&quot;,
+      &quot;id&quot; : 1510,
+      &quot;nombre&quot; : &quot;Reserve Admin Academia 2&quot;,
+      &quot;rol&quot; : &quot;Admin_academia&quot;
+    }, {
+      &quot;academia_id&quot; : null,
+      &quot;email&quot; : &quot;reserve_admin_plataforma_2@academia.com&quot;,
+      &quot;estado&quot; : &quot;Bloqueado&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:01&quot;,
+      &quot;id&quot; : 1511,
+      &quot;nombre&quot; : &quot;Reserve Admin Plataforma 2&quot;,
+      &quot;rol&quot; : &quot;Admin_plataforma&quot;
+    }, {
+      &quot;academia_id&quot; : 312,
+      &quot;email&quot; : &quot;profesor_test_1@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:01&quot;,
+      &quot;id&quot; : 1512,
+      &quot;nombre&quot; : &quot;Profesor Test 1&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 313,
+      &quot;email&quot; : &quot;profesor_test_2@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:02&quot;,
+      &quot;id&quot; : 1513,
+      &quot;nombre&quot; : &quot;Profesor Test 2&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 311,
+      &quot;email&quot; : &quot;admin_academia_central_2@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:02&quot;,
+      &quot;id&quot; : 1514,
+      &quot;nombre&quot; : &quot;Admin Academia Central 2&quot;,
+      &quot;rol&quot; : &quot;Admin_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 312,
+      &quot;email&quot; : &quot;admin_academia_1_2@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:02&quot;,
+      &quot;id&quot; : 1515,
+      &quot;nombre&quot; : &quot;Admin Academia 1 (2)&quot;,
+      &quot;rol&quot; : &quot;Admin_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 313,
+      &quot;email&quot; : &quot;admin_academia_2_2@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:03&quot;,
+      &quot;id&quot; : 1516,
+      &quot;nombre&quot; : &quot;Admin Academia 2 (2)&quot;,
+      &quot;rol&quot; : &quot;Admin_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 311,
+      &quot;email&quot; : &quot;prof_central_01@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:03&quot;,
+      &quot;id&quot; : 1517,
+      &quot;nombre&quot; : &quot;Profesor Central 01&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 311,
+      &quot;email&quot; : &quot;prof_central_02@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:03&quot;,
+      &quot;id&quot; : 1518,
+      &quot;nombre&quot; : &quot;Profesor Central 02&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 311,
+      &quot;email&quot; : &quot;prof_central_03@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:03&quot;,
+      &quot;id&quot; : 1519,
+      &quot;nombre&quot; : &quot;Profesor Central 03&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 311,
+      &quot;email&quot; : &quot;prof_central_04@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:04&quot;,
+      &quot;id&quot; : 1520,
+      &quot;nombre&quot; : &quot;Profesor Central 04&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 311,
+      &quot;email&quot; : &quot;prof_central_05@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:04&quot;,
+      &quot;id&quot; : 1521,
+      &quot;nombre&quot; : &quot;Profesor Central 05&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 311,
+      &quot;email&quot; : &quot;prof_central_06@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:04&quot;,
+      &quot;id&quot; : 1522,
+      &quot;nombre&quot; : &quot;Profesor Central 06&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 311,
+      &quot;email&quot; : &quot;prof_central_07@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:04&quot;,
+      &quot;id&quot; : 1523,
+      &quot;nombre&quot; : &quot;Profesor Central 07&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 311,
+      &quot;email&quot; : &quot;prof_central_08@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:05&quot;,
+      &quot;id&quot; : 1524,
+      &quot;nombre&quot; : &quot;Profesor Central 08&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 311,
+      &quot;email&quot; : &quot;prof_central_09@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:05&quot;,
+      &quot;id&quot; : 1525,
+      &quot;nombre&quot; : &quot;Profesor Central 09&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 311,
+      &quot;email&quot; : &quot;prof_central_10@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:05&quot;,
+      &quot;id&quot; : 1526,
+      &quot;nombre&quot; : &quot;Profesor Central 10&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 312,
+      &quot;email&quot; : &quot;prof_a1_01@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:06&quot;,
+      &quot;id&quot; : 1527,
+      &quot;nombre&quot; : &quot;Profesor A1 01&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 312,
+      &quot;email&quot; : &quot;prof_a1_02@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:06&quot;,
+      &quot;id&quot; : 1528,
+      &quot;nombre&quot; : &quot;Profesor A1 02&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 312,
+      &quot;email&quot; : &quot;prof_a1_03@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:06&quot;,
+      &quot;id&quot; : 1529,
+      &quot;nombre&quot; : &quot;Profesor A1 03&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 312,
+      &quot;email&quot; : &quot;prof_a1_04@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:06&quot;,
+      &quot;id&quot; : 1530,
+      &quot;nombre&quot; : &quot;Profesor A1 04&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 312,
+      &quot;email&quot; : &quot;prof_a1_05@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:07&quot;,
+      &quot;id&quot; : 1531,
+      &quot;nombre&quot; : &quot;Profesor A1 05&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 312,
+      &quot;email&quot; : &quot;prof_a1_06@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:07&quot;,
+      &quot;id&quot; : 1532,
+      &quot;nombre&quot; : &quot;Profesor A1 06&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 312,
+      &quot;email&quot; : &quot;prof_a1_07@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:07&quot;,
+      &quot;id&quot; : 1533,
+      &quot;nombre&quot; : &quot;Profesor A1 07&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 312,
+      &quot;email&quot; : &quot;prof_a1_08@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:07&quot;,
+      &quot;id&quot; : 1534,
+      &quot;nombre&quot; : &quot;Profesor A1 08&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 312,
+      &quot;email&quot; : &quot;prof_a1_09@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:08&quot;,
+      &quot;id&quot; : 1535,
+      &quot;nombre&quot; : &quot;Profesor A1 09&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 313,
+      &quot;email&quot; : &quot;prof_a2_01@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:08&quot;,
+      &quot;id&quot; : 1536,
+      &quot;nombre&quot; : &quot;Profesor A2 01&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 313,
+      &quot;email&quot; : &quot;prof_a2_02@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:08&quot;,
+      &quot;id&quot; : 1537,
+      &quot;nombre&quot; : &quot;Profesor A2 02&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 313,
+      &quot;email&quot; : &quot;prof_a2_03@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:08&quot;,
+      &quot;id&quot; : 1538,
+      &quot;nombre&quot; : &quot;Profesor A2 03&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 313,
+      &quot;email&quot; : &quot;prof_a2_04@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:09&quot;,
+      &quot;id&quot; : 1539,
+      &quot;nombre&quot; : &quot;Profesor A2 04&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 313,
+      &quot;email&quot; : &quot;prof_a2_05@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:09&quot;,
+      &quot;id&quot; : 1540,
+      &quot;nombre&quot; : &quot;Profesor A2 05&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 313,
+      &quot;email&quot; : &quot;prof_a2_06@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:09&quot;,
+      &quot;id&quot; : 1541,
+      &quot;nombre&quot; : &quot;Profesor A2 06&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    }, {
+      &quot;academia_id&quot; : 313,
+      &quot;email&quot; : &quot;prof_a2_07@academia.com&quot;,
+      &quot;estado&quot; : &quot;Activo&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-18T22:07:09&quot;,
+      &quot;id&quot; : 1542,
+      &quot;nombre&quot; : &quot;Profesor A2 07&quot;,
+      &quot;rol&quot; : &quot;Profesor_academia&quot;
+    } ],
+    &quot;pagination&quot; : {
+      &quot;page&quot; : 1,
+      &quot;size&quot; : 50,
+      &quot;returned&quot; : 50,
+      &quot;hasMore&quot; : true,
+      &quot;nextPage&quot; : 2
+    }
+  },
+  &quot;uiSuggestions&quot; : [ {
+    &quot;id&quot; : &quot;sg-r1&quot;,
+    &quot;displayText&quot; : &quot;Ver detalle del usuario&quot;,
+    &quot;type&quot; : &quot;Registro&quot;,
+    &quot;recordAction&quot; : &quot;Consulta&quot;
+  }, {
+    &quot;id&quot; : &quot;sg-g1&quot;,
+    &quot;displayText&quot; : &quot;Buscar por email&quot;,
+    &quot;type&quot; : &quot;Generica&quot;
+  }, {
+    &quot;id&quot; : &quot;pg-next&quot;,
+    &quot;displayText&quot; : &quot;Siguiente&quot;,
+    &quot;type&quot; : &quot;Paginacion&quot;,
+    &quot;pagination&quot; : {
+      &quot;direction&quot; : &quot;next&quot;,
+      &quot;page&quot; : 2,
+      &quot;size&quot; : 50
+    },
+    &quot;contextToken&quot; : &quot;eyJ0YXJnZXRfcGFnZSI6Miwic2l6ZSI6NTAsInBhZ2UiOjEsInR5cGUiOiJ1c3VhcmlvcyJ9.&quot;
+  } ],
+  &quot;uiSuggestionsVersion&quot; : 1,
+  &quot;messages&quot; : [ ]
+}</td><td class='timestamp'>2025-10-21 22:13:52.590</td></tr>
+<tr class='step'><td>31. ChatController</td><td class='desc'>HTTP listo (server_total_ms=5323, serialize_ms=3, items=50, type=&#39;usuarios&#39;, envelope_chars=13545, envelope_bytes=13545)</td><td class='timestamp'>2025-10-21 22:13:52.591</td></tr>
+</tbody></table>
+</body></html>

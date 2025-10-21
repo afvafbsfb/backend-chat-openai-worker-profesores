@@ -267,43 +267,9 @@ public class PromptOpenAi {
      */
 
     public String buildReformatInstruction() {
-    return "⚠️ CRÍTICO - REFORMATEO DE RESPUESTA (ÚLTIMA LÍNEA DE DEFENSA): Tu respuesta anterior no era JSON válido. Debes convertirla a JSON PRESERVANDO EL CONTENIDO Y CONTEXTO ORIGINAL.\n\n" +
-        "REGLA #1 - PRESERVA EL MENSAJE ORIGINAL:\n" +
-        "- Si tu respuesta anterior decía 'Necesito que me indiques el ID del usuario...', el JSON debe contener EXACTAMENTE ese texto en 'text'\n" +
-        "- Si pediste información específica (ID, email, nombre), el JSON debe mantener esa pregunta\n" +
-        "- Si explicaste algo inteligente, el JSON debe preservar esa explicación\n" +
-        "- NO reemplaces mensajes inteligentes por genéricos como '¡Hola! ¿En qué puedo ayudarte?'\n" +
-        "- NO pierdas el contexto de la conversación\n\n" +
-        "REGLA #2 - ESTRUCTURA JSON OBLIGATORIA:\n" +
-        "{\n" +
-        "  \"text\": \"<TU_MENSAJE_ORIGINAL_AQUÍ - NUNCA VACÍO - PRESERVA CONTEXTO>\",\n" +
-        "  \"ui_suggestions\": [ <OPCIONAL - array de sugerencias tipadas> ]\n" +
-        "}\n\n" +
-        "REGLA #3 - UI_SUGGESTIONS (si aplicable):\n" +
-        "- Cada elemento DEBE tener: 'id' (string único), 'display_text' (string), 'type' (enum: 'Paginacion'|'Registro'|'Generica')\n" +
-        "- Si 'type'=='Registro': OBLIGATORIO incluir 'recordAction' (enum: 'Alta'|'Baja'|'Modificacion'|'Consulta')\n" +
-        "- Si 'type'=='Paginacion': OBLIGATORIO incluir 'pagination': { 'direction': 'next'|'prev', 'page': number, 'size': number }\n" +
-        "- NO inventes paginación ni 'contextToken'\n" +
-        "- Si no tienes sugerencias inteligentes, omite completamente 'ui_suggestions' (no array vacío)\n\n" +
-        "REGLA #4 - PROHIBICIONES:\n" +
-        "- NO devuelvas arrays de recursos ('usuarios', 'academias', etc.) en reformateo\n" +
-        "- NO incluyas explicaciones fuera del JSON\n" +
-        "- NO uses 'contextToken' ni campos inventados\n" +
-        "- NO generes mensajes genéricos si el original era específico\n\n" +
-        "EJEMPLO CORRECTO:\n" +
-        "Respuesta original: 'Necesito que me indiques el ID exacto del usuario que quieres modificar para poder ayudarte.'\n" +
-        "JSON reformateado:\n" +
-        "{\n" +
-        "  \"text\": \"Necesito que me indiques el ID exacto del usuario que quieres modificar para poder ayudarte.\",\n" +
-        "  \"ui_suggestions\": [\n" +
-        "    { \"id\": \"sug1\", \"display_text\": \"Consultar usuarios primero\", \"type\": \"Registro\", \"recordAction\": \"Consulta\" }\n" +
-        "  ]\n" +
-        "}\n\n" +
-        "EJEMPLO INCORRECTO:\n" +
-        "{\n" +
-        "  \"text\": \"¡Hola! ¿En qué puedo ayudarte?\"  <-- ❌ NUNCA hagas esto si el mensaje original era específico\n" +
-        "}\n\n" +
-        "Ahora reformatea tu respuesta anterior a JSON válido PRESERVANDO EL CONTENIDO ORIGINAL:";
+    return "Por favor, devuelve únicamente un objeto JSON válido con al menos la propiedad 'text' (string) y que 'text' NO esté vacío; redacta con inteligencia humana. Si el mensaje original era un saludo/apertura o no implica tool_calls ni paginación, incluye además 2–3 'ui_suggestions' tipadas (según las definiciones), sin arrays vacíos. Si devuelves listas de recursos, usa las claves exactas 'usuarios'|'academias'|'cursos'|'alumnos'|'profesores'. No incluyas explicaciones ni texto fuera del JSON. \n" +
+        "Prohibición: si NO hay tool_calls, NO devuelvas arrays de recursos. En ese caso, limita la salida a { 'text': <no vacío>, 'ui_suggestions': [...] (si procede) }. Para listados, usa herramientas. \n" +
+        "'ui_suggestions': cada elemento debe contener 'id' (string), 'display_text' (string), 'type' en ['Paginacion','Registro','Generica'] y, si 'type'=='Registro', 'recordAction' en ['Alta','Baja','Modificacion','Consulta']. Para 'type'='Paginacion', incluye SIEMPRE 'pagination': { 'direction': 'next'|'prev', 'page': number, 'size': number }. No inventes paginación ni 'contextToken'.";
     }
 
     /**

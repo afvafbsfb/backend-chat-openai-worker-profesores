@@ -231,53 +231,6 @@ public class OpenAICallApiService {
     // Definir el campo mapper como un atributo de clase
     private final ObjectMapper mapper = new ObjectMapper();
 
-    /**
-     * Crea el JSON Schema para enforcing structured outputs desde OpenAI.
-     * 
-     * IMPORTANTE: Usamos "strict": false porque necesitamos flexibilidad.
-     * El modo strict=true de OpenAI requiere que:
-     * - additionalProperties DEBE ser false
-     * - Todas las propiedades deben estar definidas explícitamente
-     * - No se pueden tener propiedades opcionales condicionales
-     * 
-     * Como nuestras respuestas tienen estructura dinámica (usuarios, academias, etc.),
-     * usamos strict=false pero seguimos teniendo validación básica de JSON.
-     * 
-     * Esto garantiza que el LLM:
-     * 1. Siempre devuelve JSON válido (no texto natural)
-     * 2. Siempre incluye el campo 'text' (obligatorio)
-     * 3. Puede incluir cualquier otra propiedad (ui_suggestions, usuarios, etc.)
-     */
-    private Map<String, Object> buildJsonSchemaResponseFormat() {
-        Map<String, Object> responseFormat = new HashMap<>();
-        responseFormat.put("type", "json_schema");
-        
-        Map<String, Object> jsonSchema = new HashMap<>();
-        jsonSchema.put("name", "chat_response");
-        jsonSchema.put("strict", false); // Cambiado a false para permitir flexibilidad
-        
-        // Schema principal
-        Map<String, Object> schema = new HashMap<>();
-        schema.put("type", "object");
-        
-        // Propiedades del objeto raíz
-        Map<String, Object> properties = new HashMap<>();
-        
-        // Propiedad 'text' (obligatoria)
-        Map<String, Object> textProp = new HashMap<>();
-        textProp.put("type", "string");
-        textProp.put("description", "Mensaje de respuesta breve y natural para el usuario (OBLIGATORIO, nunca vacío)");
-        properties.put("text", textProp);
-        
-        schema.put("properties", properties);
-        schema.put("required", List.of("text")); // Solo 'text' es obligatorio
-        
-        jsonSchema.put("schema", schema);
-        responseFormat.put("json_schema", jsonSchema);
-        
-        return responseFormat;
-    }
-
     // Refactorización del método callChatWithTools
     public String callChatWithTools(List<Map<String, Object>> messages, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) throws Exception {
         if (debug) {
@@ -567,14 +520,12 @@ public class OpenAICallApiService {
     }
 
     private Map<String, Object> buildRequestBody(List<Map<String, Object>> messages, List<Map<String, Object>> tools) {
-        Map<String,Object> body = new HashMap<>();
-        body.put("model", openaiApiModel);
-        body.put("messages", messages);
-        body.put("tools", tools);
-        body.put("temperature", openaiApiTemperature);
-        // AÑADIR JSON Schema enforcement para structured outputs
-        body.put("response_format", buildJsonSchemaResponseFormat());
-        return body;
+        return Map.of(
+            "model", openaiApiModel,
+            "messages", messages,
+            "tools", tools,
+            "temperature", openaiApiTemperature
+        );
     }
 
     private Map<String, Object> buildRequestBody(List<Map<String, Object>> messages, List<Map<String, Object>> tools, Map<String,Object> extras) {
@@ -583,10 +534,6 @@ public class OpenAICallApiService {
         body.put("messages", messages);
         body.put("tools", tools);
         body.put("temperature", openaiApiTemperature);
-        // AÑADIR JSON Schema enforcement si no viene explícito en extras
-        if (extras == null || !extras.containsKey("response_format")) {
-            body.put("response_format", buildJsonSchemaResponseFormat());
-        }
         if (extras != null) {
             body.putAll(extras);
         }
@@ -599,10 +546,6 @@ public class OpenAICallApiService {
         body.put("model", openaiApiModel);
         body.put("messages", messages);
         body.put("temperature", openaiApiTemperature);
-        // AÑADIR JSON Schema enforcement si no viene explícito en extras
-        if (extras == null || !extras.containsKey("response_format")) {
-            body.put("response_format", buildJsonSchemaResponseFormat());
-        }
         if (extras != null) {
             body.putAll(extras);
         }

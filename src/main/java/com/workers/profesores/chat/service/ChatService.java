@@ -1,8 +1,7 @@
 package com.workers.profesores.chat.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.workers.profesores.chat.dto.ChatRequest;
 import com.workers.profesores.chat.config.ParametrosArbolDecision2CallOpenAI;
@@ -425,23 +424,8 @@ public class ChatService {
                     } catch (Exception ignoreGuard) { }
                     return applyFinalFallback(envDirect);
                 } catch (Exception e) {
-                    // NUEVO: Intentar parser de fallback ANTES de llamar al LLM (ahorra latencia y costos)
-                    if (debug) System.out.println("[ChatService][DEBUG] Content not JSON, trying backend parser fallback first");
-                    String parsedJson = tryParseNaturalTextToJson(content);
-                    if (parsedJson != null) {
-                        try {
-                            JsonNode parsedNode = om.readTree(parsedJson);
-                            ResponseEnvelope envParsed = buildEnvelopeFromContentNode(parsedNode);
-                            if (debug) System.out.println("[ChatService][DEBUG] ✅ Parser fallback SUCCESS - no LLM reformateo needed");
-                            return applyFinalFallback(envParsed);
-                        } catch (Exception parseEx) {
-                            if (debug) System.out.println("[ChatService][DEBUG] ⚠️ Parser fallback failed: " + parseEx.getMessage());
-                            // Si falla el parser, continuar con reformateo LLM
-                        }
-                    }
-                    
-                    // Si el parser falló o no pudo parsear, intentamos pedir al modelo que convierta la respuesta anterior en JSON válido
-                    if (debug) System.out.println("[ChatService][DEBUG] Content not JSON, requesting reformat to JSON from OpenAI (last resort)");
+                    // Intentamos pedir al modelo que convierta la respuesta anterior en JSON válido siguiendo el contrato
+                    if (debug) System.out.println("[ChatService][DEBUG] Content not JSON, requesting reformat to JSON from OpenAI");
                     try {
                         boolean proceedWithToolCalls = false;
                         List<Map<String, Object>> reformatSeed = new ArrayList<>();
@@ -2045,126 +2029,6 @@ public class ChatService {
             } catch (Exception ignore) {}
         }
     }
-
-    /**
-     * Parser de fallback: intenta reconstruir JSON válido desde texto natural del LLM.
-     * Se usa cuando el JSON Schema falla y el contenido viene en formato texto con bullets.
-     * 
-     * Patrón detectado en los logs:
-     * ```
-     * [TEXTO_PRINCIPAL]
-     * 
-     * Aquí tienes algunas sugerencias:
-     * - Sugerencia 1
-     * - Sugerencia 2
-     * - Sugerencia 3
-     * ```
-     * 
-     * O bien:
-     * ```
-     * [TEXTO_PRINCIPAL]
-     * 
-     * Aquí tienes algunas opciones:
-     * {
-     *   "ui_suggestions": [...]
-     * }
-     * ```
-     * 
-     * @param content Contenido en texto natural del LLM
-     * @return JSON String válido o null si no se puede parsear
-     */
-    private String tryParseNaturalTextToJson(String content) {
-        if (content == null || content.isBlank()) return null;
-        
-        try {
-            String text = content;
-            List<Map<String, String>> suggestions = new ArrayList<>();
-            
-            // CASO 1: Detectar si ya tiene JSON embebido (parcial)
-            if (content.contains("{") && content.contains("\"ui_suggestions\"")) {
-                // Extraer el bloque JSON embebido
-                int jsonStart = content.indexOf("{");
-                int jsonEnd = content.lastIndexOf("}");
-                if (jsonStart >= 0 && jsonEnd > jsonStart) {
-                    String jsonPart = content.substring(jsonStart, jsonEnd + 1);
-                    // Intentar parsear como JSON
-                    try {
-                        JsonNode embeddedJson = om.readTree(jsonPart);
-                        // Si es válido, extraer texto antes del JSON
-                        text = content.substring(0, jsonStart).trim();
-                        // Reconstruir con texto + JSON embebido
-                        ObjectNode result = om.createObjectNode();
-                        result.put("text", text.isBlank() ? "¿En qué puedo ayudarte?" : text);
-                        if (embeddedJson.has("ui_suggestions")) {
-                            result.set("ui_suggestions", embeddedJson.get("ui_suggestions"));
-                        }
-                        return om.writeValueAsString(result);
-                    } catch (Exception ignored) {
-                        // Si falla el parsing del JSON embebido, continuar con parsing manual
-                    }
-                }
-            }
-            
-            // CASO 2: Detectar patrón de bullets (- item)
-            // Regex: buscar "Aquí tienes algunas? (sugerencias?|opciones?):"
-            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(
-                "(?s)(.+?)(?:Aquí tienes algunas? (?:sugerencias?|opciones?)[:：]\\s*)(.+)",
-                java.util.regex.Pattern.CASE_INSENSITIVE
-            );
-            java.util.regex.Matcher matcher = pattern.matcher(content);
-            
-            if (matcher.find()) {
-                text = matcher.group(1).trim();
-                String suggestionsText = matcher.group(2).trim();
-                
-                // Extraer bullets (- item, • item, * item)
-                java.util.regex.Pattern bulletPattern = java.util.regex.Pattern.compile(
-                    "^\\s*[-•*]\\s*(.+)$",
-                    java.util.regex.Pattern.MULTILINE
-                );
-                java.util.regex.Matcher bulletMatcher = bulletPattern.matcher(suggestionsText);
-                
-                int idx = 0;
-                while (bulletMatcher.find()) {
-                    String suggestionText = bulletMatcher.group(1).trim();
-                    Map<String, String> sg = new HashMap<>();
-                    sg.put("id", "sg-auto-" + idx++);
-                    sg.put("display_text", suggestionText);
-                    sg.put("type", "Generica"); // Por defecto Generica, se puede mejorar con keywords
-                    suggestions.add(sg);
-                }
-            }
-            
-            // Construir JSON válido
-            ObjectNode json = om.createObjectNode();
-            json.put("text", text.isBlank() ? "¿En qué puedo ayudarte?" : text);
-            
-            if (!suggestions.isEmpty()) {
-                ArrayNode uiSuggestions = json.putArray("ui_suggestions");
-                for (Map<String, String> sg : suggestions) {
-                    ObjectNode sgNode = uiSuggestions.addObject();
-                    sgNode.put("id", sg.get("id"));
-                    sgNode.put("display_text", sg.get("display_text"));
-                    sgNode.put("type", sg.get("type"));
-                }
-            }
-            
-            String result = om.writeValueAsString(json);
-            if (debug) {
-                System.out.println("[ChatService][PARSER_FALLBACK] Reconstructed JSON from natural text:");
-                System.out.println("[ChatService][PARSER_FALLBACK] Original: " + content.substring(0, Math.min(200, content.length())) + "...");
-                System.out.println("[ChatService][PARSER_FALLBACK] Result: " + result);
-            }
-            return result;
-            
-        } catch (Exception e) {
-            if (debug) {
-                System.out.println("[ChatService][PARSER_FALLBACK] Failed to parse: " + e.getMessage());
-            }
-            return null;
-        }
-    }
-
     // Nuevo método privado para construir Envelope desde un JsonNode del modelo
     private ResponseEnvelope buildEnvelopeFromContentNode(JsonNode contentNode) {
         if (contentNode == null || contentNode.isNull()) {
