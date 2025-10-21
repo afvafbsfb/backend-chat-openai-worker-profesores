@@ -1,7 +1,8 @@
 package com.workers.profesores.chat.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
-
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.workers.profesores.chat.dto.ChatRequest;
 import com.workers.profesores.chat.config.ParametrosArbolDecision2CallOpenAI;
@@ -93,6 +94,7 @@ public class ChatService {
     }
 
     // Ajusta la query con heurística de navegación si no hay token: establece 'page' si falta
+    @SuppressWarnings("unused")
     private JsonNode adjustQueryWithNavContext(Map<String, Object> endpoint, String method, JsonNode query, NavContext nav) {
         try {
             if (endpoint == null || nav == null) return query;
@@ -300,228 +302,7 @@ public class ChatService {
             }
             if (xmlLogger != null) xmlLogger.addStep("ChatService", "Mensajes de usuario preparados para OpenAI");
 
-            // 1.5) Planner siempre-on: primer intento de planificar y ejecutar directamente (con 1 retry)
-            // Sin heurísticas de saludo en backend: siempre dejamos que el planner se intente ejecutar
-            try {
-                // Mensaje de guía específico para el planner (reglas + sinónimos + ejemplos + whitelist)
-                String plannerGuidance = promptBuilder.buildPlannerGuidance(openai);
-                List<Map<String, Object>> plannerSeed = new ArrayList<>(seed);
-                plannerSeed.add(Map.of("role","system","content", plannerGuidance));
-                boolean plannerSucceeded = false;
-                int maxPlannerAttempts = Math.max(1, parametros.getPlannerMaxAttempts());
-                for (int attempt = 1; attempt <= maxPlannerAttempts && !plannerSucceeded; attempt++) {
-                    if (xmlLogger != null) xmlLogger.addStep("Planner", "Planner round intento=" + attempt + " (tool_choice=require plan_api, temp=0)");
-                    String rawPlan = openai.callPlannerStrict(plannerSeed, xmlLogger, authorization);
-                    JsonNode planNode = om.readTree(rawPlan);
-                    // Buscar tool_calls -> function name == plan_api
-                    JsonNode choices = planNode.path("choices");
-                    if (choices.isArray() && choices.size() > 0) {
-                        JsonNode msg = choices.get(0).path("message");
-                        JsonNode toolCalls = msg.path("tool_calls");
-                        if (toolCalls.isArray()) {
-                            boolean foundAny = false;
-                            for (JsonNode tc : toolCalls) {
-                            String fname = tc.path("function").path("name").asText("");
-                            if (!"plan_api".equals(fname)) continue;
-                                foundAny = true;
-                            // arguments debe contener endpoint/method/pathParams/query/page/size
-                            String argsStr = tc.path("function").path("arguments").asText("");
-                            JsonNode args = null;
-                            try { args = om.readTree(argsStr); } catch (Exception ex) { args = tc.path("function").path("arguments"); }
-                            if (args == null || !args.isObject()) continue;
-                            String epName = args.path("endpoint").asText(null);
-                            String methodFromModel = args.path("method").asText("GET");
-                            JsonNode pathParams = args.path("pathParams"); if (pathParams == null || pathParams.isMissingNode()) pathParams = om.createObjectNode();
-                            JsonNode query      = args.path("query"); if (query == null || query.isMissingNode()) query = om.createObjectNode();
-                            // page/size opcionales: si vienen, inserta en query antes de sanitizar
-                            if (args.has("page") && args.get("page").canConvertToInt()) ((com.fasterxml.jackson.databind.node.ObjectNode)query).put("page", args.get("page").asInt());
-                            if (args.has("size") && args.get("size").canConvertToInt()) ((com.fasterxml.jackson.databind.node.ObjectNode)query).put("size", args.get("size").asInt());
-                            Map<String,Object> ep = openai.getEndpointByName(epName);
-                            if (ep == null) continue;
-                            // Sanitiza paginación y ejecuta
-                            JsonNode qEff = sanitizePagination(ep, methodFromModel, query);
-                            String authToUse = delegatedAuthUpfront != null ? delegatedAuthUpfront : authorization;
-                            String apiRaw = (xmlLogger != null)
-                                ? apiProxy.executeSpecCall(ep, methodFromModel, pathParams, qEff, om.createObjectNode(), authToUse, xmlLogger)
-                                : apiProxy.executeSpecCall(ep, methodFromModel, pathParams, qEff, om.createObjectNode(), authToUse);
-                            JsonNode apiNode = om.readTree(apiRaw);
-                            // Construir envelope directo desde el resultado
-                            String target = extractTargetFromEndpointName(epName);
-                            ItemsAndPagination ip = findItemsArray(apiNode, target);
-                            List<JsonNode> items = (ip == null || ip.items == null) ? List.of() : ip.items;
-                            PaginationInfo pagination = null;
-                            if (ip != null && ip.pagination != null && ip.pagination.isObject()) {
-                                JsonNode p = ip.pagination;
-                                pagination = PaginationInfo.of(
-                                    p.path("page").isNumber()? p.get("page").asInt() : qEff.path("page").isNumber()? qEff.get("page").asInt() : 1,
-                                    p.path("size").isNumber()? p.get("size").asInt() : qEff.path("size").isNumber()? qEff.get("size").asInt() : 50,
-                                    p.path("returned").isNumber()? p.get("returned").asInt() : items.size(),
-                                    p.path("has_more").isBoolean()? p.get("has_more").asBoolean() : (items.size() >= (qEff.path("size").isNumber()? qEff.get("size").asInt() : 50)),
-                                    p.path("next_page").isNumber()? p.get("next_page").asInt() : null,
-                                    p.path("prev_page").isNumber()? p.get("prev_page").asInt() : null,
-                                    p.path("total").isNumber()? p.get("total").asInt() : null
-                                );
-                            }
-                            DataSection data = DataSection.of(target == null ? guessTargetFromItems(items) : target, items, pagination);
-                            ResponseEnvelope env = ResponseEnvelope.success("", data, List.of(), List.of());
-                            // Lazy total si falta
-                            try {
-                                if (parametros.isLazyTotalEnabled() && env.getData() != null && env.getData().getPagination() != null && env.getData().getPagination().getTotal() == null) {
-                                    ExecMeta base = new ExecMeta();
-                                    base.endpointName = epName; base.method = methodFromModel; base.apiResultNode = apiNode; base.querySnapshot = qEff; base.pathParamsSnapshot = pathParams; base.endpointPath = String.valueOf(ep.getOrDefault("path",""));
-                                    Integer totalLazy = computeLazyTotal(openai, apiProxy, base, env.getData().getPagination(), authorization, delegatedAuthUpfront, xmlLogger);
-                                    if (totalLazy != null) env.getData().getPagination().setTotal(totalLazy);
-                                }
-                            } catch (Exception ignore) {}
-                            // Mensaje y sugerencias
-                            try { env.setMessage(composePaginatedMessage(env.getMessage(), env.getData() == null ? null : env.getData().getPagination())); } catch (Exception __m) { }
-                            try { if (env.getData() != null && env.getData().getPagination() != null) ensurePaginationSuggestions(env, env.getData().getPagination(), null); } catch (Exception __s) { }
-                            if (xmlLogger != null) {
-                                xmlLogger.addStep("Planner", "Plan ejecutado directamente: " + epName);
-                                xmlLogger.addStep("Telemetry", "planner_success=true attempt=" + attempt);
-                            }
-                            plannerSucceeded = true;
-                            // No hacemos early-return: reinyectamos como si fuera una tool_call normal y pedimos al modelo que redacte el texto final
-                            try {
-                                // Construir assistantEcho con un único tool_call 'call_api'
-                                String callId = "planner_call_1";
-                                java.util.Map<String, Object> functionSpec = new java.util.HashMap<>();
-                                functionSpec.put("name", "call_api");
-                                // arguments con el shape esperado por el resolvedor de tools
-                                java.util.Map<String, Object> argsMap = new java.util.HashMap<>();
-                                argsMap.put("name", epName);
-                                argsMap.put("method", methodFromModel);
-                                argsMap.put("pathParams", pathParams);
-                                argsMap.put("query", qEff);
-                                argsMap.put("body", om.createObjectNode());
-                                String argsJson = om.writeValueAsString(argsMap);
-                                java.util.Map<String, Object> toolCall = new java.util.HashMap<>();
-                                toolCall.put("id", callId);
-                                toolCall.put("type", "function");
-                                toolCall.put("function", java.util.Map.of(
-                                    "name", "call_api",
-                                    "arguments", argsJson
-                                ));
-                                java.util.List<java.util.Map<String, Object>> plannerToolCalls = new java.util.ArrayList<>();
-                                plannerToolCalls.add(toolCall);
-
-                                java.util.Map<String, Object> assistantEcho = new java.util.HashMap<>();
-                                assistantEcho.put("role", "assistant");
-                                assistantEcho.put("content", "");
-                                assistantEcho.put("tool_calls", plannerToolCalls);
-
-                                // Tool output con el resultado del API
-                                java.util.Map<String, Object> toolOutput = new java.util.HashMap<>();
-                                toolOutput.put("role", "tool");
-                                toolOutput.put("tool_call_id", callId);
-                                toolOutput.put("content", apiRaw);
-
-                                java.util.List<java.util.Map<String, Object>> followup = new java.util.ArrayList<>(seed);
-                                followup.add(assistantEcho);
-                                followup.add(toolOutput);
-                                // Añadir instrucción explícita de segundo turno con un breve resumen de ejecución
-                                try {
-                                    StringBuilder sb = new StringBuilder();
-                                    sb.append("planner: 1 llamada ");
-                                    sb.append(methodFromModel).append(' ').append(String.valueOf(ep.getOrDefault("name", epName)));
-                                    int returned = (items == null) ? 0 : items.size();
-                                    Integer page = (qEff != null && qEff.has("page") && qEff.get("page").canConvertToInt()) ? qEff.get("page").asInt() : null;
-                                    Integer size = (qEff != null && qEff.has("size") && qEff.get("size").canConvertToInt()) ? qEff.get("size").asInt() : null;
-                                    Boolean hasMore = (pagination == null) ? null : pagination.getHasMore();
-                                    Integer nextPage = (pagination == null) ? null : pagination.getNextPage();
-                                    Integer prevPage = (pagination == null) ? null : pagination.getPrevPage();
-                                    Integer total = (pagination == null) ? null : pagination.getTotal();
-                                    sb.append("; returned=").append(returned);
-                                    if (page != null) sb.append("; page=").append(page);
-                                    if (size != null) sb.append("; size=").append(size);
-                                    if (hasMore != null) sb.append("; has_more=").append(hasMore);
-                                    if (nextPage != null) sb.append("; next=").append(nextPage);
-                                    if (prevPage != null) sb.append("; prev=").append(prevPage);
-                                    if (total != null) sb.append("; total=").append(total);
-                                    followup.add(java.util.Map.of("role","user","content", promptBuilder.buildSecondTurnInstruction(sb.toString())));
-                                } catch (Exception __ignoreSecondInstr) { /* best-effort */ }
-                                if (xmlLogger != null) xmlLogger.addStep("OpenAIClient", "Segunda llamada (post-planner) a OpenAI con reformat/schema + instrucción segundo turno");
-                                String secondRaw = openai.callChatNoToolsWithExtras(followup, openai.buildChatResponseSchemaExtras(), xmlLogger, authorization);
-                                JsonNode secondNode = om.readTree(secondRaw);
-                                JsonNode ch = secondNode.path("choices");
-                                if (ch != null && ch.isArray() && ch.size() > 0) {
-                                    String c = ch.get(0).path("message").path("content").asText("");
-                                    try {
-                                        // Enriquecer el JSON del modelo con los resultados reales ejecutados para garantizar pagination y tokens
-                                        JsonNode cNode = om.readTree(c);
-                                        ExecMeta metaForCoerce = new ExecMeta();
-                                        metaForCoerce.endpointName = epName;
-                                        metaForCoerce.method = methodFromModel;
-                                        metaForCoerce.apiResultNode = apiNode;
-                                        metaForCoerce.raw = apiRaw;
-                                        try { metaForCoerce.querySnapshot = (qEff == null) ? om.createObjectNode() : qEff.deepCopy(); } catch (Exception __ignore) { metaForCoerce.querySnapshot = om.createObjectNode(); }
-                                        try { metaForCoerce.pathParamsSnapshot = (pathParams == null) ? om.createObjectNode() : pathParams.deepCopy(); } catch (Exception __ignore) { metaForCoerce.pathParamsSnapshot = om.createObjectNode(); }
-                                        try { metaForCoerce.endpointPath = String.valueOf(ep.getOrDefault("path","")); } catch (Exception __ignore) { metaForCoerce.endpointPath = null; }
-                                        JsonNode enrichedNode = coerceWithBackendResults(cNode, java.util.List.of(metaForCoerce), incoming);
-                                        ResponseEnvelope env2 = buildEnvelopeFromContentNode(enrichedNode);
-                                        try { env2.setMessage(composePaginatedMessage(env2.getMessage(), env2.getData() == null ? null : env2.getData().getPagination())); } catch (Exception __m) { }
-                                        try { if (env2.getData() != null && env2.getData().getPagination() != null) ensurePaginationSuggestions(env2, env2.getData().getPagination(), metaForCoerce); } catch (Exception __s) { }
-                                        return applyFinalFallback(env2);
-                                    } catch (Exception __p3) {
-                                        // Si el contenido no es JSON contractual utilizable, priorizar el envelope con datos reales del plan ejecutado
-                                        return applyFinalFallback(env);
-                                    }
-                                } else {
-                                    // Sin choices: prioriza el envelope ya construido desde el resultado real del plan
-                                    return applyFinalFallback(env);
-                                }
-                            } catch (Exception postPlannerEx) {
-                                if (xmlLogger != null) xmlLogger.addStep("Planner", "Fallo en post-planner second turn: " + postPlannerEx.getMessage());
-                                // Intentar reformateo con schema antes del fallback final
-                                try {
-                                    List<Map<String,Object>> reSeed = new ArrayList<>(seed);
-                                    // reutilizamos assistantEcho + toolOutput del plan ejecutado
-                                    String callId = "planner_call_1";
-                                    Map<String,Object> functionSpec = new java.util.HashMap<>();
-                                    functionSpec.put("name", "call_api");
-                                    Map<String,Object> argsMap = new java.util.HashMap<>();
-                                    argsMap.put("name", epName);
-                                    argsMap.put("method", methodFromModel);
-                                    argsMap.put("pathParams", pathParams);
-                                    argsMap.put("query", qEff);
-                                    argsMap.put("body", om.createObjectNode());
-                                    String argsJson = om.writeValueAsString(argsMap);
-                                    Map<String,Object> toolCall = new java.util.HashMap<>();
-                                    toolCall.put("id", callId);
-                                    toolCall.put("type", "function");
-                                    toolCall.put("function", java.util.Map.of("name","call_api","arguments", argsJson));
-                                    List<Map<String,Object>> plannerToolCalls = new ArrayList<>();
-                                    plannerToolCalls.add(toolCall);
-                                    Map<String,Object> assistantEcho = new java.util.HashMap<>();
-                                    assistantEcho.put("role","assistant"); assistantEcho.put("content",""); assistantEcho.put("tool_calls", plannerToolCalls);
-                                    Map<String,Object> toolOutput = new java.util.HashMap<>();
-                                    toolOutput.put("role","tool"); toolOutput.put("tool_call_id", callId); toolOutput.put("content", apiRaw);
-                                    reSeed.add(assistantEcho); reSeed.add(toolOutput);
-                                    reSeed.add(Map.of("role","user","content", promptBuilder.buildReformatInstruction()));
-                                    String reformatted2 = openai.callChatNoToolsWithExtras(reSeed, openai.buildChatResponseSchemaExtras(), xmlLogger, authorization);
-                                    JsonNode n2 = om.readTree(reformatted2);
-                                    return applyFinalFallback(buildEnvelopeFromContentNode(n2));
-                                } catch (Exception __last) {
-                                    // Fallback a envelope directo (con mensaje mínimo ya compuesto)
-                                    return applyFinalFallback(env);
-                                }
-                            }
-                            }
-                            if (!foundAny && attempt == 2 && xmlLogger != null) {
-                                xmlLogger.addStep("Telemetry", "planner_success=false reason=no_tool_calls");
-                            }
-                        }
-                    } else if (attempt == 2 && xmlLogger != null) {
-                        xmlLogger.addStep("Telemetry", "planner_success=false reason=no_choices");
-                    }
-                }
-                if (xmlLogger != null) xmlLogger.addStep("Planner", "Planner sin plan válido; continuamos con flujo actual");
-            } catch (Exception __planner) {
-                if (xmlLogger != null) {
-                    xmlLogger.addStep("Planner", "Error en planner: " + __planner.getMessage());
-                    xmlLogger.addStep("Telemetry", "planner_success=false reason=exception");
-                }
-            }
+            // 1.5) Planner desactivado: orquestador puro; el modelo decide herramientas en el primer turno
             if (xmlLogger != null) {
                 try {
                     int clientMsgs = incoming == null ? 0 : incoming.size();
@@ -644,8 +425,23 @@ public class ChatService {
                     } catch (Exception ignoreGuard) { }
                     return applyFinalFallback(envDirect);
                 } catch (Exception e) {
-                    // Intentamos pedir al modelo que convierta la respuesta anterior en JSON válido siguiendo el contrato
-                    if (debug) System.out.println("[ChatService][DEBUG] Content not JSON, requesting reformat to JSON from OpenAI");
+                    // NUEVO: Intentar parser de fallback ANTES de llamar al LLM (ahorra latencia y costos)
+                    if (debug) System.out.println("[ChatService][DEBUG] Content not JSON, trying backend parser fallback first");
+                    String parsedJson = tryParseNaturalTextToJson(content);
+                    if (parsedJson != null) {
+                        try {
+                            JsonNode parsedNode = om.readTree(parsedJson);
+                            ResponseEnvelope envParsed = buildEnvelopeFromContentNode(parsedNode);
+                            if (debug) System.out.println("[ChatService][DEBUG] ✅ Parser fallback SUCCESS - no LLM reformateo needed");
+                            return applyFinalFallback(envParsed);
+                        } catch (Exception parseEx) {
+                            if (debug) System.out.println("[ChatService][DEBUG] ⚠️ Parser fallback failed: " + parseEx.getMessage());
+                            // Si falla el parser, continuar con reformateo LLM
+                        }
+                    }
+                    
+                    // Si el parser falló o no pudo parsear, intentamos pedir al modelo que convierta la respuesta anterior en JSON válido
+                    if (debug) System.out.println("[ChatService][DEBUG] Content not JSON, requesting reformat to JSON from OpenAI (last resort)");
                     try {
                         boolean proceedWithToolCalls = false;
                         List<Map<String, Object>> reformatSeed = new ArrayList<>();
@@ -812,15 +608,7 @@ public class ChatService {
                                                         }
                                                     }
                                                 }
-                                                // Si no hay token, usar heurística del historial
-                                                if (tokB == null) {
-                                                    try {
-                                                        NavContext navB = extractNavContext(incoming);
-                                                        if (navB != null) {
-                                                            qAppliedB = adjustQueryWithNavContext(epB, methodB, qtemp, navB);
-                                                        }
-                                                    } catch (Exception __i2) {}
-                                                }
+                                                // No aplicar heurística del historial cuando no hay token (orquestador puro)
                                             }
                                         } catch (Exception __bestEffort) {}
                                         // Enforce pagination defaults/caps for paginated GETs
@@ -944,15 +732,7 @@ public class ChatService {
                                 }
                             }
                         }
-                        // Si no hay token, heurística de navegación basada en historial (assistant+user)
-                        if (tok == null) {
-                            try {
-                                NavContext nav = extractNavContext(incoming);
-                                if (nav != null) {
-                                    query = adjustQueryWithNavContext(ep, methodFromModel, q, nav);
-                                }
-                            } catch (Exception ignore2) { }
-                        }
+                        // No aplicar heurísticas de navegación basadas en historial si no hay token (orquestador puro)
                     }
                 } catch (Exception ignore) { /* best-effort token nav */ }
                 if (xmlLogger != null) {
@@ -1105,7 +885,12 @@ public class ChatService {
             } catch (Exception ignore) { /* best-effort budget check */ }
 
             // 6) Segundo turno normal: reinyectamos el assistant con sus tool_calls + los outputs
-            List<Map<String, Object>> followup = new ArrayList<>(seed);
+            // Construimos un seed compacto para el segundo turno para reducir tokens
+            List<Map<String, Object>> followup = new ArrayList<>();
+            followup.add(Map.of("role","system","content", promptBuilder.buildSecondTurnSystemPrompt()));
+            if (profileJsonForPrompt != null && profileJsonForPrompt.trim().length() > 2 && !profileJsonForPrompt.trim().equals("{}")) {
+                followup.add(Map.of("role", "system", "content", "Perfil_usuario: " + profileJsonForPrompt));
+            }
             // Sin inserción/almacenado de Contexto_paginacion: navegación será por ui_suggestions + contextToken
 
             Map<String, Object> assistantEcho = new HashMap<>();
@@ -1132,7 +917,9 @@ public class ChatService {
                     }
                 }
                 if (largeListContext) {
-                    sampleNUsed = Math.min(sampleN, 3);
+                    // Evitar ambigüedad de "1" ítem en eco: usar al menos 2 y como máximo 3
+                    int candidate = Math.min(sampleN, 3);
+                    sampleNUsed = Math.max(2, candidate);
                 }
             } catch (Exception __dynEcho) { /* best-effort */ }
             long reinjectPayloadBytes = 0L;
@@ -1159,7 +946,7 @@ public class ChatService {
                                         if (items == null && rObj.has("items") && rObj.get("items").isArray()) items = rObj.get("items");
                                         if (items != null && items.isArray() && items.size() > sampleNUsed) {
                                             com.fasterxml.jackson.databind.node.ArrayNode arr = om.createArrayNode();
-                                            for (int i=0;i<sampleNUsed;i++) arr.add(items.get(i));
+                                            for (int i=0;i<sampleNUsed;i++) arr.add(projectItem(items.get(i)));
                                             boolean replaced = false;
                                             for (String k : parametros.getAllowedTargetsPlural()) {
                                                 if (rObj.has(k) && rObj.get(k).isArray()) { rObj.set(k, arr); replaced = true; break; }
@@ -1184,7 +971,7 @@ public class ChatService {
                             if (items != null && items.size() > sampleNUsed) {
                                 com.fasterxml.jackson.databind.node.ObjectNode trimmed = (com.fasterxml.jackson.databind.node.ObjectNode) cnode.deepCopy();
                                 com.fasterxml.jackson.databind.node.ArrayNode arr = om.createArrayNode();
-                                for (int i=0;i<sampleNUsed;i++) arr.add(items.get(i));
+                                for (int i=0;i<sampleNUsed;i++) arr.add(projectItem(items.get(i)));
                                 boolean replaced = false;
                                 for (String k : parametros.getAllowedTargetsPlural()) {
                                     if (trimmed.has(k) && trimmed.get(k).isArray()) { trimmed.set(k, arr); replaced = true; break; }
@@ -1222,39 +1009,8 @@ public class ChatService {
             }
             // Inyección de instrucción de segundo turno con resumen compacto
             try {
-                StringBuilder sb = new StringBuilder();
-                sb.append("ejecuciones: ").append(executed == null ? 0 : executed.size());
-                if (executed != null && !executed.isEmpty()) {
-                    int i=0; for (ExecMeta em : executed) {
-                        if (em == null) continue; i++; if (i>3) { sb.append("; …"); break; }
-                        sb.append("; ").append(em.method == null?"":em.method).append(' ').append(String.valueOf(em.endpointName));
-                        try {
-                            JsonNode ip = em.apiResultNode;
-                            int ret = 0; Integer page=null,size=null,total=null,next=null,prev=null; Boolean hasMore=null;
-                            if (ip != null) {
-                                ItemsAndPagination f = findItemsArray(ip, extractTargetFromEndpointName(em.endpointName));
-                                if (f != null && f.items != null) ret = f.items.size();
-                                if (f != null && f.pagination != null && f.pagination.isObject()) {
-                                    JsonNode p = f.pagination;
-                                    if (p.has("page") && p.get("page").canConvertToInt()) page = p.get("page").asInt();
-                                    if (p.has("size") && p.get("size").canConvertToInt()) size = p.get("size").asInt();
-                                    if (p.has("total") && p.get("total").canConvertToInt()) total = p.get("total").asInt();
-                                    if (p.has("has_more") && p.get("has_more").isBoolean()) hasMore = p.get("has_more").asBoolean();
-                                    if (p.has("next_page") && p.get("next_page").canConvertToInt()) next = p.get("next_page").asInt();
-                                    if (p.has("prev_page") && p.get("prev_page").canConvertToInt()) prev = p.get("prev_page").asInt();
-                                }
-                            }
-                            sb.append(" returned=").append(ret);
-                            if (page!=null) sb.append("; page=").append(page);
-                            if (size!=null) sb.append("; size=").append(size);
-                            if (hasMore!=null) sb.append("; has_more=").append(hasMore);
-                            if (next!=null) sb.append("; next=").append(next);
-                            if (prev!=null) sb.append("; prev=").append(prev);
-                            if (total!=null) sb.append("; total=").append(total);
-                        } catch (Exception __i) { }
-                    }
-                }
-                followup.add(java.util.Map.of("role","user","content", promptBuilder.buildSecondTurnInstruction(sb.toString())));
+                String miniResumen = buildMiniResumen(executed, sampleNUsed);
+                followup.add(java.util.Map.of("role","user","content", promptBuilder.buildSecondTurnInstruction(miniResumen)));
             } catch (Exception __ignoreInstr2) { /* best-effort */ }
             long secondStartMs = System.currentTimeMillis();
             String secondRawSafe = null;
@@ -1286,18 +1042,7 @@ public class ChatService {
             try {
                 if (second == null) {
                     if (xmlLogger != null) xmlLogger.addStep("OpenAIClient", "Segunda respuesta nula; devolviendo envelope de fallback seguro");
-                    ExecMeta metaSel = selectExecMetaForPagination(executed, incoming);
-                    ResponseEnvelope envFallback = buildEnvelopeFromContentNode(metaSel == null ? om.createObjectNode() : metaSel.apiResultNode);
-                    try {
-                        if (parametros.isLazyTotalEnabled() && envFallback.getData() != null && envFallback.getData().getPagination() != null && envFallback.getData().getPagination().getTotal() == null) {
-                            PaginationInfo p = envFallback.getData().getPagination();
-                            Integer totalLazy = computeLazyTotal(openai, apiProxy, metaSel, p, authorization, null, xmlLogger);
-                            if (totalLazy != null) envFallback.getData().getPagination().setTotal(totalLazy);
-                        }
-                    } catch (Exception __tl) {}
-                    try { envFallback.setMessage(composePaginatedMessage(envFallback.getMessage(), envFallback.getData() == null ? null : envFallback.getData().getPagination())); } catch (Exception __m) {}
-                    try { if (envFallback.getData() != null && envFallback.getData().getPagination() != null) ensurePaginationSuggestions(envFallback, envFallback.getData().getPagination(), metaSel); } catch (Exception __s) {}
-                    return applyFinalFallback(envFallback);
+                    return applyFinalFallback(ResponseEnvelope.error("No se pudo completar la respuesta (segunda fase)", "openai_empty_response", "Segunda respuesta vacía"));
                 }
                 JsonNode choices2 = second.path("choices");
                 if (choices2 == null || !choices2.isArray() || choices2.size() == 0) {
@@ -1382,14 +1127,7 @@ public class ChatService {
                                                             }
                                                         }
                                                     }
-                                                    if (tokB == null) {
-                                                        try {
-                                                            NavContext navB = extractNavContext(incoming);
-                                                            if (navB != null) {
-                                                                qAppliedB = adjustQueryWithNavContext(epB, methodB, qtemp, navB);
-                                                            }
-                                                        } catch (Exception __i2) {}
-                                                    }
+                                                    // No aplicar heurística del historial cuando no hay token (orquestador puro)
                                                 }
                                             } catch (Exception __bestEffort) {}
                                             // Enforce pagination defaults/caps for paginated GETs
@@ -1540,7 +1278,9 @@ public class ChatService {
                         }
                     }
                     if (largeListContext2) {
-                        sampleN2Used = Math.min(sampleN2, 3);
+                        // Evitar ambigüedad: mínimo 2 ítems en eco para listas grandes
+                        int candidate2 = Math.min(sampleN2, 3);
+                        sampleN2Used = Math.max(2, candidate2);
                     }
                 } catch (Exception __dynEcho2) { /* best-effort */ }
                 long iterReinjectBytes = 0L;
@@ -1566,7 +1306,7 @@ public class ChatService {
                                             if (items == null && rObj.has("items") && rObj.get("items").isArray()) items = rObj.get("items");
                                             if (items != null && items.isArray() && items.size() > sampleN2Used) {
                                                 com.fasterxml.jackson.databind.node.ArrayNode arr = om.createArrayNode();
-                                                for (int i=0;i<sampleN2Used;i++) arr.add(items.get(i));
+                                                for (int i=0;i<sampleN2Used;i++) arr.add(projectItem(items.get(i)));
                                                 boolean replaced = false;
                                                 for (String k : parametros.getAllowedTargetsPlural()) {
                                                     if (rObj.has(k) && rObj.get(k).isArray()) { rObj.set(k, arr); replaced = true; break; }
@@ -1590,7 +1330,7 @@ public class ChatService {
                                 if (items != null && items.size() > sampleN2Used) {
                                     com.fasterxml.jackson.databind.node.ObjectNode trimmed = (com.fasterxml.jackson.databind.node.ObjectNode) cnode.deepCopy();
                                     com.fasterxml.jackson.databind.node.ArrayNode arr = om.createArrayNode();
-                                    for (int i=0;i<sampleN2Used;i++) arr.add(items.get(i));
+                                    for (int i=0;i<sampleN2Used;i++) arr.add(projectItem(items.get(i)));
                                     boolean replaced = false;
                                     for (String k : parametros.getAllowedTargetsPlural()) {
                                         if (trimmed.has(k) && trimmed.get(k).isArray()) { trimmed.set(k, arr); replaced = true; break; }
@@ -1618,10 +1358,8 @@ public class ChatService {
                 }
                 long iterSecondStart = System.currentTimeMillis();
                 try {
-                    StringBuilder sb2 = new StringBuilder();
-                    sb2.append("iter=").append(extraIters+1).append(" ejecuciones: ");
-                    sb2.append(executed == null ? 0 : executed.size());
-                    followup.add(java.util.Map.of("role","user","content", promptBuilder.buildSecondTurnInstruction(sb2.toString())));
+                    String miniResumenIter = buildMiniResumen(executed, sampleN2Used);
+                    followup.add(java.util.Map.of("role","user","content", promptBuilder.buildSecondTurnInstruction(miniResumenIter)));
                 } catch (Exception __ignoreIterInstr) {}
                 String iterSecondRaw = null;
                 try {
@@ -1702,37 +1440,7 @@ public class ChatService {
                     if (debug) logger.debug("[Telemetry] render_ms={} (since start)", (System.currentTimeMillis() - t0));
                     return applyFinalFallback(envFallback);
                 }
-                // 2) Componer mensaje final con conteos
-                try {
-                    String finalMsgText = composePaginatedMessage(env.getMessage(), env.getData() == null ? null : env.getData().getPagination());
-                    env.setMessage(finalMsgText);
-                } catch (Exception ignore) {}
-                // 3) Auto-crear y enriquecer sugerencias de paginación si procede (token expandido)
-                try {
-                    if (env.getData() != null && env.getData().getPagination() != null) {
-                        ExecMeta metaSel = selectExecMetaForPagination(executed, incoming);
-                        ensurePaginationSuggestions(env, env.getData().getPagination(), metaSel);
-                        // Telemetría: resumen de sugerencias generadas
-                        if (xmlLogger != null) {
-                            try {
-                                StringBuilder sb = new StringBuilder();
-                                sb.append("ui_suggestions_pagination: [");
-                                boolean firstSug = true;
-                                for (Suggestion s2 : env.getUiSuggestions()) {
-                                    if (s2 == null || !"Paginacion".equalsIgnoreCase(s2.getType())) continue;
-                                    if (!firstSug) sb.append(", ");
-                                    firstSug = false;
-                                    String dir = (s2.getPagination() == null || s2.getPagination().getDirection() == null) ? "?" : s2.getPagination().getDirection();
-                                    Integer tp = (s2.getPagination() == null) ? null : s2.getPagination().getPage();
-                                    boolean hasTok = (s2.getContextToken() != null && !s2.getContextToken().isBlank());
-                                    sb.append("{").append(dir).append("->").append(String.valueOf(tp)).append(", token=").append(hasTok).append("}");
-                                }
-                                sb.append("]");
-                                xmlLogger.addStep("Telemetry", sb.toString());
-                            } catch (Exception __sug) { /* ignore */ }
-                        }
-                    }
-                } catch (Exception ignore) {}
+                // No modificar el mensaje del modelo ni auto-crear sugerencias; solo se inyectarán tokens si ya hay sugerencias con paginación
                 if (xmlLogger != null) {
                     int itemsReturned = 0;
                     try { itemsReturned = env.getData() != null && env.getData().getItems() != null ? env.getData().getItems().size() : 0; } catch (Exception ignore) {}
@@ -1753,27 +1461,11 @@ public class ChatService {
                 }
                 return applyFinalFallback(env);
             } catch (Exception e) {
-                // Contenido final no es JSON válido: construir envelope desde resultados reales del/los tool_call
-                ExecMeta metaSel = selectExecMetaForPagination(executed, incoming);
-                ResponseEnvelope envFallback = buildEnvelopeFromContentNode(metaSel == null ? om.createObjectNode() : metaSel.apiResultNode);
-                // Total lazy si falta
-                try {
-                    if (parametros.isLazyTotalEnabled() && envFallback.getData() != null && envFallback.getData().getPagination() != null) {
-                        PaginationInfo p = envFallback.getData().getPagination();
-                        if (p.getTotal() == null) {
-                            Integer totalLazy = computeLazyTotal(openai, apiProxy, metaSel, p, authorization, null, xmlLogger);
-                            if (totalLazy != null) envFallback.getData().getPagination().setTotal(totalLazy);
-                        }
-                    }
-                } catch (Exception __tl) { /* ignore */ }
-                // Componer mensaje con conteos
-                try { envFallback.setMessage(composePaginatedMessage(envFallback.getMessage(), envFallback.getData() == null ? null : envFallback.getData().getPagination())); } catch (Exception __m) { }
-                // Crear/enriquecer sugerencias y tokens
-                try { if (envFallback.getData() != null && envFallback.getData().getPagination() != null) ensurePaginationSuggestions(envFallback, envFallback.getData().getPagination(), metaSel); } catch (Exception __s) { }
-                if (xmlLogger != null) xmlLogger.addStep("ChatService", "Fallback aplicado: envelope construido desde resultados reales (final content no JSON). Texto final ignorado para contrato.");
+                // Contenido final no es JSON válido: devolver error controlado (sin reconstrucción backend)
+                if (xmlLogger != null) xmlLogger.addStep("ChatService", "Contenido final no JSON; devolviendo error controlado (orquestador puro)");
                 if (xmlLogger != null) xmlLogger.addStep("Telemetry", "render_ms=" + (System.currentTimeMillis() - t0));
                 if (debug) logger.debug("[Telemetry] render_ms={} (since start)", (System.currentTimeMillis() - t0));
-                return applyFinalFallback(envFallback);
+                return applyFinalFallback(ResponseEnvelope.error("Error al procesar respuesta", "openai_parse_error", "Contenido final no JSON"));
             }
 
         } catch (Exception e) {
@@ -1907,6 +1599,22 @@ public class ChatService {
         if (node.has("total")) { pag.set("total", node.get("total")); any = true; }
         if (!any) pag = null;
         return new ItemsAndPagination(list, pag);
+    }
+
+    // Proyección compacta de ítems para eco: conserva solo campos clave si es un objeto
+    private JsonNode projectItem(JsonNode original) {
+        try {
+            if (original == null || !original.isObject()) return original;
+            com.fasterxml.jackson.databind.node.ObjectNode out = om.createObjectNode();
+            // Selección de campos genéricos frecuentes
+            String[] keys = new String[] {"id","nombre","email","estado","rol","academia_id"};
+            for (String k : keys) {
+                if (original.has(k)) out.set(k, original.get(k));
+            }
+            // Si no copiamos nada, devuelve original para no perder información crítica
+            if (out.size() == 0) return original;
+            return out;
+        } catch (Exception ignore) { return original; }
     }
 
     // Eliminados helpers exclusivos del modo LITE (descriptor/truncado/merge)
@@ -2142,9 +1850,12 @@ public class ChatService {
         Integer cur = pagination.getPage();
         Integer size = pagination.getSize();
         Boolean hasMore = pagination.getHasMore();
+        // Paso 1: separar no-paginación y candidatas de paginación (validando límites)
+        java.util.List<Suggestion> nonPag = new java.util.ArrayList<>();
+        java.util.List<Suggestion> pagCandidates = new java.util.ArrayList<>();
         for (Suggestion s : env.getUiSuggestions()) {
             if (s == null) continue;
-            if (!"Paginacion".equalsIgnoreCase(s.getType())) { list.add(s); continue; }
+            if (!"Paginacion".equalsIgnoreCase(s.getType())) { nonPag.add(s); continue; }
             String dt = s.getDisplayText() == null ? "" : s.getDisplayText().toLowerCase();
             boolean isPrev = dt.contains("anterior") || dt.contains("prev");
             boolean isNext = dt.contains("siguiente") || dt.contains("next");
@@ -2156,8 +1867,54 @@ public class ChatService {
                 // descartar 'Siguiente' si no hay más
                 continue;
             }
-            list.add(s);
+            pagCandidates.add(s);
         }
+        // Paso 2: deduplicar paginación dejando como mucho un 'next' y un 'prev'
+        Suggestion firstNext = null;
+        Suggestion firstPrev = null;
+        for (Suggestion s : pagCandidates) {
+            String dir = null;
+            if (s.getPagination() != null && s.getPagination().getDirection() != null) {
+                dir = s.getPagination().getDirection().toLowerCase();
+            } else {
+                String dt = s.getDisplayText() == null ? "" : s.getDisplayText().toLowerCase();
+                if (dt.contains("siguiente") || dt.contains("next")) dir = "next"; else if (dt.contains("anterior") || dt.contains("prev")) dir = "prev";
+            }
+            if ("next".equals(dir)) {
+                if (firstNext == null) firstNext = s; // conservar la primera válida
+                continue; // extra 'next' se descartan
+            }
+            if ("prev".equals(dir)) {
+                if (firstPrev == null) firstPrev = s;
+                continue;
+            }
+        }
+        // Paso 3: construir lista final empezando por no-paginación y añadiendo como mucho un prev/next canónico
+        list.addAll(nonPag);
+        if (firstPrev != null) {
+            // Canonicalizar id/display y normalizar metadatos
+            firstPrev.setId("pg-prev");
+            firstPrev.setDisplayText("Anterior");
+            if (firstPrev.getPagination() == null) firstPrev.setPagination(new Suggestion.PaginationSuggestion());
+            firstPrev.getPagination().setDirection("prev");
+            if (cur != null && size != null) {
+                if (firstPrev.getPagination().getPage() == null) firstPrev.getPagination().setPage(Math.max(1, cur - 1));
+                if (firstPrev.getPagination().getSize() == null) firstPrev.getPagination().setSize(size);
+            }
+            list.add(firstPrev);
+        }
+        if (firstNext != null) {
+            firstNext.setId("pg-next");
+            firstNext.setDisplayText("Siguiente");
+            if (firstNext.getPagination() == null) firstNext.setPagination(new Suggestion.PaginationSuggestion());
+            firstNext.getPagination().setDirection("next");
+            if (cur != null && size != null) {
+                if (firstNext.getPagination().getPage() == null) firstNext.getPagination().setPage(cur + 1);
+                if (firstNext.getPagination().getSize() == null) firstNext.getPagination().setSize(size);
+            }
+            list.add(firstNext);
+        }
+        // Nota: las ausencias se cubrirán en el bloque posterior que añade faltantes
         // Recalcular 'have' tras filtro
         have.clear();
         for (Suggestion s : list) {
@@ -2288,6 +2045,126 @@ public class ChatService {
             } catch (Exception ignore) {}
         }
     }
+
+    /**
+     * Parser de fallback: intenta reconstruir JSON válido desde texto natural del LLM.
+     * Se usa cuando el JSON Schema falla y el contenido viene en formato texto con bullets.
+     * 
+     * Patrón detectado en los logs:
+     * ```
+     * [TEXTO_PRINCIPAL]
+     * 
+     * Aquí tienes algunas sugerencias:
+     * - Sugerencia 1
+     * - Sugerencia 2
+     * - Sugerencia 3
+     * ```
+     * 
+     * O bien:
+     * ```
+     * [TEXTO_PRINCIPAL]
+     * 
+     * Aquí tienes algunas opciones:
+     * {
+     *   "ui_suggestions": [...]
+     * }
+     * ```
+     * 
+     * @param content Contenido en texto natural del LLM
+     * @return JSON String válido o null si no se puede parsear
+     */
+    private String tryParseNaturalTextToJson(String content) {
+        if (content == null || content.isBlank()) return null;
+        
+        try {
+            String text = content;
+            List<Map<String, String>> suggestions = new ArrayList<>();
+            
+            // CASO 1: Detectar si ya tiene JSON embebido (parcial)
+            if (content.contains("{") && content.contains("\"ui_suggestions\"")) {
+                // Extraer el bloque JSON embebido
+                int jsonStart = content.indexOf("{");
+                int jsonEnd = content.lastIndexOf("}");
+                if (jsonStart >= 0 && jsonEnd > jsonStart) {
+                    String jsonPart = content.substring(jsonStart, jsonEnd + 1);
+                    // Intentar parsear como JSON
+                    try {
+                        JsonNode embeddedJson = om.readTree(jsonPart);
+                        // Si es válido, extraer texto antes del JSON
+                        text = content.substring(0, jsonStart).trim();
+                        // Reconstruir con texto + JSON embebido
+                        ObjectNode result = om.createObjectNode();
+                        result.put("text", text.isBlank() ? "¿En qué puedo ayudarte?" : text);
+                        if (embeddedJson.has("ui_suggestions")) {
+                            result.set("ui_suggestions", embeddedJson.get("ui_suggestions"));
+                        }
+                        return om.writeValueAsString(result);
+                    } catch (Exception ignored) {
+                        // Si falla el parsing del JSON embebido, continuar con parsing manual
+                    }
+                }
+            }
+            
+            // CASO 2: Detectar patrón de bullets (- item)
+            // Regex: buscar "Aquí tienes algunas? (sugerencias?|opciones?):"
+            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(
+                "(?s)(.+?)(?:Aquí tienes algunas? (?:sugerencias?|opciones?)[:：]\\s*)(.+)",
+                java.util.regex.Pattern.CASE_INSENSITIVE
+            );
+            java.util.regex.Matcher matcher = pattern.matcher(content);
+            
+            if (matcher.find()) {
+                text = matcher.group(1).trim();
+                String suggestionsText = matcher.group(2).trim();
+                
+                // Extraer bullets (- item, • item, * item)
+                java.util.regex.Pattern bulletPattern = java.util.regex.Pattern.compile(
+                    "^\\s*[-•*]\\s*(.+)$",
+                    java.util.regex.Pattern.MULTILINE
+                );
+                java.util.regex.Matcher bulletMatcher = bulletPattern.matcher(suggestionsText);
+                
+                int idx = 0;
+                while (bulletMatcher.find()) {
+                    String suggestionText = bulletMatcher.group(1).trim();
+                    Map<String, String> sg = new HashMap<>();
+                    sg.put("id", "sg-auto-" + idx++);
+                    sg.put("display_text", suggestionText);
+                    sg.put("type", "Generica"); // Por defecto Generica, se puede mejorar con keywords
+                    suggestions.add(sg);
+                }
+            }
+            
+            // Construir JSON válido
+            ObjectNode json = om.createObjectNode();
+            json.put("text", text.isBlank() ? "¿En qué puedo ayudarte?" : text);
+            
+            if (!suggestions.isEmpty()) {
+                ArrayNode uiSuggestions = json.putArray("ui_suggestions");
+                for (Map<String, String> sg : suggestions) {
+                    ObjectNode sgNode = uiSuggestions.addObject();
+                    sgNode.put("id", sg.get("id"));
+                    sgNode.put("display_text", sg.get("display_text"));
+                    sgNode.put("type", sg.get("type"));
+                }
+            }
+            
+            String result = om.writeValueAsString(json);
+            if (debug) {
+                System.out.println("[ChatService][PARSER_FALLBACK] Reconstructed JSON from natural text:");
+                System.out.println("[ChatService][PARSER_FALLBACK] Original: " + content.substring(0, Math.min(200, content.length())) + "...");
+                System.out.println("[ChatService][PARSER_FALLBACK] Result: " + result);
+            }
+            return result;
+            
+        } catch (Exception e) {
+            if (debug) {
+                System.out.println("[ChatService][PARSER_FALLBACK] Failed to parse: " + e.getMessage());
+            }
+            return null;
+        }
+    }
+
     // Nuevo método privado para construir Envelope desde un JsonNode del modelo
     private ResponseEnvelope buildEnvelopeFromContentNode(JsonNode contentNode) {
         if (contentNode == null || contentNode.isNull()) {
@@ -2386,9 +2263,14 @@ public class ChatService {
                 JsonNode it = uiNode.get(i);
                 com.workers.profesores.chat.dto.response.Suggestion s = new com.workers.profesores.chat.dto.response.Suggestion();
                 if (it.has("id") && it.get("id").isTextual()) s.setId(it.get("id").asText()); else s.setId("sg-" + (i+1));
-                if (it.has("display_text")) s.setDisplayText(it.get("display_text").asText());
-                if (it.has("type")) s.setType(it.get("type").asText());
-                if (it.has("recordAction")) s.setRecordAction(it.get("recordAction").asText());
+                // Aceptar tanto 'display_text' como 'displayText' (robustez)
+                if (it.has("display_text") && it.get("display_text").isTextual()) {
+                    s.setDisplayText(it.get("display_text").asText());
+                } else if (it.has("displayText") && it.get("displayText").isTextual()) {
+                    s.setDisplayText(it.get("displayText").asText());
+                }
+                if (it.has("type") && it.get("type").isTextual()) s.setType(it.get("type").asText());
+                if (it.has("recordAction") && it.get("recordAction").isTextual()) s.setRecordAction(it.get("recordAction").asText());
                 // Mapear subobjeto 'pagination' si viene del modelo (el modelo no debe aportar contextToken)
                 try {
                     JsonNode pagNode2 = it.get("pagination");
@@ -2409,7 +2291,9 @@ public class ChatService {
             }
         }
     } catch (Exception ignore) {}
-    ResponseEnvelope env = ResponseEnvelope.success(message, data, uiFirst, List.of());
+    // Validación estructural y canonización determinista de ui_suggestions (sin inventar)
+    java.util.List<com.workers.profesores.chat.dto.response.Suggestion> uiNormalized = normalizeUiSuggestions(uiFirst, data.getPagination());
+    ResponseEnvelope env = ResponseEnvelope.success(message, data, uiNormalized, List.of());
     env.setUiSuggestionsVersion(1);
     // Enriquecer sugerencias de paginación del primer turno con tokens si faltan
     try { enrichPaginationSuggestionsWithTokens(env, typeDetected, pagination); } catch (Exception ignore) {}
@@ -2420,6 +2304,170 @@ public class ChatService {
             } catch (Exception ignore) {}
         }
         return env;
+    }
+
+    // Endurecer/clarificar: valida forma y canoniza sugerencias de UI (id/display_text/type obligatorios; Paginacion con metadatos correctos; deduplicación)
+    private java.util.List<com.workers.profesores.chat.dto.response.Suggestion> normalizeUiSuggestions(
+            java.util.List<com.workers.profesores.chat.dto.response.Suggestion> in,
+            PaginationInfo pagination
+    ) {
+        if (in == null || in.isEmpty()) return in;
+        java.util.List<com.workers.profesores.chat.dto.response.Suggestion> nonPag = new java.util.ArrayList<>();
+        java.util.List<com.workers.profesores.chat.dto.response.Suggestion> pagCandidates = new java.util.ArrayList<>();
+        Integer cur = pagination == null ? null : pagination.getPage();
+        Integer size = pagination == null ? null : pagination.getSize();
+        Boolean hasMore = pagination == null ? null : pagination.getHasMore();
+
+        // Helper: canonicaliza el tipo a 'Paginacion'|'Registro'|'Generica'
+        java.util.function.Function<String,String> canonType = (t) -> {
+            if (t == null) return null;
+            String tl = t.trim().toLowerCase(Locale.ROOT);
+            if ("paginacion".equals(tl) || "paginación".equals(tl)) return "Paginacion";
+            if ("registro".equals(tl)) return "Registro";
+            if ("generica".equals(tl) || "genérica".equals(tl)) return "Generica";
+            return null; // tipo no válido
+        };
+        java.util.Set<String> allowedRecordActions = java.util.Set.of("Alta","Baja","Modificacion","Consulta");
+
+        for (com.workers.profesores.chat.dto.response.Suggestion s : in) {
+            if (s == null) continue;
+            String id = s.getId();
+            String dt = s.getDisplayText();
+            String type = canonType.apply(s.getType());
+            if (type == null) continue; // tipo inválido
+            // Reasignar tipo canonicalizado
+            s.setType(type);
+            // Validación básica de id/display_text
+            if (id == null || id.isBlank()) continue;
+            if (dt == null || dt.isBlank()) {
+                // Para Paginacion podemos establecer un display estándar según dirección luego; para otros tipos se descarta
+                if (!"Paginacion".equals(type)) continue;
+            }
+            if ("Registro".equals(type)) {
+                if (s.getRecordAction() == null || !allowedRecordActions.contains(s.getRecordAction())) {
+                    continue; // inválido sin recordAction correcto
+                }
+                nonPag.add(s);
+                continue;
+            }
+            if ("Generica".equals(type)) {
+                nonPag.add(s);
+                continue;
+            }
+            // Paginacion: validar y acumular para canonización posterior
+            if ("Paginacion".equals(type)) {
+                // Si no hay subobjeto pagination, crearlo para poder completar
+                if (s.getPagination() == null) s.setPagination(new com.workers.profesores.chat.dto.response.Suggestion.PaginationSuggestion());
+                // Inferir dirección por metadata o por displayText
+                String dir = s.getPagination().getDirection();
+                if (dir == null || dir.isBlank()) {
+                    String ldt = dt == null ? "" : dt.toLowerCase(Locale.ROOT);
+                    if (ldt.contains("siguiente") || ldt.contains("next")) dir = "next";
+                    else if (ldt.contains("anterior") || ldt.contains("prev")) dir = "prev";
+                }
+                if (dir == null) continue; // sin dirección no es válida
+                dir = dir.toLowerCase(Locale.ROOT);
+                if (!dir.equals("next") && !dir.equals("prev")) continue;
+                s.getPagination().setDirection(dir);
+                // Reglas de viabilidad: descartar 'prev' en primera página; descartar 'next' si hasMore=false
+                if ("prev".equals(dir) && cur != null && cur <= 1) continue;
+                if ("next".equals(dir) && hasMore != null && !hasMore) continue;
+                // Completar page/size si faltan con datos fiables del backend
+                if (cur != null && s.getPagination().getPage() == null) {
+                    s.getPagination().setPage("next".equals(dir) ? cur + 1 : Math.max(1, cur - 1));
+                }
+                if (size != null && s.getPagination().getSize() == null) {
+                    s.getPagination().setSize(size);
+                }
+                // Canonicalizar id/display_text
+                if ("prev".equals(dir)) { s.setId("pg-prev"); s.setDisplayText("Anterior"); }
+                if ("next".equals(dir)) { s.setId("pg-next"); s.setDisplayText("Siguiente"); }
+                pagCandidates.add(s);
+            }
+        }
+
+        // Deduplicar: conservar como máximo un prev y un next
+        com.workers.profesores.chat.dto.response.Suggestion firstPrev = null;
+        com.workers.profesores.chat.dto.response.Suggestion firstNext = null;
+        for (com.workers.profesores.chat.dto.response.Suggestion s : pagCandidates) {
+            String d = s.getPagination() == null ? null : s.getPagination().getDirection();
+            if (d == null) continue;
+            if ("prev".equalsIgnoreCase(d)) { if (firstPrev == null) firstPrev = s; }
+            else if ("next".equalsIgnoreCase(d)) { if (firstNext == null) firstNext = s; }
+        }
+        java.util.List<com.workers.profesores.chat.dto.response.Suggestion> out = new java.util.ArrayList<>();
+        out.addAll(nonPag);
+        if (firstPrev != null) out.add(firstPrev);
+        if (firstNext != null) out.add(firstNext);
+        return out;
+    }
+
+    // Construye un mini-resumen compacto (2 líneas) con claves de paginación y muestra
+    private String buildMiniResumen(List<ExecMeta> executed, Integer sampleOf) {
+        try {
+            String tipo = null; Integer page=null, size=null, next=null, prev=null, returned=null; Boolean hasMore=null;
+            if (executed != null && !executed.isEmpty()) {
+                // Selecciona la ejecución con items más representativa (última con items; si no, la última)
+                ExecMeta chosen = null; ItemsAndPagination ipChosen = null;
+                for (int i = executed.size()-1; i >= 0; i--) {
+                    ExecMeta em = executed.get(i);
+                    if (em == null || em.apiResultNode == null) continue;
+                    String t = extractTargetFromEndpointName(em.endpointName);
+                    ItemsAndPagination ip = findItemsArray(em.apiResultNode, t);
+                    if (ip != null && ip.items != null && !ip.items.isEmpty()) { chosen = em; ipChosen = ip; break; }
+                }
+                if (chosen == null) { chosen = executed.get(executed.size()-1); }
+                tipo = extractTargetFromEndpointName(chosen.endpointName);
+                ItemsAndPagination ip = (ipChosen != null) ? ipChosen : findItemsArray(chosen.apiResultNode, tipo);
+                if (ip != null) {
+                    returned = (ip.items == null) ? 0 : ip.items.size();
+                    JsonNode p = ip.pagination;
+                    if (p != null && p.isObject()) {
+                        if (p.has("page") && p.get("page").canConvertToInt()) page = p.get("page").asInt();
+                        if (p.has("size") && p.get("size").canConvertToInt()) size = p.get("size").asInt();
+                        if (p.has("has_more") && p.get("has_more").isBoolean()) hasMore = p.get("has_more").asBoolean();
+                        if (p.has("next_page") && p.get("next_page").canConvertToInt()) next = p.get("next_page").asInt();
+                        if (p.has("prev_page") && p.get("prev_page").canConvertToInt()) prev = p.get("prev_page").asInt();
+                        // total opcional; no necesario para el mini-resumen
+                    }
+                }
+                // Completar page/size desde querySnapshot si faltan
+                if ((page == null || size == null) && chosen.querySnapshot != null && chosen.querySnapshot.isObject()) {
+                    if (page == null && chosen.querySnapshot.has("page") && chosen.querySnapshot.get("page").canConvertToInt()) page = chosen.querySnapshot.get("page").asInt();
+                    if (size == null && chosen.querySnapshot.has("size") && chosen.querySnapshot.get("size").canConvertToInt()) size = chosen.querySnapshot.get("size").asInt();
+                }
+                // Derivar prev/next si faltan, basados en page/hasMore
+                if (prev == null && page != null && page > 1) prev = page - 1;
+                if (next == null && page != null && Boolean.TRUE.equals(hasMore)) next = page + 1;
+            }
+            if (tipo == null) tipo = parametros.getDefaultType();
+            if (page == null) page = 1;
+            if (size == null) size = 50;
+            if (returned == null) returned = 0;
+            if (hasMore == null) {
+                hasMore = (returned >= size); // mejor-esfuerzo cuando faltan metadatos
+            }
+            StringBuilder sb = new StringBuilder();
+            sb.append("paginacion: tipo=").append(tipo)
+              .append("; page=").append(page)
+              .append("; size=").append(size)
+              .append("; returned=").append(returned)
+              .append("; has_more=").append(hasMore)
+              .append("; prev=").append(prev == null ? "null" : String.valueOf(prev))
+              .append("; next=").append(next == null ? "null" : String.valueOf(next));
+            int sampleVal = sampleOf == null ? 0 : Math.max(0, sampleOf);
+            boolean plural;
+            if (returned > 1) plural = true; else if (returned == 1 && sampleVal >= 1) plural = true; else plural = false;
+            boolean prevAllowed = page != null && page > 1;
+            boolean nextAllowed = Boolean.TRUE.equals(hasMore);
+            sb.append("\neco: sample_of=").append(sampleVal)
+              .append("; plural=").append(plural)
+              .append("; nav: prev_allowed=").append(prevAllowed)
+              .append("; next_allowed=").append(nextAllowed);
+            return sb.toString();
+        } catch (Exception __mini) {
+            return "paginacion: tipo=items; page=1; size=50; returned=0; has_more=false; prev=null; next=null\neco: sample_of=0";
+        }
     }
 
     // Añade contextToken a ui_suggestions de tipo Paginacion si falta y existe paginación real

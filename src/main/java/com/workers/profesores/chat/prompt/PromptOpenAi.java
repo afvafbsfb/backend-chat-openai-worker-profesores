@@ -76,7 +76,7 @@ public class PromptOpenAi {
             "  · Puedes añadir campos derivados en castellano (p. ej., 'numero_usuarios'), sin sobrescribir originales.\n" +
             "  · 'summary_fields': 1–2 claves relevantes (p. ej., ['nombre','email']).\n" +
             "- Si NO has usado herramientas (no hay tool_calls), NO devuelvas arrays de recursos. En ese caso, limita la salida a { 'text': <no vacío>, 'ui_suggestions': [...] (si procede) }. Para listados, DEBES usar herramientas.\n" +
-            "- Si el primer turno ha obtenido un listado real (tool_outputs con 'items'), DEBES devolver el array bajo su clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores'); el backend lo mapeará a data.items.\n" +
+            "- En el segundo turno, cuando dispongas de tool_outputs con 'items', DEBES devolver el array bajo su clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores'); el backend lo mapeará a data.items.\n" +
             "- 'ui_suggestions': devuelve 2–3 cuando proceda. Tipos: 'Paginacion'|'Registro'|'Generica' (ver definiciones). Cualquier sugerencia con type='Paginacion' que NO incluya el objeto 'pagination' será inválida y rechazada por el backend (no la emitas).\n" +
             "- Optimización listados grandes: si el array tiene ≥30 ítems, limita por ítem los campos mostrados a un resumen útil (id, nombre, email, estado, rol cuando existan) y apóyate en 'summary_fields'. Evita payloads extensos para reducir latencia.\n"
         );
@@ -114,6 +114,7 @@ public class PromptOpenAi {
             "  · Úsalo para agregaciones/estadísticas que requieren combinar resultados de varias entidades (p. ej., 'usuarios por academia', 'totales por estado').\n" +
             "  · Limita el número de entidades a un máximo razonable (p. ej., 3) para no saturar la llamada; ofrece 'continuar' como sugerencia si el usuario quiere ver más.\n"
         );
+        systemPromptSb.append("\nPreferencia de navegación: para cambiar de página dentro de la MISMA entidad, prefiere 'call_api' (una sola llamada) y evita 'call_api_batch' salvo agregaciones multi‑entidad.\n");
         systemPromptSb.append(
             "\nEjemplo call_api (solo estructura):\n" +
             "assistant.tool_call => name: 'call_api', arguments: { 'name':'usuarios.listar_usuarios', 'method':'GET', 'query':{ 'estado':'activo' } }\n"
@@ -174,6 +175,11 @@ public class PromptOpenAi {
             "    { 'id':'pg-next', 'display_text':'Siguiente', 'type':'Paginacion', 'pagination': { 'direction':'next', 'page': 2, 'size': 50 } }\n" +
             "  ]\n" +
             "  (No incluyas 'contextToken'; lo añade el backend si hay paginación real).\n" +
+            "  Ejemplo (estando en página 2 de un listado con más páginas):\n" +
+            "  [\n" +
+            "    { 'id':'pg-prev', 'display_text':'Anterior', 'type':'Paginacion', 'pagination': { 'direction':'prev', 'page': 1, 'size': 50 } },\n" +
+            "    { 'id':'pg-next', 'display_text':'Siguiente', 'type':'Paginacion', 'pagination': { 'direction':'next', 'page': 3, 'size': 50 } }\n" +
+            "  ]\n" +
             "- Registro (accionar sobre elementos del listado):\n" +
             "  [\n" +
             "    { 'id':'sg-r1', 'display_text':'Ver detalles', 'type':'Registro', 'recordAction':'Consulta' },\n" +
@@ -208,25 +214,14 @@ public class PromptOpenAi {
             "    { 'id':'sg-r-view-before-edit', 'display_text':'Ver detalle antes de modificar', 'type':'Registro', 'recordAction':'Consulta' }\n" +
             "  ]\n" +
             "- Fuera de dominio:\n" +
-            "  [\n" +
+              // (Bloque de paginación movido al segundo turno para reducir tokens y ambigüedad)      "  [\n" +
             "    { 'id':'sg-g-list-academias', 'display_text':'Listar academias', 'type':'Generica' },\n" +
             "    { 'id':'sg-g-list-usuarios', 'display_text':'Listar usuarios', 'type':'Generica' },\n" +
             "    { 'id':'sg-g-help', 'display_text':'Ayuda sobre lo que puedo hacer', 'type':'Generica' }\n" +
             "  ]\n"
         );
 
-        // 10) Paginación (unificada)
-        systemPromptSb.append(
-            "\nPaginación (unificada):\n" +
-            "- No incluyas un nodo global 'pagination' en tu salida final; el backend lo derivará de los tool_outputs.\n" +
-            "- Para 'ui_suggestions' de tipo 'Paginacion', DEBES incluir 'pagination' {direction,page,size} en cada sugerencia.\n" +
-            "- Tamaño por defecto: si el usuario no indica lo contrario, NO establezcas 'size' en tool_calls (el backend aplicará size=50 y tope 50).\n" +
-            "- Redacción del 'text' en listados: evita citar cifras concretas ('X de Y'). El backend añadirá, cuando proceda, el contador entre paréntesis con números fiables.\n" +
-            "- Navegación: sugiere 'ui_suggestions' de tipo 'Paginacion' ('Anterior'/'Siguiente') solo cuando exista paginación real. Considera paginación real cuando el resultado de un listar_* indique 'has_more' o metadatos equivalentes (next/prev). En ese caso, es OBLIGATORIO devolver al menos 'Siguiente' con 'pagination' completo; añade 'Anterior' cuando aplique. Incluye SIEMPRE el objeto 'pagination':\n" +
-            "  · 'Siguiente': {direction:'next', page: (page_actual+1 o 2 si no visible), size: (size_actual o 50 si no visible)}.\n" +
-            "  · 'Anterior': inclúyelo solo si hay página previa (prevPage) o si page_actual>1, con {direction:'prev', page: (page_actual-1 o 1 si no visible), size: (size_actual o 50)}.\n" +
-            "  · No incluyas 'contextToken'; lo añadirá el backend si hay paginación real. Si no hay paginación real o metadatos, NO devuelvas sugerencias 'Paginacion'. Es obligatorio: una 'Paginacion' sin 'pagination' será inválida; si no puedes calcularla, omite esa sugerencia.\n"
-        );
+
 
         // 11) Saludos y fuera de contexto (inicio de conversación)
         systemPromptSb.append(
@@ -263,63 +258,52 @@ public class PromptOpenAi {
 
         return systemPromptSb.toString();
     }
-
     /**
-     * Construye la guía del planner (plan_api). Todo el contenido de prompt relacionado con planificación
-     * queda centralizado aquí para evitar duplicidades con ChatService.
+     * Instrucción para reformateo a JSON:
+     * - Forzar JSON único con 'text' obligatorio y no vacío.
+     * - Si no hay tool_calls, no devolver arrays de recursos.
+     * - Claves exactas para listados.
+     * - Definición de ui_suggestions.
      */
-    public String buildPlannerGuidance(OpenAICallApiService openai) {
-        String whitelistNarrative;
-        try {
-            whitelistNarrative = openai.renderWhitelistNarrativeWithDescriptions(openai.getEndpoints());
-        } catch (Exception __wl) {
-            whitelistNarrative = "";
-        }
-        return String.join("\n",
-            "ROL: Eres un planificador de llamadas a API. Tu objetivo es decidir si corresponde planificar una llamada real a la API (según whitelist) o abstenerte.",
-            "Si corresponde, tu salida será un tool_call 'plan_api' con endpoint (operationId permitido), method y, cuando aplique, pathParams/query/page/size.",
-            "Si NO corresponde (abstención), devuelve un plan no-operativo: plan_api {endpoint:'none', method:'GET' }.",
-            "No inventes endpoints; usa solo operationIds de la whitelist adjunta. Si no hay coincidencia, no planifiques.",
-            "Cuándo NO planificar (abstención): si el mensaje es un saludo/cortesía, charla pequeña, una pregunta que puedes responder sin API (p. ej., aritmética básica), está fuera del dominio (p. ej., 'perro', 'clima', matemáticas generales) o es ambiguo para mutar un recurso (sin identificadores/confirmación), NO planifiques una llamada real.",
-            "El backend ignorará los planes no-operativos y continuará con la redacción final sin herramientas.",
-            "Reglas de paginación: page>=1; NO establezcas 'size' por defecto (el backend aplicará 50); 'los primeros 10' => size=10; 'todos' => size=50 + paginación.",
-            "Composición y agregaciones: si la intención requiere combinar varias ENTIDADES (p. ej., 'totales de academias y usuarios'), NO intentes cubrirlo con un único endpoint y NO planifiques múltiples endpoints en el planner. Devuelve un plan no-operativo (endpoint:'none') para que el primer turno normal ejecute las llamadas necesarias con 'call_api_batch'. Si la petición afecta a UNA sola entidad (p. ej., 'total de academias'), sí puedes planificar ese endpoint.",
-            "Reglas de dominio: 'alumno' NO es 'usuario', 'usuarios' solo son administradores de la plataforma, o administradores de una academia o profesores de una academia. Si el usuario pide 'alumnos' y NO existe endpoint de 'alumnos' en la whitelist, NO lo mapees a 'usuarios'; abstente (endpoint:'none').",
-            "Aclaraciones previas a mutaciones/detalles: para modificar/borrar SIEMPRE se requiere confirmación en un mensaje posterior. En el primer turno, como mucho planifica un GET para localizar y mostrar el detalle. NO planifiques PUT/DELETE en ningún caso en el primer turno, aunque el usuario escriba 'confirmo' en el mismo mensaje.",
-            "Mapea sinónimos comunes (solo si existen esos filtros en la whitelist):",
-            "- listar/mostrar/enséñame/buscar => endpoints listar_* (GET)",
-            "- mi perfil/¿quién soy? => usuarios.obtener_mi_perfil (GET)",
-            "- academias que contengan X => academias.listar_academias + query.nombre_contains=X",
-            "- usuarios activos => usuarios.listar_usuarios + query.estado='activo'",
-            "- ordena por recientes => order_by='fecha_alta', order_dir='desc'",
-            "Ejemplos:",
-            "1) Usuario: 'Lista de usuarios' => plan_api {endpoint:'usuarios.listar_usuarios', method:'GET', pathParams:{}, query:{}, page:1}",
-            "2) Usuario: 'Muéstrame los primeros 10 usuarios' => plan_api {endpoint:'usuarios.listar_usuarios', method:'GET', query:{}, page:1, size:10}",
-            "3) Usuario: 'Buscar academias que contengan Tecno' => plan_api {endpoint:'academias.listar_academias', method:'GET', query:{nombre_contains:'Tecno'}, page:1}",
-            "4) Usuario: 'Ir a la página 2 de academias' => plan_api {endpoint:'academias.listar_academias', method:'GET', query:{}, page:2}",
-            "5) Usuario: '¿Quién soy?' => plan_api {endpoint:'usuarios.obtener_mi_perfil', method:'GET', pathParams:{}, query:{}}",
-            "6) Usuario: 'Usuarios de la academia 3' => plan_api {endpoint:'usuarios.listar_usuarios', method:'GET', query:{academia_id:3}, page:1}",
-            "7) Usuario: 'Usuarios con email que contenga @acme.com' => plan_api {endpoint:'usuarios.listar_usuarios', method:'GET', query:{email_contains:'@acme.com'}, page:1}",
-            "8) Usuario: 'Usuarios con rol Profesor_academia' => plan_api {endpoint:'usuarios.listar_usuarios', method:'GET', query:{rol:'Profesor_academia'}, page:1}",
-            "9) Usuario: 'Usuarios activos' => plan_api {endpoint:'usuarios.listar_usuarios', method:'GET', query:{estado:'activo'}, page:1}",
-            "10) Usuario: 'Usuarios dados de alta entre 2025-01-01 y 2025-03-31' => plan_api {endpoint:'usuarios.listar_usuarios', method:'GET', query:{fecha_alta_gte:'2025-01-01', fecha_alta_lte:'2025-03-31'}, page:1}",
-            "11) Usuario: 'Ordena usuarios por fecha de alta descendente' => plan_api {endpoint:'usuarios.listar_usuarios', method:'GET', query:{order_by:'fecha_alta', order_dir:'desc'}, page:1}",
-            "12) Usuario: 'Usuarios dados de baja después de 2024-12-31' => plan_api {endpoint:'usuarios.listar_usuarios', method:'GET', query:{fecha_baja_gte:'2024-12-31'}, page:1}",
-            "13) Ambiguo (mutación sin identificador): 'Quiero modificar un usuario' => NO planifiques PUT/DELETE. Planifica un GET de apoyo (p. ej., usuarios.listar_usuarios con filtros) o abstente.",
-            "14) Ambiguo (mutación sin confirmación): 'Quiero dar de baja un usuario' => NO planifiques la baja. Planifica un GET para localizar el usuario y espera confirmación explícita.",
-            "15) Multi-entidad: 'Dime el total de academias y de usuarios' => NO planifiques múltiples endpoints; devuelve plan_api {endpoint:'none', method:'GET'} (lo resolverá el primer turno normal con call_api_batch).",
-            "16) Recurso inexistente: 'Quiero ver los alumnos' (y no hay endpoint 'alumnos' en whitelist) => devuelve plan_api {endpoint:'none', method:'GET' }.",
-            "17) Mutación (flujo seguro, usuarios): 'Cámbiale el nombre al usuario con email admin@acme.com a \"Angelillo\"' => plan_api {endpoint:'usuarios.listar_usuarios', method:'GET', query:{email:'admin@acme.com'}, page:1} (mostrar detalle y pedir confirmación en segundo turno).",
-            "18) Baja (flujo seguro, usuarios): 'Borra el usuario 1496' => plan_api {endpoint:'usuarios.listar_usuarios', method:'GET', query:{id:1496}, page:1} (mostrar detalle y pedir confirmación en segundo turno).",
-            "19) Modificación (flujo seguro, academias): 'Actualiza la academia 308: nombre=\'Academia Central\'' => plan_api {endpoint:'academias.obtener_academia', method:'GET', pathParams:{id:308}} (mostrar detalle y pedir confirmación en segundo turno).",
-            "\nEndpoints permitidos (resumen):\n" + whitelistNarrative
-        );
-    }
 
     public String buildReformatInstruction() {
-    return "Por favor, devuelve únicamente un objeto JSON válido con al menos la propiedad 'text' (string) y que 'text' NO esté vacío; redacta con inteligencia humana. Si el mensaje original era un saludo/apertura o no implica tool_calls ni paginación, incluye además 2–3 'ui_suggestions' tipadas (según las definiciones), sin arrays vacíos. Si devuelves listas de recursos, usa las claves exactas 'usuarios'|'academias'|'cursos'|'alumnos'|'profesores'. No incluyas explicaciones ni texto fuera del JSON. \n" +
-        "Prohibición: si NO hay tool_calls, NO devuelvas arrays de recursos. En ese caso, limita la salida a { 'text': <no vacío>, 'ui_suggestions': [...] (si procede) }. Para listados, usa herramientas. \n" +
-        "'ui_suggestions': cada elemento debe contener 'id' (string), 'display_text' (string), 'type' en ['Paginacion','Registro','Generica'] y, si 'type'=='Registro', 'recordAction' en ['Alta','Baja','Modificacion','Consulta']. Para 'type'='Paginacion', incluye SIEMPRE 'pagination': { 'direction': 'next'|'prev', 'page': number, 'size': number }. No inventes paginación ni 'contextToken'.";
+    return "⚠️ CRÍTICO - REFORMATEO DE RESPUESTA (ÚLTIMA LÍNEA DE DEFENSA): Tu respuesta anterior no era JSON válido. Debes convertirla a JSON PRESERVANDO EL CONTENIDO Y CONTEXTO ORIGINAL.\n\n" +
+        "REGLA #1 - PRESERVA EL MENSAJE ORIGINAL:\n" +
+        "- Si tu respuesta anterior decía 'Necesito que me indiques el ID del usuario...', el JSON debe contener EXACTAMENTE ese texto en 'text'\n" +
+        "- Si pediste información específica (ID, email, nombre), el JSON debe mantener esa pregunta\n" +
+        "- Si explicaste algo inteligente, el JSON debe preservar esa explicación\n" +
+        "- NO reemplaces mensajes inteligentes por genéricos como '¡Hola! ¿En qué puedo ayudarte?'\n" +
+        "- NO pierdas el contexto de la conversación\n\n" +
+        "REGLA #2 - ESTRUCTURA JSON OBLIGATORIA:\n" +
+        "{\n" +
+        "  \"text\": \"<TU_MENSAJE_ORIGINAL_AQUÍ - NUNCA VACÍO - PRESERVA CONTEXTO>\",\n" +
+        "  \"ui_suggestions\": [ <OPCIONAL - array de sugerencias tipadas> ]\n" +
+        "}\n\n" +
+        "REGLA #3 - UI_SUGGESTIONS (si aplicable):\n" +
+        "- Cada elemento DEBE tener: 'id' (string único), 'display_text' (string), 'type' (enum: 'Paginacion'|'Registro'|'Generica')\n" +
+        "- Si 'type'=='Registro': OBLIGATORIO incluir 'recordAction' (enum: 'Alta'|'Baja'|'Modificacion'|'Consulta')\n" +
+        "- Si 'type'=='Paginacion': OBLIGATORIO incluir 'pagination': { 'direction': 'next'|'prev', 'page': number, 'size': number }\n" +
+        "- NO inventes paginación ni 'contextToken'\n" +
+        "- Si no tienes sugerencias inteligentes, omite completamente 'ui_suggestions' (no array vacío)\n\n" +
+        "REGLA #4 - PROHIBICIONES:\n" +
+        "- NO devuelvas arrays de recursos ('usuarios', 'academias', etc.) en reformateo\n" +
+        "- NO incluyas explicaciones fuera del JSON\n" +
+        "- NO uses 'contextToken' ni campos inventados\n" +
+        "- NO generes mensajes genéricos si el original era específico\n\n" +
+        "EJEMPLO CORRECTO:\n" +
+        "Respuesta original: 'Necesito que me indiques el ID exacto del usuario que quieres modificar para poder ayudarte.'\n" +
+        "JSON reformateado:\n" +
+        "{\n" +
+        "  \"text\": \"Necesito que me indiques el ID exacto del usuario que quieres modificar para poder ayudarte.\",\n" +
+        "  \"ui_suggestions\": [\n" +
+        "    { \"id\": \"sug1\", \"display_text\": \"Consultar usuarios primero\", \"type\": \"Registro\", \"recordAction\": \"Consulta\" }\n" +
+        "  ]\n" +
+        "}\n\n" +
+        "EJEMPLO INCORRECTO:\n" +
+        "{\n" +
+        "  \"text\": \"¡Hola! ¿En qué puedo ayudarte?\"  <-- ❌ NUNCA hagas esto si el mensaje original era específico\n" +
+        "}\n\n" +
+        "Ahora reformatea tu respuesta anterior a JSON válido PRESERVANDO EL CONTENIDO ORIGINAL:";
     }
 
     /**
@@ -332,22 +316,60 @@ public class PromptOpenAi {
     public String buildSecondTurnInstruction(String resumenEjecucion) {
         String resumen = (resumenEjecucion == null || resumenEjecucion.isBlank()) ? "(sin_resumen)" : resumenEjecucion;
         return String.join("\n",
-            "Segundo turno (redacción final, sin herramientas):",
-            "- Devuelve SOLO un objeto JSON válido con 'text' (no vacío) y, cuando proceda, 'ui_suggestions' tipadas.",
-            "- Explica brevemente qué has hecho con los resultados ya obtenidos, sin llamar nuevas herramientas.",
-            "- Si falta un identificador o dato clave para continuar (id/email/etc.), pídeselo al usuario con claridad.",
-            "- Si la intención es modificar o dar de baja, muestra el detalle del registro y PIDE CONFIRMACIÓN explícita; no ejecutes mutaciones en este turno.",
-            "- Si el primer turno ha devuelto un listado (tool_outputs con items), DEVUELVE el array bajo su clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores'); el backend lo mapeará a data.items.",
-            "- Propón 2–3 'ui_suggestions' próximas ('Paginacion'|'Registro'|'Generica').",
-            "  · Para 'Paginacion': incluye 'pagination' {direction:'next'|'prev', page:number, size:number}. Si no puedes calcular 'pagination' con seguridad, NO devuelvas sugerencias de 'Paginacion'.",
-            "  · Obligatorio: si los tool_outputs indican paginación real (p. ej., has_more=true o next/prev), debes devolver al menos la sugerencia 'Siguiente' con 'pagination' completo. Si exists página previa (page_actual>1 o prev), añade también 'Anterior'.",
-            "  · Solo devuelvas 'Paginacion' si existe paginación real/metadatos (p. ej., has_more/next/prev en resultados listar_*). Si no ves page/size explícitos, usa page_actual=1 y size=50 como base: para 'Siguiente' => page=2; para 'Anterior' (si aplica) => page=1.",
-            "  · Para 'Registro': incluye 'recordAction' en ['Alta','Baja','Modificacion','Consulta'].",
-            "  · No incluyas 'contextToken'; lo añadirá el backend si hay paginación real.",
-            "- Optimización listados grandes: si el array tiene ≥30 ítems, limita por ítem los campos a (id, nombre, email, estado, rol cuando existan) y mantén el 'text' conciso; añade 'summary_fields' acordes.",
-            "- No incluyas texto fuera del JSON.",
-            "- Resumen de ejecución (contexto): " + resumen
+            "Segundo turno (sin herramientas). Devuelve SOLO un JSON con: 'text' (no vacío) y, si procede, 'ui_suggestions' (2–3).",
+            "Si hay tool_outputs con 'items', devuelve el array bajo su clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores').",
+            "ui_suggestions (estricto): {'id','display_text','type'}; en 'Registro' añade 'recordAction' ['Alta','Baja','Modificacion','Consulta']; en 'Paginacion' añade 'pagination' {direction:'next'|'prev', page:number, size:number}.",
+            "Sin 'contextToken' ni nodo global 'pagination'. Nunca 'ui_suggestions': [].",
+            "Paginación: page=1 & has_more=> solo 'Siguiente'; page>1 & has_more=> 'Anterior' y 'Siguiente'; última=> solo 'Anterior'. Si no puedes calcularla, omite. Si el resumen indica prev_allowed=true, incluye 'Anterior'.",
+            "CRÍTICO - Redacción inteligente del 'text': NUNCA cuentes los items del array manualmente. Si el payload tiene 'returned' y 'sample_of', significa que el array es una MUESTRA reducida (echo trimming). El count REAL está en 'returned' (del payload) o en el resumen. Usa SOLO estos metadatos para redactar tu mensaje:",
+            "  · Si sample_of>=1 (hay echo trimming): el array contiene solo una muestra de 2-3 items, pero 'returned' indica el count REAL. Redacta en plural si returned>1, sin mencionar números específicos (ej: 'Se han encontrado usuarios en la plataforma.').",
+            "  · Si returned>1 (sin echo): plural. Si returned==1: singular. Si returned==0: sin resultados.",
+            "  · PROHIBIDO: contar items del array con .length o enumerar 'uno activo, otro bloqueado' cuando sample_of>=1.",
+            "  · Si quieres ser más específico (ej: 'X usuarios encontrados'), usa SOLO el valor de 'returned' del payload o del resumen, NUNCA la longitud del array.",
+            "Listados grandes (>=30): 'text' conciso y 'summary_fields' (1–2 claves).",
+            "",
+            "--- SUGERENCIAS INTELIGENTES (segundo turno) ---",
+            "Genera 2-3 'ui_suggestions' inteligentes según contexto del resultado y rol del usuario.",
+            "Estructuras OBLIGATORIAS por tipo:",
+            "· 'Paginacion': {'id','display_text':'Anterior'|'Siguiente','type':'Paginacion','pagination':{direction,page,size}}",
+            "· 'Registro': {'id','display_text','type':'Registro','recordAction':'Alta'|'Baja'|'Modificacion'|'Consulta'} <= recordAction OBLIGATORIO con uno de estos 4 valores",
+            "· 'Generica': {'id','display_text','type':'Generica'}",
+            "",
+            "Patrones contextuales (adapta 'display_text' al recurso específico):",
+            "· Listado => Ofrece: 'Ver detalle del registro' (Registro-Consulta), 'Buscar por campo relevante (email/nombre/etc según recurso)' (Generica), 'Filtrar por atributo contextual (rol/estado/tipo)' (Generica)",
+            "· Modificar/Borrar => Ofrece: 'Buscar por campo relevante' (Generica), 'Ver detalle antes de editar' (Registro-Consulta)",
+            "· Fuera de dominio/Saludo => Ofrece: 'Listar [recurso disponible según rol]' (Generica), 'Ayuda' (Generica)",
+            "",
+            "Ejemplos estructurales (copia formato exacto, adapta display_text):",
+            "{'id':'sg-r1','display_text':'Ver detalles del usuario','type':'Registro','recordAction':'Consulta'}",
+            "{'id':'sg-r2','display_text':'Crear nuevo usuario','type':'Registro','recordAction':'Alta'}",
+            "{'id':'sg-r3','display_text':'Editar usuario','type':'Registro','recordAction':'Modificacion'}",
+            "{'id':'sg-r4','display_text':'Eliminar usuario','type':'Registro','recordAction':'Baja'}",
+            "{'id':'sg-g1','display_text':'Buscar por email','type':'Generica'}",
+            "{'id':'sg-g2','display_text':'Filtrar por estado','type':'Generica'}",
+            "",
+            "PROHIBIDO: omitir 'recordAction' en tipo 'Registro'; devolver []; usar estructuras no definidas; sugerencias genéricas sin adaptar al contexto.",
+            "",
+            "Resumen: " + resumen
         );
+    }
+
+    /**
+     * System prompt compacto para el segundo turno (sin herramientas), pensado para minimizar tokens.
+     * Mantiene reglas críticas y contrato de salida, omitiendo whitelist, ejemplos extensos y narrativa larga.
+     */
+    public String buildSecondTurnSystemPrompt() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Eres un asistente (secretaria) para una plataforma de academias en España. ");
+        sb.append("Responde SIEMPRE en castellano (España), breve y claro. \n");
+        sb.append("Este es el segundo turno: NO puedes usar herramientas. Debes redactar el JSON final a partir del contexto reinyectado.\n");
+        sb.append("Contrato (compacto): devuelve SOLO un JSON; 'text' no vacío. Si hay tool_outputs con items, devuelve el array bajo su clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores').\n");
+        sb.append("ui_suggestions (2–3): {'id','display_text','type'}; 'Registro' añade 'recordAction' ['Alta','Baja','Modificacion','Consulta']; 'Paginacion' añade 'pagination' {direction,page,size}. Sin 'contextToken' ni nodo global 'pagination'; nunca [].\n");
+        sb.append("Paginación: page=1 & has_more=> solo 'Siguiente'; page>1 & has_more=> 'Anterior' y 'Siguiente'; última=> solo 'Anterior'. Si no puedes calcular, omite. Si el resumen indica prev_allowed=true, incluye 'Anterior'.\n");
+        sb.append("CRÍTICO - Redacción del 'text': NUNCA cuentes los items del array manualmente. Si el payload incluye 'returned' y 'sample_of', el array es una MUESTRA (echo trimming). El count REAL está en 'returned'. Usa SOLO metadatos para redactar. Si sample_of>=1: plural sin números específicos. Si returned>1: plural. Si returned==1: singular. Si returned==0: sin resultados. PROHIBIDO: contar .length cuando sample_of>=1.\n");
+        sb.append("Listados grandes: 'text' conciso y 'summary_fields' (1–2 claves).\n");
+        sb.append("\nSugerencias inteligentes: genera 2-3 según contexto y rol. Registro={'recordAction':'Alta'|'Baja'|'Modificacion'|'Consulta'}. Adapta display_text al recurso (usuarios=>email, academias=>nombre, etc). Patrones: Listado=>Ver detalle(Registro-Consulta)+Buscar(Generica)+Filtrar(Generica). Nunca [].\n");
+        return sb.toString();
     }
 
     // buildLiteInstruction y buildLiteSchemaExtras eliminados: no se usa segundo turno LITE desde el builder

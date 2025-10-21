@@ -1,25 +1,22 @@
-﻿2025-10-20T22:26:51.506+02:00  INFO 15972 --- [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
-2025-10-20T22:26:51.507+02:00  INFO 15972 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
-2025-10-20T22:26:51.508+02:00  INFO 15972 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+﻿2025-10-21T16:27:58.410+02:00  INFO 5244 --- [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-10-21T16:27:58.411+02:00  INFO 5244 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2025-10-21T16:27:58.412+02:00  INFO 5244 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
 DEBUG: UsuarioId obtenido del token JWT: 1496
 DEBUG: Delegated token generation moved to ChatService (on demand).
-DEBUG 2025-10-20T22:26:51.638745500 [ChatController][chat] Generando token delegado para el usuario: 1496
-[ChatService][DEBUG] runChat called with incoming: [com.workers.profesores.chat.dto.ChatRequest$Message@7cbf5e26]
+DEBUG 2025-10-21T16:27:58.551907800 [ChatController][chat] Generando token delegado para el usuario: 1496
+[ChatService][DEBUG] runChat called with incoming: [com.workers.profesores.chat.dto.ChatRequest$Message@41ffdb79]
 [ChatService][DEBUG] Authorization header received (masked): Bearer ...
-[JwtDelegationService][DUMP] Delegated Authorization header: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl92ZXJzaW9uIjowLCJhY3RvciI6ImNoYXQtYmFja2VuZCIsInN1YiI6IntcInRva2VuX3ZlcnNpb25cIjowLFwidXN1YXJpb19pZFwiOjE0OTZ9Iiwicm9sZXMiOlsiQWRtaW5fcGxhdGFmb3JtYSJdLCJpc3MiOiJjaGF0LWJhY2tlbmQiLCJleHAiOjE3NjA5OTIzMTEsImlhdCI6MTc2MDk5MjAxMSwianRpIjoiYjQ0OTAyNjItZWU0NS00NzA1LTg0NzItOTk5MDc4ZGVhMmNjIn0.zrQrh-a1JlHgqmdR4pa-Zwc_rytQXbPb-0-evFfUO8E
-[JwtDelegationService][DUMP] Claims: {token_version=0, actor=chat-backend, sub={"token_version":0,"usuario_id":1496}, roles=[Admin_plataforma], iss=chat-backend, exp=1760992311, iat=1760992011, jti=b4490262-ee45-4705-8472-999078dea2cc}
+[JwtDelegationService][DUMP] Delegated Authorization header: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl92ZXJzaW9uIjowLCJhY3RvciI6ImNoYXQtYmFja2VuZCIsInN1YiI6IntcInRva2VuX3ZlcnNpb25cIjowLFwidXN1YXJpb19pZFwiOjE0OTZ9Iiwicm9sZXMiOlsiQWRtaW5fcGxhdGFmb3JtYSJdLCJpc3MiOiJjaGF0LWJhY2tlbmQiLCJleHAiOjE3NjEwNTcxNzgsImlhdCI6MTc2MTA1Njg3OCwianRpIjoiMTJmMmE5MDUtMmU0MC00YWRmLTlhMmUtNzlhMDdkODQ2ZWNkIn0.llb3yIwPjqfvhqWz9ynYvKDT8ZrSlIMN_3BRlSCH5Lo
+[JwtDelegationService][DUMP] Claims: {token_version=0, actor=chat-backend, sub={"token_version":0,"usuario_id":1496}, roles=[Admin_plataforma], iss=chat-backend, exp=1761057178, iat=1761056878, jti=12f2a905-2e40-4adf-9a2e-79a07d846ecd}
 [JwtDelegationService][DUMP] token_header_b64=eyJhbGciOiJIUzI1NiJ9
-[JwtDelegationService][DUMP] token_payload_b64=eyJ0b2tlbl92ZXJzaW9uIjowLCJhY3RvciI6ImNoYXQtYmFja2VuZCIsInN1YiI6IntcInRva2VuX3ZlcnNpb25cIjowLFwidXN1YXJpb19pZFwiOjE0OTZ9Iiwicm9sZXMiOlsiQWRtaW5fcGxhdGFmb3JtYSJdLCJpc3MiOiJjaGF0LWJhY2tlbmQiLCJleHAiOjE3NjA5OTIzMTEsImlhdCI6MTc2MDk5MjAxMSwianRpIjoiYjQ0OTAyNjItZWU0NS00NzA1LTg0NzItOTk5MDc4ZGVhMmNjIn0
-[JwtDelegationService][DUMP] token_signature_b64=zrQrh-a1JlHgqmdR4pa-Zwc_rytQXbPb-0-evFfUO8E
+[JwtDelegationService][DUMP] token_payload_b64=eyJ0b2tlbl92ZXJzaW9uIjowLCJhY3RvciI6ImNoYXQtYmFja2VuZCIsInN1YiI6IntcInRva2VuX3ZlcnNpb25cIjowLFwidXN1YXJpb19pZFwiOjE0OTZ9Iiwicm9sZXMiOlsiQWRtaW5fcGxhdGFmb3JtYSJdLCJpc3MiOiJjaGF0LWJhY2tlbmQiLCJleHAiOjE3NjEwNTcxNzgsImlhdCI6MTc2MTA1Njg3OCwianRpIjoiMTJmMmE5MDUtMmU0MC00YWRmLTlhMmUtNzlhMDdkODQ2ZWNkIn0
+[JwtDelegationService][DUMP] token_signature_b64=llb3yIwPjqfvhqWz9ynYvKDT8ZrSlIMN_3BRlSCH5Lo
 [JwtDelegationService][DUMP] token_header_json={"alg":"HS256"}
-[JwtDelegationService][DUMP] token_payload_json={"token_version":0,"actor":"chat-backend","sub":"{\"token_version\":0,\"usuario_id\":1496}","roles":["Admin_plataforma"],"iss":"chat-backend","exp":1760992311,"iat":1760992011,"jti":"b4490262-ee45-4705-8472-999078dea2cc"}
-[JwtDelegationService][DUMP] token_sha256=e0e5d4200fb52a2c27d1e7e9e22bdf4b086811bfc74223930de6def600cd8ba7
+[JwtDelegationService][DUMP] token_payload_json={"token_version":0,"actor":"chat-backend","sub":"{\"token_version\":0,\"usuario_id\":1496}","roles":["Admin_plataforma"],"iss":"chat-backend","exp":1761057178,"iat":1761056878,"jti":"12f2a905-2e40-4adf-9a2e-79a07d846ecd"}
+[JwtDelegationService][DUMP] token_sha256=b977fb1ebabf54211e79c18cd1268b80fb4de6fe98624087b386aedda7d372b0
 [JwtDelegationService][DUMP] delegationSecret_sha256=a3af8c7ea176f7f591e0b82c9699f5fdee0ebddb89e1cd46e06f79e8a1953cb9 delegationSecret_len=32
 [ChatService][DEBUG] System prompt constructed (trimmed): Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), breve y claro. Te pueden llegar chats sobre temas del contexto del api de academias y la whitelist que tienes disponible y chats que nada tengan que ver, siempre ofrece respuestas inte...
-2025-10-20T22:26:51.679+02:00  INFO 15972 --- [nio-8080-exec-2] c.w.p.chat.service.OpenAICallApiService  : Whitelist cargada desde served-openapi.json con 24 endpoints
-2025-10-20T22:26:53.543+02:00  WARN 15972 --- [nio-8080-exec-2] c.w.p.chat.service.OpenAICallApiService  : El mensaje recibido no es del tipo esperado: null
-2025-10-20T22:26:53.544+02:00  INFO 15972 --- [nio-8080-exec-2] c.w.p.chat.service.OpenAICallApiService  : No hubo tool_calls en la respuesta.
-[ChatService][DEBUG] Seed messages for OpenAI: [{role=system, content=Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), breve y claro. Te pueden llegar chats sobre temas del contexto del api de academias y la whitelist que tienes disponible y chats que nada tengan que ver, siempre ofrece respuestas inteligentes humanas. Si no necesitas obtener datos, responde con texto inteligente y siempre ofrece sugerencias relacionadas con el rol del usuario que te pregunta y con el contexto de la whitelist que tienes disponible. Para obtener o mutar datos cuando sea necesario, usa SOLO las herramientas whitelisteadas: 'call_api' (una llamada) y 'call_api_batch' (varias llamadas en un mismo turno). Todas las llamadas deben respetar las autorizaciones y el ámbito del usuario logueado. Pide confirmación antes de operaciones destructivas (borrar/modificar). Para listados muy grandes, sugiere exportar a CSV/Excel. No uses tablas Markdown en mensajes del sistema. Contexto del usuario: roles=[Admin_plataforma], academiaId=null. Ámbito por rol: Admin_academia => ámbito 'academia' (limita siempre a su academia). Profesor_academia => solo su academia y cursos propios (puede crear sesiones, añadir anotaciones, consultar lista de alumnos del curso, notas y progreso). Admin_plataforma => intenta inferir la academia objetivo por el contexto; si no es claro, pide confirmación. Perfil_usuario: {"nombre":"Admin Plataforma","id":1496}.
+[ChatService][DEBUG] Seed messages for OpenAI: [{content=Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), breve y claro. Te pueden llegar chats sobre temas del contexto del api de academias y la whitelist que tienes disponible y chats que nada tengan que ver, siempre ofrece respuestas inteligentes humanas. Si no necesitas obtener datos, responde con texto inteligente y siempre ofrece sugerencias relacionadas con el rol del usuario que te pregunta y con el contexto de la whitelist que tienes disponible. Para obtener o mutar datos cuando sea necesario, usa SOLO las herramientas whitelisteadas: 'call_api' (una llamada) y 'call_api_batch' (varias llamadas en un mismo turno). Todas las llamadas deben respetar las autorizaciones y el ámbito del usuario logueado. Pide confirmación antes de operaciones destructivas (borrar/modificar). Para listados muy grandes, sugiere exportar a CSV/Excel. No uses tablas Markdown en mensajes del sistema. Contexto del usuario: roles=[Admin_plataforma], academiaId=null. Ámbito por rol: Admin_academia => ámbito 'academia' (limita siempre a su academia). Profesor_academia => solo su academia y cursos propios (puede crear sesiones, añadir anotaciones, consultar lista de alumnos del curso, notas y progreso). Admin_plataforma => intenta inferir la academia objetivo por el contexto; si no es claro, pide confirmación. Perfil_usuario: {"nombre":"Admin Plataforma","id":1496}.
 También recibirás: (a) el historial de la conversación (mensajes previos), y (b) señales de navegación cuando el cliente acepte sugerencias de paginación o cualquier otra sugerencia que le hayas enviado anteriormente (como mensajes especiales del asistente que el backend entiende). Úsalos como contexto, no los repitas al usuario.
 Recursos disponibles (whitelist): [academias, usuarios]. Recursos no disponibles: [cursos, alumnos, profesores].
 Reglas críticas (prioritarias):
@@ -35,7 +32,8 @@ Contrato de salida (estricto):
 - Si devuelves listados, usa SIEMPRE la clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores') y copia propiedades originales.
   · Puedes añadir campos derivados en castellano (p. ej., 'numero_usuarios'), sin sobrescribir originales.
   · 'summary_fields': 1–2 claves relevantes (p. ej., ['nombre','email']).
-- Si el primer turno ha obtenido un listado real (tool_outputs con 'items'), DEBES devolver el array bajo su clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores'); el backend lo mapeará a data.items.
+- Si NO has usado herramientas (no hay tool_calls), NO devuelvas arrays de recursos. En ese caso, limita la salida a { 'text': <no vacío>, 'ui_suggestions': [...] (si procede) }. Para listados, DEBES usar herramientas.
+- En el segundo turno, cuando dispongas de tool_outputs con 'items', DEBES devolver el array bajo su clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores'); el backend lo mapeará a data.items.
 - 'ui_suggestions': devuelve 2–3 cuando proceda. Tipos: 'Paginacion'|'Registro'|'Generica' (ver definiciones). Cualquier sugerencia con type='Paginacion' que NO incluya el objeto 'pagination' será inválida y rechazada por el backend (no la emitas).
 - Optimización listados grandes: si el array tiene ≥30 ítems, limita por ítem los campos mostrados a un resumen útil (id, nombre, email, estado, rol cuando existan) y apóyate en 'summary_fields'. Evita payloads extensos para reducir latencia.
 
@@ -59,6 +57,8 @@ Herramientas disponibles (úsalas cuando necesites acceder a datos proporcionado
 - call_api_batch: varias llamadas en un mismo turno, con 'calls'=[...] de objetos {name, method, pathParams?, query?, body?}.
   · Úsalo para agregaciones/estadísticas que requieren combinar resultados de varias entidades (p. ej., 'usuarios por academia', 'totales por estado').
   · Limita el número de entidades a un máximo razonable (p. ej., 3) para no saturar la llamada; ofrece 'continuar' como sugerencia si el usuario quiere ver más.
+
+Preferencia de navegación: para cambiar de página dentro de la MISMA entidad, prefiere 'call_api' (una sola llamada) y evita 'call_api_batch' salvo agregaciones multi‑entidad.
 
 Ejemplo call_api (solo estructura):
 assistant.tool_call => name: 'call_api', arguments: { 'name':'usuarios.listar_usuarios', 'method':'GET', 'query':{ 'estado':'activo' } }
@@ -107,6 +107,11 @@ Ejemplos canónicos de 'ui_suggestions' (solo estructura, usa estos formatos exa
     { 'id':'pg-next', 'display_text':'Siguiente', 'type':'Paginacion', 'pagination': { 'direction':'next', 'page': 2, 'size': 50 } }
   ]
   (No incluyas 'contextToken'; lo añade el backend si hay paginación real).
+  Ejemplo (estando en página 2 de un listado con más páginas):
+  [
+    { 'id':'pg-prev', 'display_text':'Anterior', 'type':'Paginacion', 'pagination': { 'direction':'prev', 'page': 1, 'size': 50 } },
+    { 'id':'pg-next', 'display_text':'Siguiente', 'type':'Paginacion', 'pagination': { 'direction':'next', 'page': 3, 'size': 50 } }
+  ]
 - Registro (accionar sobre elementos del listado):
   [
     { 'id':'sg-r1', 'display_text':'Ver detalles', 'type':'Registro', 'recordAction':'Consulta' },
@@ -130,6 +135,7 @@ Patrones recomendados por intención (usa estos formatos, adaptando display_text
   ]
   y para navegación:
   [ { 'id':'pg-prev', 'display_text':'Anterior', 'type':'Paginacion', 'pagination': { 'direction':'prev', 'page': 1, 'size': 50 } }, { 'id':'pg-next', 'display_text':'Siguiente', 'type':'Paginacion', 'pagination': { 'direction':'next', 'page': 2, 'size': 50 } } ]
+  (Nunca devuelvas un listado sin antes usar herramientas; si no se han ejecutado tool_calls, no emitas arrays de recursos).
 - Modificar:
   [
     { 'id':'sg-g-ask-id-name', 'display_text':'Dime el ID o nombre exacto', 'type':'Generica' },
@@ -137,21 +143,10 @@ Patrones recomendados por intención (usa estos formatos, adaptando display_text
     { 'id':'sg-r-view-before-edit', 'display_text':'Ver detalle antes de modificar', 'type':'Registro', 'recordAction':'Consulta' }
   ]
 - Fuera de dominio:
-  [
     { 'id':'sg-g-list-academias', 'display_text':'Listar academias', 'type':'Generica' },
     { 'id':'sg-g-list-usuarios', 'display_text':'Listar usuarios', 'type':'Generica' },
     { 'id':'sg-g-help', 'display_text':'Ayuda sobre lo que puedo hacer', 'type':'Generica' }
   ]
-
-Paginación (unificada):
-- No incluyas un nodo global 'pagination' en tu salida final; el backend lo derivará de los tool_outputs.
-- Para 'ui_suggestions' de tipo 'Paginacion', DEBES incluir 'pagination' {direction,page,size} en cada sugerencia.
-- Tamaño por defecto: si el usuario no indica lo contrario, NO establezcas 'size' en tool_calls (el backend aplicará size=50 y tope 50).
-- Redacción del 'text' en listados: evita citar cifras concretas ('X de Y'). El backend añadirá, cuando proceda, el contador entre paréntesis con números fiables.
-- Navegación: sugiere 'ui_suggestions' de tipo 'Paginacion' ('Anterior'/'Siguiente') solo cuando exista paginación real. Considera paginación real cuando el resultado de un listar_* indique 'has_more' o metadatos equivalentes (next/prev). En ese caso, es OBLIGATORIO devolver al menos 'Siguiente' con 'pagination' completo; añade 'Anterior' cuando aplique. Incluye SIEMPRE el objeto 'pagination':
-  · 'Siguiente': {direction:'next', page: (page_actual+1 o 2 si no visible), size: (size_actual o 50 si no visible)}.
-  · 'Anterior': inclúyelo solo si hay página previa (prevPage) o si page_actual>1, con {direction:'prev', page: (page_actual-1 o 1 si no visible), size: (size_actual o 50)}.
-  · No incluyas 'contextToken'; lo añadirá el backend si hay paginación real. Si no hay paginación real o metadatos, NO devuelvas sugerencias 'Paginacion'. Es obligatorio: una 'Paginacion' sin 'pagination' será inválida; si no puedes calcularla, omite esa sugerencia.
 
 Saludos (inicio de chat):
 - Si detectas saludo/apertura o un mensaje fuera del contexto del API de academias, NO hagas tool_calls. Es OBLIGATORIO devolver: 'text' breve (no vacío) y 'ui_suggestions' (2–3 tipadas). Nunca devuelvas 'ui_suggestions': [] ni 'text' vacío. Compórtate con inteligencia humana.
@@ -219,21 +214,21 @@ Salida (solo estructura): {
 - **docs.openapi_json** — GET /openapi.json
   - `GET /openapi.json`
 
-}, {role=system, content=Perfil_usuario: {"nombre":"Admin Plataforma","id":1496}}, {role=user, content=hola que tal estas?}]
-2025-10-20T22:26:53.554+02:00  INFO 15972 --- [nio-8080-exec-2] c.w.p.chat.service.OpenAICallApiService  : Whitelist cargada desde served-openapi.json con 24 endpoints
-2025-10-20T22:26:55.642+02:00  WARN 15972 --- [nio-8080-exec-2] c.w.p.chat.service.OpenAICallApiService  : El mensaje recibido no es del tipo esperado: null
-2025-10-20T22:26:55.643+02:00  INFO 15972 --- [nio-8080-exec-2] c.w.p.chat.service.OpenAICallApiService  : No hubo tool_calls en la respuesta.
+, role=system}, {content=Perfil_usuario: {"nombre":"Admin Plataforma","id":1496}, role=system}, {content=consultar un usuario, role=user}]
+2025-10-21T16:27:58.601+02:00  INFO 5244 --- [nio-8080-exec-3] c.w.p.chat.service.OpenAICallApiService  : Whitelist cargada desde served-openapi.json con 24 endpoints
+2025-10-21T16:28:00.676+02:00  WARN 5244 --- [nio-8080-exec-3] c.w.p.chat.service.OpenAICallApiService  : El mensaje recibido no es del tipo esperado: null
+2025-10-21T16:28:00.676+02:00  INFO 5244 --- [nio-8080-exec-3] c.w.p.chat.service.OpenAICallApiService  : No hubo tool_calls en la respuesta.
 [ChatService][DEBUG] Raw OpenAI first response string (pretty):
 {
-  "id" : "chatcmpl-CSqkvQySQnYYMWxBBQP2CHeyjSAJ3",
+  "id" : "chatcmpl-CT7d8TIkm1NsViX1b4psw30vF848R",
   "object" : "chat.completion",
-  "created" : 1760992013,
+  "created" : 1761056878,
   "model" : "gpt-4o-mini-2024-07-18",
   "choices" : [ {
     "index" : 0,
     "message" : {
       "role" : "assistant",
-      "content" : "{\n  \"text\": \"¡Hola! Estoy aquí para ayudarte. ¿En qué puedo asistirte hoy?\",\n  \"ui_suggestions\": [\n    { \"id\": \"sg-g-list-academias\", \"display_text\": \"Listar academias\", \"type\": \"Generica\" },\n    { \"id\": \"sg-g-list-usuarios\", \"display_text\": \"Listar usuarios\", \"type\": \"Generica\" }\n  ]\n}",
+      "content" : "{\"text\":\"Necesito que me indiques el ID o el email del usuario que deseas consultar. ¿Quieres buscarlo o ver un listado de usuarios primero?\"}",
       "refusal" : null,
       "annotations" : [ ]
     },
@@ -241,9 +236,9 @@ Salida (solo estructura): {
     "finish_reason" : "stop"
   } ],
   "usage" : {
-    "prompt_tokens" : 4657,
-    "completion_tokens" : 93,
-    "total_tokens" : 4750,
+    "prompt_tokens" : 4524,
+    "completion_tokens" : 38,
+    "total_tokens" : 4562,
     "prompt_tokens_details" : {
       "cached_tokens" : 0,
       "audio_tokens" : 0
@@ -260,2077 +255,779 @@ Salida (solo estructura): {
 }
 [ChatService][DEBUG] No tool_calls, initial content (pretty):
 {
-  "text" : "¡Hola! Estoy aquí para ayudarte. ¿En qué puedo asistirte hoy?",
-  "ui_suggestions" : [ {
-    "id" : "sg-g-list-academias",
-    "display_text" : "Listar academias",
-    "type" : "Generica"
-  }, {
-    "id" : "sg-g-list-usuarios",
-    "display_text" : "Listar usuarios",
-    "type" : "Generica"
-  } ]
+  "text" : "Necesito que me indiques el ID o el email del usuario que deseas consultar. ¿Quieres buscarlo o ver un listado de usuarios primero?"
 }
-[ChatService][DEBUG] buildEnvelopeFromContentNode(type=chat, items=0) =>
+DEBUG 2025-10-21T16:28:00.694955500 [ChatController][chat] Respuesta generada por ChatService (JSON completo, pretty):
 {
   "status" : "success",
-  "message" : "¡Hola! Estoy aquí para ayudarte. ¿En qué puedo asistirte hoy?",
+  "message" : "Necesito que me indiques el ID o el email del usuario que deseas consultar. ¿Quieres buscarlo o ver un listado de usuarios primero?",
   "data" : {
     "type" : "chat",
     "items" : [ ]
   },
-  "uiSuggestions" : [ {
-    "id" : "sg-g-list-academias",
-    "displayText" : "Listar academias",
-    "type" : "Generica"
-  }, {
-    "id" : "sg-g-list-usuarios",
-    "displayText" : "Listar usuarios",
-    "type" : "Generica"
-  } ],
-  "uiSuggestionsVersion" : 1,
+  "uiSuggestions" : [ ],
   "messages" : [ ]
 }
-DEBUG 2025-10-20T22:26:55.669955100 [ChatController][chat] Respuesta generada por ChatService (JSON completo, pretty):
+DEBUG: UsuarioId obtenido del token JWT: 1496
+DEBUG: Delegated token generation moved to ChatService (on demand).
+DEBUG 2025-10-21T16:28:01.245976700 [ChatController][chat] Generando token delegado para el usuario: 1496
+[ChatService][DEBUG] runChat called with incoming: [com.workers.profesores.chat.dto.ChatRequest$Message@6244ad1f]
+[ChatService][DEBUG] Authorization header received (masked): Bearer ...
+[JwtDelegationService][DUMP] Delegated Authorization header: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl92ZXJzaW9uIjowLCJhY3RvciI6ImNoYXQtYmFja2VuZCIsInN1YiI6IntcInRva2VuX3ZlcnNpb25cIjowLFwidXN1YXJpb19pZFwiOjE0OTZ9Iiwicm9sZXMiOlsiQWRtaW5fcGxhdGFmb3JtYSJdLCJpc3MiOiJjaGF0LWJhY2tlbmQiLCJleHAiOjE3NjEwNTcxODEsImlhdCI6MTc2MTA1Njg4MSwianRpIjoiNGIwZTc4ZjUtOTQyOC00NjBjLTk5NzQtNmJiOGU1ZjY1YjJkIn0.tEKcGSSuJSApve0mHMmb1sKFcrhPpWjKHcSQ-NmpOkY
+[JwtDelegationService][DUMP] Claims: {token_version=0, actor=chat-backend, sub={"token_version":0,"usuario_id":1496}, roles=[Admin_plataforma], iss=chat-backend, exp=1761057181, iat=1761056881, jti=4b0e78f5-9428-460c-9974-6bb8e5f65b2d}
+[JwtDelegationService][DUMP] token_header_b64=eyJhbGciOiJIUzI1NiJ9
+[JwtDelegationService][DUMP] token_payload_b64=eyJ0b2tlbl92ZXJzaW9uIjowLCJhY3RvciI6ImNoYXQtYmFja2VuZCIsInN1YiI6IntcInRva2VuX3ZlcnNpb25cIjowLFwidXN1YXJpb19pZFwiOjE0OTZ9Iiwicm9sZXMiOlsiQWRtaW5fcGxhdGFmb3JtYSJdLCJpc3MiOiJjaGF0LWJhY2tlbmQiLCJleHAiOjE3NjEwNTcxODEsImlhdCI6MTc2MTA1Njg4MSwianRpIjoiNGIwZTc4ZjUtOTQyOC00NjBjLTk5NzQtNmJiOGU1ZjY1YjJkIn0
+[JwtDelegationService][DUMP] token_signature_b64=tEKcGSSuJSApve0mHMmb1sKFcrhPpWjKHcSQ-NmpOkY
+[JwtDelegationService][DUMP] token_header_json={"alg":"HS256"}
+[JwtDelegationService][DUMP] token_payload_json={"token_version":0,"actor":"chat-backend","sub":"{\"token_version\":0,\"usuario_id\":1496}","roles":["Admin_plataforma"],"iss":"chat-backend","exp":1761057181,"iat":1761056881,"jti":"4b0e78f5-9428-460c-9974-6bb8e5f65b2d"}
+[JwtDelegationService][DUMP] token_sha256=4b93cd8fa8ab01eb66005ecea43d7e6f3846456d2a41c2a75d73e2cebee6b3f1
+[JwtDelegationService][DUMP] delegationSecret_sha256=a3af8c7ea176f7f591e0b82c9699f5fdee0ebddb89e1cd46e06f79e8a1953cb9 delegationSecret_len=32
+[ChatService][DEBUG] System prompt constructed (trimmed): Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), breve y claro. Te pueden llegar chats sobre temas del contexto del api de academias y la whitelist que tienes disponible y chats que nada tengan que ver, siempre ofrece respuestas inte...
+[ChatService][DEBUG] Seed messages for OpenAI: [{content=Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), breve y claro. Te pueden llegar chats sobre temas del contexto del api de academias y la whitelist que tienes disponible y chats que nada tengan que ver, siempre ofrece respuestas inteligentes humanas. Si no necesitas obtener datos, responde con texto inteligente y siempre ofrece sugerencias relacionadas con el rol del usuario que te pregunta y con el contexto de la whitelist que tienes disponible. Para obtener o mutar datos cuando sea necesario, usa SOLO las herramientas whitelisteadas: 'call_api' (una llamada) y 'call_api_batch' (varias llamadas en un mismo turno). Todas las llamadas deben respetar las autorizaciones y el ámbito del usuario logueado. Pide confirmación antes de operaciones destructivas (borrar/modificar). Para listados muy grandes, sugiere exportar a CSV/Excel. No uses tablas Markdown en mensajes del sistema. Contexto del usuario: roles=[Admin_plataforma], academiaId=null. Ámbito por rol: Admin_academia => ámbito 'academia' (limita siempre a su academia). Profesor_academia => solo su academia y cursos propios (puede crear sesiones, añadir anotaciones, consultar lista de alumnos del curso, notas y progreso). Admin_plataforma => intenta inferir la academia objetivo por el contexto; si no es claro, pide confirmación. Perfil_usuario: {"nombre":"Admin Plataforma","id":1496}.
+También recibirás: (a) el historial de la conversación (mensajes previos), y (b) señales de navegación cuando el cliente acepte sugerencias de paginación o cualquier otra sugerencia que le hayas enviado anteriormente (como mensajes especiales del asistente que el backend entiende). Úsalos como contexto, no los repitas al usuario.
+Recursos disponibles (whitelist): [academias, usuarios]. Recursos no disponibles: [cursos, alumnos, profesores].
+Reglas críticas (prioritarias):
+- No inventes recursos ni conteos. Si un recurso NO está en la whitelist, dilo y ofrece alternativas válidas.
+- 'alumno' NO es 'usuario'. Los usuarios solo pueden tener roles ['Admin_plataforma','Admin_academia','Profesor_academia']. No mapees 'alumnos' a 'usuarios'.
+- Confirmación OBLIGATORIA: antes de cualquier modificación o baja SIEMPRE debes pedir confirmación explícita al usuario y mostrar el detalle del registro a afectar. Nunca ejecutes PUT/DELETE en el primer turno. Si falta identificador (id/email), primero pregunta o propone listar/buscar.
+- Respeta el ámbito por rol: limita resultados a lo que el rol/academia permita.
+- Evita jerga técnica en el 'text' (no digas 'whitelist', 'endpoint', 'tool_call', 'schema'); redacta natural.
+
+Contrato de salida (estricto):
+- Devuelve SOLO un objeto JSON válido (sin texto fuera del JSON).
+- 'text': OBLIGATORIO y NO vacío. Redacta breve, natural y útil.
+- Si devuelves listados, usa SIEMPRE la clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores') y copia propiedades originales.
+  · Puedes añadir campos derivados en castellano (p. ej., 'numero_usuarios'), sin sobrescribir originales.
+  · 'summary_fields': 1–2 claves relevantes (p. ej., ['nombre','email']).
+- Si NO has usado herramientas (no hay tool_calls), NO devuelvas arrays de recursos. En ese caso, limita la salida a { 'text': <no vacío>, 'ui_suggestions': [...] (si procede) }. Para listados, DEBES usar herramientas.
+- En el segundo turno, cuando dispongas de tool_outputs con 'items', DEBES devolver el array bajo su clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores'); el backend lo mapeará a data.items.
+- 'ui_suggestions': devuelve 2–3 cuando proceda. Tipos: 'Paginacion'|'Registro'|'Generica' (ver definiciones). Cualquier sugerencia con type='Paginacion' que NO incluya el objeto 'pagination' será inválida y rechazada por el backend (no la emitas).
+- Optimización listados grandes: si el array tiene ≥30 ítems, limita por ítem los campos mostrados a un resumen útil (id, nombre, email, estado, rol cuando existan) y apóyate en 'summary_fields'. Evita payloads extensos para reducir latencia.
+
+Comportamiento general:
+- Si NO hace falta API (saludos, charla breve, aritmética, fuera de dominio, o falta aclaración), responde SIN herramientas y ofrece 'ui_suggestions' útiles.
+- Si SÍ hace falta y existe endpoint permitido, usa 'call_api' (1 llamada) o 'call_api_batch' (agregaciones de varias entidades).
+
+Reglas de dominio (clave):
+- 'alumno' NO es 'usuario'. Los usuarios solo pueden tener roles 'Admin_plataforma','Admin_academia','Profesor_academia'. No mapees 'alumnos' a 'usuarios'.
+- Si piden 'alumnos' y no hay endpoint de 'alumnos', explícalo y ofrece alternativas válidas ('usuarios' o 'cursos'), sin inventar datos.
+
+Cuándo NO usar herramientas (abstención):
+- Saludos/cortesías ('hola', 'buenas', 'me llamo...').
+- Charla breve o preguntas que puedes contestar sin API (p. ej., '¿cuánto es 5 x 5?').
+- Consultas fuera de dominio ('perros', 'clima', matemáticas generales).
+- Aclaraciones/confirmaciones previas: si piden modificar/borrar, primero localiza el registro (GET) y muestra su detalle, y SOLO después pide confirmación explícita en un mensaje posterior. Incluso si el usuario escribe 'confirmo' en su primer mensaje, NO ejecutes la mutación en el primer turno.
+En estos casos, compórtate con inteligencia humana y responde SIN herramientas con un JSON coherente: { 'text': <no vacío>, 'ui_suggestions': [...(2–3 si procede)...] }. No devuelvas arrays de recursos.
+
+Herramientas disponibles (úsalas cuando necesites acceder a datos proporcionados por la API y su whitelist):
+- call_api: una sola llamada a un endpoint permitido. name=operationId, method=GET|POST|PUT|DELETE, y opcionalmente 'pathParams'|'query'|'body'.
+- call_api_batch: varias llamadas en un mismo turno, con 'calls'=[...] de objetos {name, method, pathParams?, query?, body?}.
+  · Úsalo para agregaciones/estadísticas que requieren combinar resultados de varias entidades (p. ej., 'usuarios por academia', 'totales por estado').
+  · Limita el número de entidades a un máximo razonable (p. ej., 3) para no saturar la llamada; ofrece 'continuar' como sugerencia si el usuario quiere ver más.
+
+Preferencia de navegación: para cambiar de página dentro de la MISMA entidad, prefiere 'call_api' (una sola llamada) y evita 'call_api_batch' salvo agregaciones multi‑entidad.
+
+Ejemplo call_api (solo estructura):
+assistant.tool_call => name: 'call_api', arguments: { 'name':'usuarios.listar_usuarios', 'method':'GET', 'query':{ 'estado':'activo' } }
+
+Ejemplo call_api_batch (solo estructura):
+assistant.tool_call => name: 'call_api_batch', arguments: {
+  'calls': [
+    { 'name': 'academias.listar_academias', 'method': 'GET' },
+    { 'name': 'usuarios.listar_usuarios', 'method': 'GET', 'query': { 'academia_id': 308 } },
+    { 'name': 'usuarios.listar_usuarios', 'method': 'GET', 'query': { 'academia_id': 309 } }
+  ]
+}
+(Si hay muchas academias, limita a 3 y sugiere 'continuar' como 'ui_suggestions' de tipo 'Generica').
+
+Mutaciones (modificaciones y bajas): confirmación obligatoria
+- Nunca ejecutes PUT/DELETE en el primer turno.
+- Patrón: (1) Localiza y muestra el detalle con GET; (2) Pide confirmación explícita al usuario; (3) Solo tras recibir un nuevo mensaje de confirmación, procede con PUT/DELETE en un turno posterior.
+- Si hay 0 o >1 coincidencias, no propongas mutar y pide aclaración (filtros o identificador exacto).
+
+Definiciones que necesitas conocer:
+- ui_suggestions: arreglo de sugerencias tipadas para la UI. Cada elemento es un objeto con:
+  { 'id': string, 'display_text': string, 'type': 'Paginacion'|'Registro'|'Generica', 'recordAction'?: 'Alta'|'Baja'|'Modificacion'|'Consulta', 'pagination'?: { 'direction': 'next'|'prev', 'page': number, 'size': number } }
+  · En type='Registro', usa 'recordAction' (camelCase) con uno de los valores indicados.
+  · En type='Paginacion', incluye SIEMPRE 'pagination' con 'direction', 'page' y 'size'. No incluyas 'contextToken'; lo añadirá el backend si hay paginación real. Si no hay paginación real o metadatos, NO devuelvas sugerencias 'Paginacion'.
+- summary_fields: array con 1–2 claves RELEVANTES de los ítems listados (p. ej., ['nombre','email']).
+- Recursos listables: devuelve los arrays bajo la clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores') y copia propiedades originales.
+- Sinónimos útiles (siempre respetando los filtros que existan en la whitelist):
+  · 'activos'/'activas'/'vigentes'/'en alta' => usa query.estado='activo' si existe.
+  · 'dados de baja'/'de baja'/'en baja' => filtra por fecha_baja_gte si el usuario da un rango/fecha; si no existe ese filtro, informa que no hay filtro directo o usa alternativas de la whitelist.
+  · 'recientes'/'últimos'/'más nuevos' => sugiere order_by='fecha_alta' + order_dir='desc' si están soportados.
+  · 'primeros N'/'muestra N'/'enséñame N' => size=N (respetando el tope 50).
+  · 'que contenga X'/'incluya X'/'similar a X' => usa *_contains si existe (p. ej., nombre_contains, email_contains).
+
+Sugerencias de UI (las ui_suggestions son tipadas). Son acciones próximas que le pueden interesar al usuario:
+- Devuelve 2–3 'ui_suggestions' cuando proceda. Cada elemento conforme a la definición anterior.
+- En saludos o mensajes fuera del contexto del API, las 'ui_suggestions' son OBLIGATORIAS (2–3 elementos).
+- Clasificación:
+  · Paginacion: navegación entre páginas reales. 'display_text' minimalista: 'Anterior'/'Siguiente'. Debe incluir 'pagination' {direction,page,size}. Es ERROR devolver 'type':'Paginacion' sin 'pagination'.
+  · Registro: acciones sobre un registro del listado. Indica 'recordAction' en ['Alta','Baja','Modificacion','Consulta'].
+  · Generica: filtros, exportaciones u otras acciones sobre el conjunto.
+
+Ejemplos canónicos de 'ui_suggestions' (solo estructura, usa estos formatos exactos):
+- Paginacion (dos elementos típicos):
+  [
+    { 'id':'pg-prev', 'display_text':'Anterior', 'type':'Paginacion', 'pagination': { 'direction':'prev', 'page': 1, 'size': 50 } },
+    { 'id':'pg-next', 'display_text':'Siguiente', 'type':'Paginacion', 'pagination': { 'direction':'next', 'page': 2, 'size': 50 } }
+  ]
+  (No incluyas 'contextToken'; lo añade el backend si hay paginación real).
+  Ejemplo (estando en página 2 de un listado con más páginas):
+  [
+    { 'id':'pg-prev', 'display_text':'Anterior', 'type':'Paginacion', 'pagination': { 'direction':'prev', 'page': 1, 'size': 50 } },
+    { 'id':'pg-next', 'display_text':'Siguiente', 'type':'Paginacion', 'pagination': { 'direction':'next', 'page': 3, 'size': 50 } }
+  ]
+- Registro (accionar sobre elementos del listado):
+  [
+    { 'id':'sg-r1', 'display_text':'Ver detalles', 'type':'Registro', 'recordAction':'Consulta' },
+    { 'id':'sg-r2', 'display_text':'Crear usuario', 'type':'Registro', 'recordAction':'Alta' },
+    { 'id':'sg-r3', 'display_text':'Editar usuario', 'type':'Registro', 'recordAction':'Modificacion' },
+    { 'id':'sg-r4', 'display_text':'Eliminar usuario', 'type':'Registro', 'recordAction':'Baja' }
+  ]
+- Generica (acciones sobre el conjunto):
+  [
+    { 'id':'sg-g1', 'display_text':'Exportar a CSV', 'type':'Generica' },
+    { 'id':'sg-g2', 'display_text':'Aplicar filtro estado=Activo', 'type':'Generica' }
+  ]
+Reglas: cada sugerencia DEBE tener 'id', 'display_text' y 'type'. Para 'Registro' añade 'recordAction'. Para 'Paginacion' añade 'pagination' con 'direction'|'page'|'size'. Nunca devuelvas 'ui_suggestions': [].
+
+Patrones recomendados por intención (usa estos formatos, adaptando display_text al recurso real):
+- Listado:
+  [
+    { 'id':'sg-g-find-email', 'display_text':'Buscar por email', 'type':'Generica' },
+    { 'id':'sg-r-view', 'display_text':'Ver detalle (ID)', 'type':'Registro', 'recordAction':'Consulta' },
+    { 'id':'sg-g-filter-rol-estado', 'display_text':'Filtrar por rol/estado', 'type':'Generica' }
+  ]
+  y para navegación:
+  [ { 'id':'pg-prev', 'display_text':'Anterior', 'type':'Paginacion', 'pagination': { 'direction':'prev', 'page': 1, 'size': 50 } }, { 'id':'pg-next', 'display_text':'Siguiente', 'type':'Paginacion', 'pagination': { 'direction':'next', 'page': 2, 'size': 50 } } ]
+  (Nunca devuelvas un listado sin antes usar herramientas; si no se han ejecutado tool_calls, no emitas arrays de recursos).
+- Modificar:
+  [
+    { 'id':'sg-g-ask-id-name', 'display_text':'Dime el ID o nombre exacto', 'type':'Generica' },
+    { 'id':'sg-g-find-name', 'display_text':'Buscar por nombre', 'type':'Generica' },
+    { 'id':'sg-r-view-before-edit', 'display_text':'Ver detalle antes de modificar', 'type':'Registro', 'recordAction':'Consulta' }
+  ]
+- Fuera de dominio:
+    { 'id':'sg-g-list-academias', 'display_text':'Listar academias', 'type':'Generica' },
+    { 'id':'sg-g-list-usuarios', 'display_text':'Listar usuarios', 'type':'Generica' },
+    { 'id':'sg-g-help', 'display_text':'Ayuda sobre lo que puedo hacer', 'type':'Generica' }
+  ]
+
+Saludos (inicio de chat):
+- Si detectas saludo/apertura o un mensaje fuera del contexto del API de academias, NO hagas tool_calls. Es OBLIGATORIO devolver: 'text' breve (no vacío) y 'ui_suggestions' (2–3 tipadas). Nunca devuelvas 'ui_suggestions': [] ni 'text' vacío. Compórtate con inteligencia humana.
+- Propón sugerencias acordes al rol y a los recursos disponibles:
+  · Admin_plataforma: 'Listar academias' o 'Listar usuarios'.
+  · Admin_academia: 'Listar cursos' o 'Listar alumnos'.
+  · Profesor_academia: 'Ver mis cursos' o 'Listar alumnos'.
+  Si un recurso no está disponible (p. ej., 'alumnos'), sugiere una alternativa válida (p. ej., 'usuarios' o 'cursos').
+
+Ejemplo (saludo):
+Entrada: 'hola'
+Salida (solo estructura): {
+  'text': '¡Hola! ¿En qué puedo ayudarte?',
+  'ui_suggestions': [ { 'id':'sg-g-list-academias','display_text':'Listar academias','type':'Generica' }, { 'id':'sg-g-list-usuarios','display_text':'Listar usuarios','type':'Generica' } ]
+}
+
+Ejemplo (modificar sin identificador, reforzando aclaración y próximos pasos):
+Entrada: 'dame de baja al usuario Pepe'
+Salida (solo estructura): {
+  'text': 'Necesito el id o email exacto para continuar. ¿Quieres buscarlo o ver su detalle antes de modificar?',
+  'ui_suggestions': [ { 'id':'sg-g-ask-id-name','display_text':'Dime el ID o nombre exacto','type':'Generica' }, { 'id':'sg-g-find-name','display_text':'Buscar por nombre','type':'Generica' }, { 'id':'sg-r-view-before-edit','display_text':'Ver detalle antes de modificar','type':'Registro','recordAction':'Consulta' } ]
+}
+
+
+
+
+### Endpoints permitidos (descripción)
+- **academias.listar_academias** — Auto-generated operation for academias.listar_academias
+  - `GET /academias`
+  - query: id, nombre, nombre_contains, page, size
+  - nota: respuesta paginada (usa parámetros page/size).
+- **academias.crear_academia** — Auto-generated operation for academias.crear_academia
+  - `POST /academias`
+- **academias.eliminar_academia** — Auto-generated operation for academias.eliminar_academia
+  - `DELETE /academias/{academia_id}`
+- **academias.obtener_academia** — Auto-generated operation for academias.obtener_academia
+  - `GET /academias/{academia_id}`
+- **academias.modificar_academia** — Auto-generated operation for academias.modificar_academia
+  - `PATCH /academias/{academia_id}`
+- **login.login** — Inicio de sesión con email y password
+  - `POST /auth/login`
+- **login.logout** — Auto-generated operation for login_bp.logout
+  - `POST /auth/logout`
+- **login.refresh_tokens** — Auto-generated operation for login_bp.refresh_tokens
+  - `POST /auth/refresh`
+- **login.unblock_user** — Auto-generated operation for login_bp.unblock_user
+  - `POST /auth/unblock`
+- **docs.docs_ui** — Auto-generated operation for docs.docs_ui
+  - `GET /docs`
+- **health** — Auto-generated operation for health
+  - `GET /health`
+- **docs.openapi_json** — Auto-generated operation for docs.openapi_json
+  - `GET /openapi.json`
+
+, role=system}, {content=Perfil_usuario: {"nombre":"Admin Plataforma","id":1496}, role=system}, {content=modificar un alumno, role=user}]
+2025-10-21T16:28:01.265+02:00  INFO 5244 --- [nio-8080-exec-7] c.w.p.chat.service.OpenAICallApiService  : Whitelist cargada desde served-openapi.json con 24 endpoints
+2025-10-21T16:28:02.548+02:00  WARN 5244 --- [nio-8080-exec-7] c.w.p.chat.service.OpenAICallApiService  : El mensaje recibido no es del tipo esperado: null
+2025-10-21T16:28:02.550+02:00  INFO 5244 --- [nio-8080-exec-7] c.w.p.chat.service.OpenAICallApiService  : No hubo tool_calls en la respuesta.
+[ChatService][DEBUG] Raw OpenAI first response string (pretty):
+{
+  "id" : "chatcmpl-CT7dB2UDzjapv1tqTNB8wK39W5TuT",
+  "object" : "chat.completion",
+  "created" : 1761056881,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "content" : "{\"text\":\"No puedo modificar alumnos directamente, ya que no tengo acceso a esa información. Sin embargo, puedo ayudarte a gestionar usuarios o academias. ¿Te gustaría listar usuarios o academias para ver qué opciones tienes?\"}",
+      "refusal" : null,
+      "annotations" : [ ]
+    },
+    "logprobs" : null,
+    "finish_reason" : "stop"
+  } ],
+  "usage" : {
+    "prompt_tokens" : 4433,
+    "completion_tokens" : 50,
+    "total_tokens" : 4483,
+    "prompt_tokens_details" : {
+      "cached_tokens" : 3584,
+      "audio_tokens" : 0
+    },
+    "completion_tokens_details" : {
+      "reasoning_tokens" : 0,
+      "audio_tokens" : 0,
+      "accepted_prediction_tokens" : 0,
+      "rejected_prediction_tokens" : 0
+    }
+  },
+  "service_tier" : "default",
+  "system_fingerprint" : "fp_560af6e559"
+}
+[ChatService][DEBUG] No tool_calls, initial content (pretty):
+{
+  "text" : "No puedo modificar alumnos directamente, ya que no tengo acceso a esa información. Sin embargo, puedo ayudarte a gestionar usuarios o academias. ¿Te gustaría listar usuarios o academias para ver qué opciones tienes?"
+}
+DEBUG 2025-10-21T16:28:02.556164800 [ChatController][chat] Respuesta generada por ChatService (JSON completo, pretty):
 {
   "status" : "success",
-  "message" : "¡Hola! Estoy aquí para ayudarte. ¿En qué puedo asistirte hoy?",
+  "message" : "No puedo modificar alumnos directamente, ya que no tengo acceso a esa información. Sin embargo, puedo ayudarte a gestionar usuarios o academias. ¿Te gustaría listar usuarios o academias para ver qué opciones tienes?",
   "data" : {
     "type" : "chat",
     "items" : [ ]
   },
-  "uiSuggestions" : [ {
-    "id" : "sg-g-list-academias",
-    "displayText" : "Listar academias",
-    "type" : "Generica"
-  }, {
-    "id" : "sg-g-list-usuarios",
-    "displayText" : "Listar usuarios",
-    "type" : "Generica"
+  "uiSuggestions" : [ ],
+  "messages" : [ ]
+}
+DEBUG: UsuarioId obtenido del token JWT: 1496
+DEBUG: Delegated token generation moved to ChatService (on demand).
+DEBUG 2025-10-21T16:28:03.093775300 [ChatController][chat] Generando token delegado para el usuario: 1496
+[ChatService][DEBUG] runChat called with incoming: [com.workers.profesores.chat.dto.ChatRequest$Message@530b8418]
+[ChatService][DEBUG] Authorization header received (masked): Bearer ...
+[JwtDelegationService][DUMP] Delegated Authorization header: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl92ZXJzaW9uIjowLCJhY3RvciI6ImNoYXQtYmFja2VuZCIsInN1YiI6IntcInRva2VuX3ZlcnNpb25cIjowLFwidXN1YXJpb19pZFwiOjE0OTZ9Iiwicm9sZXMiOlsiQWRtaW5fcGxhdGFmb3JtYSJdLCJpc3MiOiJjaGF0LWJhY2tlbmQiLCJleHAiOjE3NjEwNTcxODMsImlhdCI6MTc2MTA1Njg4MywianRpIjoiZjkzMWM1NWUtOGY1Ni00NTU1LTk5N2UtYzQ3NTIyYmZlYmY5In0.HuC6kevps_1WbKrDvYtX4PvO97lGQ0UstMKTpHB_I48
+[JwtDelegationService][DUMP] Claims: {token_version=0, actor=chat-backend, sub={"token_version":0,"usuario_id":1496}, roles=[Admin_plataforma], iss=chat-backend, exp=1761057183, iat=1761056883, jti=f931c55e-8f56-4555-997e-c47522bfebf9}
+[JwtDelegationService][DUMP] token_header_b64=eyJhbGciOiJIUzI1NiJ9
+[JwtDelegationService][DUMP] token_payload_b64=eyJ0b2tlbl92ZXJzaW9uIjowLCJhY3RvciI6ImNoYXQtYmFja2VuZCIsInN1YiI6IntcInRva2VuX3ZlcnNpb25cIjowLFwidXN1YXJpb19pZFwiOjE0OTZ9Iiwicm9sZXMiOlsiQWRtaW5fcGxhdGFmb3JtYSJdLCJpc3MiOiJjaGF0LWJhY2tlbmQiLCJleHAiOjE3NjEwNTcxODMsImlhdCI6MTc2MTA1Njg4MywianRpIjoiZjkzMWM1NWUtOGY1Ni00NTU1LTk5N2UtYzQ3NTIyYmZlYmY5In0
+[JwtDelegationService][DUMP] token_signature_b64=HuC6kevps_1WbKrDvYtX4PvO97lGQ0UstMKTpHB_I48
+[JwtDelegationService][DUMP] token_header_json={"alg":"HS256"}
+[JwtDelegationService][DUMP] token_payload_json={"token_version":0,"actor":"chat-backend","sub":"{\"token_version\":0,\"usuario_id\":1496}","roles":["Admin_plataforma"],"iss":"chat-backend","exp":1761057183,"iat":1761056883,"jti":"f931c55e-8f56-4555-997e-c47522bfebf9"}
+[JwtDelegationService][DUMP] token_sha256=0d7677cb8cee6c9bfb3a43357ff98d83e8a8e288d5cca7c4d73057c858b1be6b
+[JwtDelegationService][DUMP] delegationSecret_sha256=a3af8c7ea176f7f591e0b82c9699f5fdee0ebddb89e1cd46e06f79e8a1953cb9 delegationSecret_len=32
+[ChatService][DEBUG] System prompt constructed (trimmed): Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), breve y claro. Te pueden llegar chats sobre temas del contexto del api de academias y la whitelist que tienes disponible y chats que nada tengan que ver, siempre ofrece respuestas inte...
+[ChatService][DEBUG] Seed messages for OpenAI: [{content=Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), breve y claro. Te pueden llegar chats sobre temas del contexto del api de academias y la whitelist que tienes disponible y chats que nada tengan que ver, siempre ofrece respuestas inteligentes humanas. Si no necesitas obtener datos, responde con texto inteligente y siempre ofrece sugerencias relacionadas con el rol del usuario que te pregunta y con el contexto de la whitelist que tienes disponible. Para obtener o mutar datos cuando sea necesario, usa SOLO las herramientas whitelisteadas: 'call_api' (una llamada) y 'call_api_batch' (varias llamadas en un mismo turno). Todas las llamadas deben respetar las autorizaciones y el ámbito del usuario logueado. Pide confirmación antes de operaciones destructivas (borrar/modificar). Para listados muy grandes, sugiere exportar a CSV/Excel. No uses tablas Markdown en mensajes del sistema. Contexto del usuario: roles=[Admin_plataforma], academiaId=null. Ámbito por rol: Admin_academia => ámbito 'academia' (limita siempre a su academia). Profesor_academia => solo su academia y cursos propios (puede crear sesiones, añadir anotaciones, consultar lista de alumnos del curso, notas y progreso). Admin_plataforma => intenta inferir la academia objetivo por el contexto; si no es claro, pide confirmación. Perfil_usuario: {"nombre":"Admin Plataforma","id":1496}.
+También recibirás: (a) el historial de la conversación (mensajes previos), y (b) señales de navegación cuando el cliente acepte sugerencias de paginación o cualquier otra sugerencia que le hayas enviado anteriormente (como mensajes especiales del asistente que el backend entiende). Úsalos como contexto, no los repitas al usuario.
+Recursos disponibles (whitelist): [academias, usuarios]. Recursos no disponibles: [cursos, alumnos, profesores].
+Reglas críticas (prioritarias):
+- No inventes recursos ni conteos. Si un recurso NO está en la whitelist, dilo y ofrece alternativas válidas.
+- 'alumno' NO es 'usuario'. Los usuarios solo pueden tener roles ['Admin_plataforma','Admin_academia','Profesor_academia']. No mapees 'alumnos' a 'usuarios'.
+- Confirmación OBLIGATORIA: antes de cualquier modificación o baja SIEMPRE debes pedir confirmación explícita al usuario y mostrar el detalle del registro a afectar. Nunca ejecutes PUT/DELETE en el primer turno. Si falta identificador (id/email), primero pregunta o propone listar/buscar.
+- Respeta el ámbito por rol: limita resultados a lo que el rol/academia permita.
+- Evita jerga técnica en el 'text' (no digas 'whitelist', 'endpoint', 'tool_call', 'schema'); redacta natural.
+
+Contrato de salida (estricto):
+- Devuelve SOLO un objeto JSON válido (sin texto fuera del JSON).
+- 'text': OBLIGATORIO y NO vacío. Redacta breve, natural y útil.
+- Si devuelves listados, usa SIEMPRE la clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores') y copia propiedades originales.
+  · Puedes añadir campos derivados en castellano (p. ej., 'numero_usuarios'), sin sobrescribir originales.
+  · 'summary_fields': 1–2 claves relevantes (p. ej., ['nombre','email']).
+- Si NO has usado herramientas (no hay tool_calls), NO devuelvas arrays de recursos. En ese caso, limita la salida a { 'text': <no vacío>, 'ui_suggestions': [...] (si procede) }. Para listados, DEBES usar herramientas.
+- En el segundo turno, cuando dispongas de tool_outputs con 'items', DEBES devolver el array bajo su clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores'); el backend lo mapeará a data.items.
+- 'ui_suggestions': devuelve 2–3 cuando proceda. Tipos: 'Paginacion'|'Registro'|'Generica' (ver definiciones). Cualquier sugerencia con type='Paginacion' que NO incluya el objeto 'pagination' será inválida y rechazada por el backend (no la emitas).
+- Optimización listados grandes: si el array tiene ≥30 ítems, limita por ítem los campos mostrados a un resumen útil (id, nombre, email, estado, rol cuando existan) y apóyate en 'summary_fields'. Evita payloads extensos para reducir latencia.
+
+Comportamiento general:
+- Si NO hace falta API (saludos, charla breve, aritmética, fuera de dominio, o falta aclaración), responde SIN herramientas y ofrece 'ui_suggestions' útiles.
+- Si SÍ hace falta y existe endpoint permitido, usa 'call_api' (1 llamada) o 'call_api_batch' (agregaciones de varias entidades).
+
+Reglas de dominio (clave):
+- 'alumno' NO es 'usuario'. Los usuarios solo pueden tener roles 'Admin_plataforma','Admin_academia','Profesor_academia'. No mapees 'alumnos' a 'usuarios'.
+- Si piden 'alumnos' y no hay endpoint de 'alumnos', explícalo y ofrece alternativas válidas ('usuarios' o 'cursos'), sin inventar datos.
+
+Cuándo NO usar herramientas (abstención):
+- Saludos/cortesías ('hola', 'buenas', 'me llamo...').
+- Charla breve o preguntas que puedes contestar sin API (p. ej., '¿cuánto es 5 x 5?').
+- Consultas fuera de dominio ('perros', 'clima', matemáticas generales).
+- Aclaraciones/confirmaciones previas: si piden modificar/borrar, primero localiza el registro (GET) y muestra su detalle, y SOLO después pide confirmación explícita en un mensaje posterior. Incluso si el usuario escribe 'confirmo' en su primer mensaje, NO ejecutes la mutación en el primer turno.
+En estos casos, compórtate con inteligencia humana y responde SIN herramientas con un JSON coherente: { 'text': <no vacío>, 'ui_suggestions': [...(2–3 si procede)...] }. No devuelvas arrays de recursos.
+
+Herramientas disponibles (úsalas cuando necesites acceder a datos proporcionados por la API y su whitelist):
+- call_api: una sola llamada a un endpoint permitido. name=operationId, method=GET|POST|PUT|DELETE, y opcionalmente 'pathParams'|'query'|'body'.
+- call_api_batch: varias llamadas en un mismo turno, con 'calls'=[...] de objetos {name, method, pathParams?, query?, body?}.
+  · Úsalo para agregaciones/estadísticas que requieren combinar resultados de varias entidades (p. ej., 'usuarios por academia', 'totales por estado').
+  · Limita el número de entidades a un máximo razonable (p. ej., 3) para no saturar la llamada; ofrece 'continuar' como sugerencia si el usuario quiere ver más.
+
+Preferencia de navegación: para cambiar de página dentro de la MISMA entidad, prefiere 'call_api' (una sola llamada) y evita 'call_api_batch' salvo agregaciones multi‑entidad.
+
+Ejemplo call_api (solo estructura):
+assistant.tool_call => name: 'call_api', arguments: { 'name':'usuarios.listar_usuarios', 'method':'GET', 'query':{ 'estado':'activo' } }
+
+Ejemplo call_api_batch (solo estructura):
+assistant.tool_call => name: 'call_api_batch', arguments: {
+  'calls': [
+    { 'name': 'academias.listar_academias', 'method': 'GET' },
+    { 'name': 'usuarios.listar_usuarios', 'method': 'GET', 'query': { 'academia_id': 308 } },
+    { 'name': 'usuarios.listar_usuarios', 'method': 'GET', 'query': { 'academia_id': 309 } }
+  ]
+}
+(Si hay muchas academias, limita a 3 y sugiere 'continuar' como 'ui_suggestions' de tipo 'Generica').
+
+Mutaciones (modificaciones y bajas): confirmación obligatoria
+- Nunca ejecutes PUT/DELETE en el primer turno.
+- Patrón: (1) Localiza y muestra el detalle con GET; (2) Pide confirmación explícita al usuario; (3) Solo tras recibir un nuevo mensaje de confirmación, procede con PUT/DELETE en un turno posterior.
+- Si hay 0 o >1 coincidencias, no propongas mutar y pide aclaración (filtros o identificador exacto).
+
+Definiciones que necesitas conocer:
+- ui_suggestions: arreglo de sugerencias tipadas para la UI. Cada elemento es un objeto con:
+  { 'id': string, 'display_text': string, 'type': 'Paginacion'|'Registro'|'Generica', 'recordAction'?: 'Alta'|'Baja'|'Modificacion'|'Consulta', 'pagination'?: { 'direction': 'next'|'prev', 'page': number, 'size': number } }
+  · En type='Registro', usa 'recordAction' (camelCase) con uno de los valores indicados.
+  · En type='Paginacion', incluye SIEMPRE 'pagination' con 'direction', 'page' y 'size'. No incluyas 'contextToken'; lo añadirá el backend si hay paginación real. Si no hay paginación real o metadatos, NO devuelvas sugerencias 'Paginacion'.
+- summary_fields: array con 1–2 claves RELEVANTES de los ítems listados (p. ej., ['nombre','email']).
+- Recursos listables: devuelve los arrays bajo la clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores') y copia propiedades originales.
+- Sinónimos útiles (siempre respetando los filtros que existan en la whitelist):
+  · 'activos'/'activas'/'vigentes'/'en alta' => usa query.estado='activo' si existe.
+  · 'dados de baja'/'de baja'/'en baja' => filtra por fecha_baja_gte si el usuario da un rango/fecha; si no existe ese filtro, informa que no hay filtro directo o usa alternativas de la whitelist.
+  · 'recientes'/'últimos'/'más nuevos' => sugiere order_by='fecha_alta' + order_dir='desc' si están soportados.
+  · 'primeros N'/'muestra N'/'enséñame N' => size=N (respetando el tope 50).
+  · 'que contenga X'/'incluya X'/'similar a X' => usa *_contains si existe (p. ej., nombre_contains, email_contains).
+
+Sugerencias de UI (las ui_suggestions son tipadas). Son acciones próximas que le pueden interesar al usuario:
+- Devuelve 2–3 'ui_suggestions' cuando proceda. Cada elemento conforme a la definición anterior.
+- En saludos o mensajes fuera del contexto del API, las 'ui_suggestions' son OBLIGATORIAS (2–3 elementos).
+- Clasificación:
+  · Paginacion: navegación entre páginas reales. 'display_text' minimalista: 'Anterior'/'Siguiente'. Debe incluir 'pagination' {direction,page,size}. Es ERROR devolver 'type':'Paginacion' sin 'pagination'.
+  · Registro: acciones sobre un registro del listado. Indica 'recordAction' en ['Alta','Baja','Modificacion','Consulta'].
+  · Generica: filtros, exportaciones u otras acciones sobre el conjunto.
+
+Ejemplos canónicos de 'ui_suggestions' (solo estructura, usa estos formatos exactos):
+- Paginacion (dos elementos típicos):
+  [
+    { 'id':'pg-prev', 'display_text':'Anterior', 'type':'Paginacion', 'pagination': { 'direction':'prev', 'page': 1, 'size': 50 } },
+    { 'id':'pg-next', 'display_text':'Siguiente', 'type':'Paginacion', 'pagination': { 'direction':'next', 'page': 2, 'size': 50 } }
+  ]
+  (No incluyas 'contextToken'; lo añade el backend si hay paginación real).
+  Ejemplo (estando en página 2 de un listado con más páginas):
+  [
+    { 'id':'pg-prev', 'display_text':'Anterior', 'type':'Paginacion', 'pagination': { 'direction':'prev', 'page': 1, 'size': 50 } },
+    { 'id':'pg-next', 'display_text':'Siguiente', 'type':'Paginacion', 'pagination': { 'direction':'next', 'page': 3, 'size': 50 } }
+  ]
+- Registro (accionar sobre elementos del listado):
+  [
+    { 'id':'sg-r1', 'display_text':'Ver detalles', 'type':'Registro', 'recordAction':'Consulta' },
+    { 'id':'sg-r2', 'display_text':'Crear usuario', 'type':'Registro', 'recordAction':'Alta' },
+    { 'id':'sg-r3', 'display_text':'Editar usuario', 'type':'Registro', 'recordAction':'Modificacion' },
+    { 'id':'sg-r4', 'display_text':'Eliminar usuario', 'type':'Registro', 'recordAction':'Baja' }
+  ]
+- Generica (acciones sobre el conjunto):
+  [
+    { 'id':'sg-g1', 'display_text':'Exportar a CSV', 'type':'Generica' },
+    { 'id':'sg-g2', 'display_text':'Aplicar filtro estado=Activo', 'type':'Generica' }
+  ]
+Reglas: cada sugerencia DEBE tener 'id', 'display_text' y 'type'. Para 'Registro' añade 'recordAction'. Para 'Paginacion' añade 'pagination' con 'direction'|'page'|'size'. Nunca devuelvas 'ui_suggestions': [].
+
+Patrones recomendados por intención (usa estos formatos, adaptando display_text al recurso real):
+- Listado:
+  [
+    { 'id':'sg-g-find-email', 'display_text':'Buscar por email', 'type':'Generica' },
+    { 'id':'sg-r-view', 'display_text':'Ver detalle (ID)', 'type':'Registro', 'recordAction':'Consulta' },
+    { 'id':'sg-g-filter-rol-estado', 'display_text':'Filtrar por rol/estado', 'type':'Generica' }
+  ]
+  y para navegación:
+  [ { 'id':'pg-prev', 'display_text':'Anterior', 'type':'Paginacion', 'pagination': { 'direction':'prev', 'page': 1, 'size': 50 } }, { 'id':'pg-next', 'display_text':'Siguiente', 'type':'Paginacion', 'pagination': { 'direction':'next', 'page': 2, 'size': 50 } } ]
+  (Nunca devuelvas un listado sin antes usar herramientas; si no se han ejecutado tool_calls, no emitas arrays de recursos).
+- Modificar:
+  [
+    { 'id':'sg-g-ask-id-name', 'display_text':'Dime el ID o nombre exacto', 'type':'Generica' },
+    { 'id':'sg-g-find-name', 'display_text':'Buscar por nombre', 'type':'Generica' },
+    { 'id':'sg-r-view-before-edit', 'display_text':'Ver detalle antes de modificar', 'type':'Registro', 'recordAction':'Consulta' }
+  ]
+- Fuera de dominio:
+    { 'id':'sg-g-list-academias', 'display_text':'Listar academias', 'type':'Generica' },
+    { 'id':'sg-g-list-usuarios', 'display_text':'Listar usuarios', 'type':'Generica' },
+    { 'id':'sg-g-help', 'display_text':'Ayuda sobre lo que puedo hacer', 'type':'Generica' }
+  ]
+
+Saludos (inicio de chat):
+- Si detectas saludo/apertura o un mensaje fuera del contexto del API de academias, NO hagas tool_calls. Es OBLIGATORIO devolver: 'text' breve (no vacío) y 'ui_suggestions' (2–3 tipadas). Nunca devuelvas 'ui_suggestions': [] ni 'text' vacío. Compórtate con inteligencia humana.
+- Propón sugerencias acordes al rol y a los recursos disponibles:
+  · Admin_plataforma: 'Listar academias' o 'Listar usuarios'.
+  · Admin_academia: 'Listar cursos' o 'Listar alumnos'.
+  · Profesor_academia: 'Ver mis cursos' o 'Listar alumnos'.
+  Si un recurso no está disponible (p. ej., 'alumnos'), sugiere una alternativa válida (p. ej., 'usuarios' o 'cursos').
+
+Ejemplo (saludo):
+Entrada: 'hola'
+Salida (solo estructura): {
+  'text': '¡Hola! ¿En qué puedo ayudarte?',
+  'ui_suggestions': [ { 'id':'sg-g-list-academias','display_text':'Listar academias','type':'Generica' }, { 'id':'sg-g-list-usuarios','display_text':'Listar usuarios','type':'Generica' } ]
+}
+
+Ejemplo (modificar sin identificador, reforzando aclaración y próximos pasos):
+Entrada: 'dame de baja al usuario Pepe'
+Salida (solo estructura): {
+  'text': 'Necesito el id o email exacto para continuar. ¿Quieres buscarlo o ver su detalle antes de modificar?',
+  'ui_suggestions': [ { 'id':'sg-g-ask-id-name','display_text':'Dime el ID o nombre exacto','type':'Generica' }, { 'id':'sg-g-find-name','display_text':'Buscar por nombre','type':'Generica' }, { 'id':'sg-r-view-before-edit','display_text':'Ver detalle antes de modificar','type':'Registro','recordAction':'Consulta' } ]
+}
+
+
+
+
+### Endpoints permitidos (descripción)
+- **academias.listar_academias** — Auto-generated operation for academias.listar_academias
+  - `GET /academias`
+  - query: id, nombre, nombre_contains, page, size
+  - nota: respuesta paginada (usa parámetros page/size).
+- **academias.crear_academia** — Auto-generated operation for academias.crear_academia
+  - `POST /academias`
+- **academias.eliminar_academia** — Auto-generated operation for academias.eliminar_academia
+  - `DELETE /academias/{academia_id}`
+- **academias.obtener_academia** — Auto-generated operation for academias.obtener_academia
+  - `GET /academias/{academia_id}`
+- **academias.modificar_academia** — Auto-generated operation for academias.modificar_academia
+  - `PATCH /academias/{academia_id}`
+- **login.login** — Inicio de sesión con email y password
+  - `POST /auth/login`
+- **login.logout** — Auto-generated operation for login_bp.logout
+  - `POST /auth/logout`
+- **login.refresh_tokens** — Auto-generated operation for login_bp.refresh_tokens
+  - `POST /auth/refresh`
+- **login.unblock_user** — Auto-generated operation for login_bp.unblock_user
+  - `POST /auth/unblock`
+- **docs.docs_ui** — Auto-generated operation for docs.docs_ui
+  - `GET /docs`
+- **health** — Auto-generated operation for health
+  - `GET /health`
+- **docs.openapi_json** — Auto-generated operation for docs.openapi_json
+  - `GET /openapi.json`
+
+, role=system}, {content=Perfil_usuario: {"nombre":"Admin Plataforma","id":1496}, role=system}, {content=quería modificar un perro, role=user}]
+2025-10-21T16:28:03.119+02:00  INFO 5244 --- [io-8080-exec-10] c.w.p.chat.service.OpenAICallApiService  : Whitelist cargada desde served-openapi.json con 24 endpoints
+2025-10-21T16:28:04.933+02:00  WARN 5244 --- [io-8080-exec-10] c.w.p.chat.service.OpenAICallApiService  : El mensaje recibido no es del tipo esperado: null
+2025-10-21T16:28:04.935+02:00  INFO 5244 --- [io-8080-exec-10] c.w.p.chat.service.OpenAICallApiService  : No hubo tool_calls en la respuesta.
+[ChatService][DEBUG] Raw OpenAI first response string (pretty):
+{
+  "id" : "chatcmpl-CT7dDBXdvhqpgo1zD8RhiTc9JVXXI",
+  "object" : "chat.completion",
+  "created" : 1761056883,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "content" : "{\"text\":\"No puedo ayudar con eso, pero si necesitas asistencia relacionada con academias, usuarios o cualquier otro tema en ese ámbito, estaré encantado de ayudarte. ¿Te gustaría listar academias o usuarios?\"}",
+      "refusal" : null,
+      "annotations" : [ ]
+    },
+    "logprobs" : null,
+    "finish_reason" : "stop"
   } ],
-  "uiSuggestionsVersion" : 1,
+  "usage" : {
+    "prompt_tokens" : 4434,
+    "completion_tokens" : 49,
+    "total_tokens" : 4483,
+    "prompt_tokens_details" : {
+      "cached_tokens" : 4352,
+      "audio_tokens" : 0
+    },
+    "completion_tokens_details" : {
+      "reasoning_tokens" : 0,
+      "audio_tokens" : 0,
+      "accepted_prediction_tokens" : 0,
+      "rejected_prediction_tokens" : 0
+    }
+  },
+  "service_tier" : "default",
+  "system_fingerprint" : "fp_560af6e559"
+}
+[ChatService][DEBUG] No tool_calls, initial content (pretty):
+{
+  "text" : "No puedo ayudar con eso, pero si necesitas asistencia relacionada con academias, usuarios o cualquier otro tema en ese ámbito, estaré encantado de ayudarte. ¿Te gustaría listar academias o usuarios?"
+}
+DEBUG 2025-10-21T16:28:04.942148800 [ChatController][chat] Respuesta generada por ChatService (JSON completo, pretty):
+{
+  "status" : "success",
+  "message" : "No puedo ayudar con eso, pero si necesitas asistencia relacionada con academias, usuarios o cualquier otro tema en ese ámbito, estaré encantado de ayudarte. ¿Te gustaría listar academias o usuarios?",
+  "data" : {
+    "type" : "chat",
+    "items" : [ ]
+  },
+  "uiSuggestions" : [ ],
   "messages" : [ ]
 }
 DEBUG: UsuarioId obtenido del token JWT: 1496
 DEBUG: Delegated token generation moved to ChatService (on demand).
-DEBUG 2025-10-20T22:26:57.337694100 [ChatController][chat] Generando token delegado para el usuario: 1496
-[ChatService][DEBUG] runChat called with incoming: [com.workers.profesores.chat.dto.ChatRequest$Message@4b02560d]
+DEBUG 2025-10-21T16:28:05.471727900 [ChatController][chat] Generando token delegado para el usuario: 1496
+DEBUG 2025-10-21T16:28:05.473712900 [ChatController][chat] Llamando al API de academias con token delegado.
+[ChatService][DEBUG] runChat called with incoming: [com.workers.profesores.chat.dto.ChatRequest$Message@332fe390]
 [ChatService][DEBUG] Authorization header received (masked): Bearer ...
-[JwtDelegationService][DUMP] Delegated Authorization header: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl92ZXJzaW9uIjowLCJhY3RvciI6ImNoYXQtYmFja2VuZCIsInN1YiI6IntcInRva2VuX3ZlcnNpb25cIjowLFwidXN1YXJpb19pZFwiOjE0OTZ9Iiwicm9sZXMiOlsiQWRtaW5fcGxhdGFmb3JtYSJdLCJpc3MiOiJjaGF0LWJhY2tlbmQiLCJleHAiOjE3NjA5OTIzMTcsImlhdCI6MTc2MDk5MjAxNywianRpIjoiOWVmYjhlYjEtYTY0MC00MjUzLTk4ODAtNmI2Zjg2NDkzMzg0In0.bkJ_bszdlfbiPYRKI1iHugsL65NhZGYZooKJjbjBYOg
-[JwtDelegationService][DUMP] Claims: {token_version=0, actor=chat-backend, sub={"token_version":0,"usuario_id":1496}, roles=[Admin_plataforma], iss=chat-backend, exp=1760992317, iat=1760992017, jti=9efb8eb1-a640-4253-9880-6b6f86493384}
+[JwtDelegationService][DUMP] Delegated Authorization header: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl92ZXJzaW9uIjowLCJhY3RvciI6ImNoYXQtYmFja2VuZCIsInN1YiI6IntcInRva2VuX3ZlcnNpb25cIjowLFwidXN1YXJpb19pZFwiOjE0OTZ9Iiwicm9sZXMiOlsiQWRtaW5fcGxhdGFmb3JtYSJdLCJpc3MiOiJjaGF0LWJhY2tlbmQiLCJleHAiOjE3NjEwNTcxODUsImlhdCI6MTc2MTA1Njg4NSwianRpIjoiMDhkYmZjNWMtY2Y4NC00NTFjLTgzZjgtYWNkZjEzYmM4NzY1In0.tqnhw674mnm4uK2FjhS-3IfVNlWXKFcT774NzqNjb-0
+[JwtDelegationService][DUMP] Claims: {token_version=0, actor=chat-backend, sub={"token_version":0,"usuario_id":1496}, roles=[Admin_plataforma], iss=chat-backend, exp=1761057185, iat=1761056885, jti=08dbfc5c-cf84-451c-83f8-acdf13bc8765}
 [JwtDelegationService][DUMP] token_header_b64=eyJhbGciOiJIUzI1NiJ9
-[JwtDelegationService][DUMP] token_payload_b64=eyJ0b2tlbl92ZXJzaW9uIjowLCJhY3RvciI6ImNoYXQtYmFja2VuZCIsInN1YiI6IntcInRva2VuX3ZlcnNpb25cIjowLFwidXN1YXJpb19pZFwiOjE0OTZ9Iiwicm9sZXMiOlsiQWRtaW5fcGxhdGFmb3JtYSJdLCJpc3MiOiJjaGF0LWJhY2tlbmQiLCJleHAiOjE3NjA5OTIzMTcsImlhdCI6MTc2MDk5MjAxNywianRpIjoiOWVmYjhlYjEtYTY0MC00MjUzLTk4ODAtNmI2Zjg2NDkzMzg0In0
-[JwtDelegationService][DUMP] token_signature_b64=bkJ_bszdlfbiPYRKI1iHugsL65NhZGYZooKJjbjBYOg
+[JwtDelegationService][DUMP] token_payload_b64=eyJ0b2tlbl92ZXJzaW9uIjowLCJhY3RvciI6ImNoYXQtYmFja2VuZCIsInN1YiI6IntcInRva2VuX3ZlcnNpb25cIjowLFwidXN1YXJpb19pZFwiOjE0OTZ9Iiwicm9sZXMiOlsiQWRtaW5fcGxhdGFmb3JtYSJdLCJpc3MiOiJjaGF0LWJhY2tlbmQiLCJleHAiOjE3NjEwNTcxODUsImlhdCI6MTc2MTA1Njg4NSwianRpIjoiMDhkYmZjNWMtY2Y4NC00NTFjLTgzZjgtYWNkZjEzYmM4NzY1In0
+[JwtDelegationService][DUMP] token_signature_b64=tqnhw674mnm4uK2FjhS-3IfVNlWXKFcT774NzqNjb-0
 [JwtDelegationService][DUMP] token_header_json={"alg":"HS256"}
-[JwtDelegationService][DUMP] token_payload_json={"token_version":0,"actor":"chat-backend","sub":"{\"token_version\":0,\"usuario_id\":1496}","roles":["Admin_plataforma"],"iss":"chat-backend","exp":1760992317,"iat":1760992017,"jti":"9efb8eb1-a640-4253-9880-6b6f86493384"}
-[JwtDelegationService][DUMP] token_sha256=11758fae172bfb45ba591603525885a98ef9c88e773f9479bb11af8532ca34d6
+[JwtDelegationService][DUMP] token_payload_json={"token_version":0,"actor":"chat-backend","sub":"{\"token_version\":0,\"usuario_id\":1496}","roles":["Admin_plataforma"],"iss":"chat-backend","exp":1761057185,"iat":1761056885,"jti":"08dbfc5c-cf84-451c-83f8-acdf13bc8765"}
+[JwtDelegationService][DUMP] token_sha256=0cff74a8d4a1fc42d9b4ac37ef04ee4b7e0af084860dc1a251979856c77aa7cf
 [JwtDelegationService][DUMP] delegationSecret_sha256=a3af8c7ea176f7f591e0b82c9699f5fdee0ebddb89e1cd46e06f79e8a1953cb9 delegationSecret_len=32
 [ChatService][DEBUG] System prompt constructed (trimmed): Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), breve y claro. Te pueden llegar chats sobre temas del contexto del api de academias y la whitelist que tienes disponible y chats que nada tengan que ver, siempre ofrece respuestas inte...
-2025-10-20T22:26:57.351+02:00  INFO 15972 --- [nio-8080-exec-6] c.w.p.chat.service.OpenAICallApiService  : Whitelist cargada desde served-openapi.json con 24 endpoints
-2025-10-20T22:26:58.387+02:00  WARN 15972 --- [nio-8080-exec-6] c.w.p.chat.service.OpenAICallApiService  : El mensaje recibido no es del tipo esperado: null
-2025-10-20T22:26:58.388+02:00  INFO 15972 --- [nio-8080-exec-6] c.w.p.chat.service.OpenAICallApiService  : No hubo tool_calls en la respuesta.
-[API-PROXY][DUMP] sanitizedAuth_preview=eyJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl9...
-[API-PROXY][DUMP] token_sha4=11758fae token_len=360
-DEBUG: UsuarioId obtenido del token JWT: 1496
-[ChatService][DEBUG] buildEnvelopeFromContentNode(type=usuarios, items=50) =>
-{
-  "status" : "success",
-  "message" : "He obtenido el listado de usuarios, que incluye información como nombre, email, estado y rol. Actualmente hay más usuarios disponibles, por lo que puedes ver más en la siguiente página.",
-  "data" : {
-    "type" : "usuarios",
-    "items" : [ {
-      "id" : 1493,
-      "nombre" : "Usuario Activo",
-      "email" : "activo@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1494,
-      "nombre" : "Usuario Bloqueado",
-      "email" : "bloqueado@academia.com",
-      "estado" : "Bloqueado",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1495,
-      "nombre" : "Usuario Baja",
-      "email" : "baja@academia.com",
-      "estado" : "Baja",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1496,
-      "nombre" : "Admin Plataforma",
-      "email" : "admin_plataforma@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1497,
-      "nombre" : "Admin Academia",
-      "email" : "admin_academia@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1498,
-      "nombre" : "Admin Plataforma 1",
-      "email" : "admin_plataforma_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1499,
-      "nombre" : "Admin Plataforma 2",
-      "email" : "admin_plataforma_2@academia.com",
-      "estado" : "Bloqueado",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1500,
-      "nombre" : "Admin Academia 1",
-      "email" : "admin_academia_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1501,
-      "nombre" : "User Academia 1.1",
-      "email" : "user_academia_1_1@academia.com",
-      "estado" : "Bloqueado",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1502,
-      "nombre" : "User Academia 1.2",
-      "email" : "user_academia_1_2@academia.com",
-      "estado" : "Bloqueado",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1503,
-      "nombre" : "Admin Academia 2",
-      "email" : "admin_academia_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1504,
-      "nombre" : "User Academia 2.1",
-      "email" : "user_academia_2_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1505,
-      "nombre" : "User Academia 2.2",
-      "email" : "user_academia_2_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1506,
-      "nombre" : "Reserve Activo",
-      "email" : "reserve_activo@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1507,
-      "nombre" : "Reserve User A1.1",
-      "email" : "reserve_user_academia_1_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1508,
-      "nombre" : "Reserve Admin Plataforma",
-      "email" : "reserve_admin_plataforma@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1509,
-      "nombre" : "Reserve Admin Academia 1",
-      "email" : "reserve_admin_academia_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1510,
-      "nombre" : "Reserve Admin Academia 2",
-      "email" : "reserve_admin_academia_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1511,
-      "nombre" : "Reserve Admin Plataforma 2",
-      "email" : "reserve_admin_plataforma_2@academia.com",
-      "estado" : "Bloqueado",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1512,
-      "nombre" : "Profesor Test 1",
-      "email" : "profesor_test_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1513,
-      "nombre" : "Profesor Test 2",
-      "email" : "profesor_test_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1514,
-      "nombre" : "Admin Academia Central 2",
-      "email" : "admin_academia_central_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1515,
-      "nombre" : "Admin Academia 1 (2)",
-      "email" : "admin_academia_1_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1516,
-      "nombre" : "Admin Academia 2 (2)",
-      "email" : "admin_academia_2_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1517,
-      "nombre" : "Profesor Central 01",
-      "email" : "prof_central_01@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1518,
-      "nombre" : "Profesor Central 02",
-      "email" : "prof_central_02@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1519,
-      "nombre" : "Profesor Central 03",
-      "email" : "prof_central_03@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1520,
-      "nombre" : "Profesor Central 04",
-      "email" : "prof_central_04@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1521,
-      "nombre" : "Profesor Central 05",
-      "email" : "prof_central_05@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1522,
-      "nombre" : "Profesor Central 06",
-      "email" : "prof_central_06@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1523,
-      "nombre" : "Profesor Central 07",
-      "email" : "prof_central_07@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1524,
-      "nombre" : "Profesor Central 08",
-      "email" : "prof_central_08@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1525,
-      "nombre" : "Profesor Central 09",
-      "email" : "prof_central_09@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1526,
-      "nombre" : "Profesor Central 10",
-      "email" : "prof_central_10@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1527,
-      "nombre" : "Profesor A1 01",
-      "email" : "prof_a1_01@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1528,
-      "nombre" : "Profesor A1 02",
-      "email" : "prof_a1_02@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1529,
-      "nombre" : "Profesor A1 03",
-      "email" : "prof_a1_03@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1530,
-      "nombre" : "Profesor A1 04",
-      "email" : "prof_a1_04@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1531,
-      "nombre" : "Profesor A1 05",
-      "email" : "prof_a1_05@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1532,
-      "nombre" : "Profesor A1 06",
-      "email" : "prof_a1_06@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1533,
-      "nombre" : "Profesor A1 07",
-      "email" : "prof_a1_07@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1534,
-      "nombre" : "Profesor A1 08",
-      "email" : "prof_a1_08@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1535,
-      "nombre" : "Profesor A1 09",
-      "email" : "prof_a1_09@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1536,
-      "nombre" : "Profesor A2 01",
-      "email" : "prof_a2_01@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1537,
-      "nombre" : "Profesor A2 02",
-      "email" : "prof_a2_02@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1538,
-      "nombre" : "Profesor A2 03",
-      "email" : "prof_a2_03@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1539,
-      "nombre" : "Profesor A2 04",
-      "email" : "prof_a2_04@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1540,
-      "nombre" : "Profesor A2 05",
-      "email" : "prof_a2_05@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1541,
-      "nombre" : "Profesor A2 06",
-      "email" : "prof_a2_06@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1542,
-      "nombre" : "Profesor A2 07",
-      "email" : "prof_a2_07@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    } ],
-    "summaryFields" : [ "nombre", "email" ]
-  },
-  "uiSuggestions" : [ ],
-  "uiSuggestionsVersion" : 1,
-  "messages" : [ ]
+[ChatService][DEBUG] Seed messages for OpenAI: [{content=Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), breve y claro. Te pueden llegar chats sobre temas del contexto del api de academias y la whitelist que tienes disponible y chats que nada tengan que ver, siempre ofrece respuestas inteligentes humanas. Si no necesitas obtener datos, responde con texto inteligente y siempre ofrece sugerencias relacionadas con el rol del usuario que te pregunta y con el contexto de la whitelist que tienes disponible. Para obtener o mutar datos cuando sea necesario, usa SOLO las herramientas whitelisteadas: 'call_api' (una llamada) y 'call_api_batch' (varias llamadas en un mismo turno). Todas las llamadas deben respetar las autorizaciones y el ámbito del usuario logueado. Pide confirmación antes de operaciones destructivas (borrar/modificar). Para listados muy grandes, sugiere exportar a CSV/Excel. No uses tablas Markdown en mensajes del sistema. Contexto del usuario: roles=[Admin_plataforma], academiaId=null. Ámbito por rol: Admin_academia => ámbito 'academia' (limita siempre a su academia). Profesor_academia => solo su academia y cursos propios (puede crear sesiones, añadir anotaciones, consultar lista de alumnos del curso, notas y progreso). Admin_plataforma => intenta inferir la academia objetivo por el contexto; si no es claro, pide confirmación. Perfil_usuario: {"nombre":"Admin Plataforma","id":1496}.
+También recibirás: (a) el historial de la conversación (mensajes previos), y (b) señales de navegación cuando el cliente acepte sugerencias de paginación o cualquier otra sugerencia que le hayas enviado anteriormente (como mensajes especiales del asistente que el backend entiende). Úsalos como contexto, no los repitas al usuario.
+Recursos disponibles (whitelist): [academias, usuarios]. Recursos no disponibles: [cursos, alumnos, profesores].
+Reglas críticas (prioritarias):
+- No inventes recursos ni conteos. Si un recurso NO está en la whitelist, dilo y ofrece alternativas válidas.
+- 'alumno' NO es 'usuario'. Los usuarios solo pueden tener roles ['Admin_plataforma','Admin_academia','Profesor_academia']. No mapees 'alumnos' a 'usuarios'.
+- Confirmación OBLIGATORIA: antes de cualquier modificación o baja SIEMPRE debes pedir confirmación explícita al usuario y mostrar el detalle del registro a afectar. Nunca ejecutes PUT/DELETE en el primer turno. Si falta identificador (id/email), primero pregunta o propone listar/buscar.
+- Respeta el ámbito por rol: limita resultados a lo que el rol/academia permita.
+- Evita jerga técnica en el 'text' (no digas 'whitelist', 'endpoint', 'tool_call', 'schema'); redacta natural.
+
+Contrato de salida (estricto):
+- Devuelve SOLO un objeto JSON válido (sin texto fuera del JSON).
+- 'text': OBLIGATORIO y NO vacío. Redacta breve, natural y útil.
+- Si devuelves listados, usa SIEMPRE la clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores') y copia propiedades originales.
+  · Puedes añadir campos derivados en castellano (p. ej., 'numero_usuarios'), sin sobrescribir originales.
+  · 'summary_fields': 1–2 claves relevantes (p. ej., ['nombre','email']).
+- Si NO has usado herramientas (no hay tool_calls), NO devuelvas arrays de recursos. En ese caso, limita la salida a { 'text': <no vacío>, 'ui_suggestions': [...] (si procede) }. Para listados, DEBES usar herramientas.
+- En el segundo turno, cuando dispongas de tool_outputs con 'items', DEBES devolver el array bajo su clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores'); el backend lo mapeará a data.items.
+- 'ui_suggestions': devuelve 2–3 cuando proceda. Tipos: 'Paginacion'|'Registro'|'Generica' (ver definiciones). Cualquier sugerencia con type='Paginacion' que NO incluya el objeto 'pagination' será inválida y rechazada por el backend (no la emitas).
+- Optimización listados grandes: si el array tiene ≥30 ítems, limita por ítem los campos mostrados a un resumen útil (id, nombre, email, estado, rol cuando existan) y apóyate en 'summary_fields'. Evita payloads extensos para reducir latencia.
+
+Comportamiento general:
+- Si NO hace falta API (saludos, charla breve, aritmética, fuera de dominio, o falta aclaración), responde SIN herramientas y ofrece 'ui_suggestions' útiles.
+- Si SÍ hace falta y existe endpoint permitido, usa 'call_api' (1 llamada) o 'call_api_batch' (agregaciones de varias entidades).
+
+Reglas de dominio (clave):
+- 'alumno' NO es 'usuario'. Los usuarios solo pueden tener roles 'Admin_plataforma','Admin_academia','Profesor_academia'. No mapees 'alumnos' a 'usuarios'.
+- Si piden 'alumnos' y no hay endpoint de 'alumnos', explícalo y ofrece alternativas válidas ('usuarios' o 'cursos'), sin inventar datos.
+
+Cuándo NO usar herramientas (abstención):
+- Saludos/cortesías ('hola', 'buenas', 'me llamo...').
+- Charla breve o preguntas que puedes contestar sin API (p. ej., '¿cuánto es 5 x 5?').
+- Consultas fuera de dominio ('perros', 'clima', matemáticas generales).
+- Aclaraciones/confirmaciones previas: si piden modificar/borrar, primero localiza el registro (GET) y muestra su detalle, y SOLO después pide confirmación explícita en un mensaje posterior. Incluso si el usuario escribe 'confirmo' en su primer mensaje, NO ejecutes la mutación en el primer turno.
+En estos casos, compórtate con inteligencia humana y responde SIN herramientas con un JSON coherente: { 'text': <no vacío>, 'ui_suggestions': [...(2–3 si procede)...] }. No devuelvas arrays de recursos.
+
+Herramientas disponibles (úsalas cuando necesites acceder a datos proporcionados por la API y su whitelist):
+- call_api: una sola llamada a un endpoint permitido. name=operationId, method=GET|POST|PUT|DELETE, y opcionalmente 'pathParams'|'query'|'body'.
+- call_api_batch: varias llamadas en un mismo turno, con 'calls'=[...] de objetos {name, method, pathParams?, query?, body?}.
+  · Úsalo para agregaciones/estadísticas que requieren combinar resultados de varias entidades (p. ej., 'usuarios por academia', 'totales por estado').
+  · Limita el número de entidades a un máximo razonable (p. ej., 3) para no saturar la llamada; ofrece 'continuar' como sugerencia si el usuario quiere ver más.
+
+Preferencia de navegación: para cambiar de página dentro de la MISMA entidad, prefiere 'call_api' (una sola llamada) y evita 'call_api_batch' salvo agregaciones multi‑entidad.
+
+Ejemplo call_api (solo estructura):
+assistant.tool_call => name: 'call_api', arguments: { 'name':'usuarios.listar_usuarios', 'method':'GET', 'query':{ 'estado':'activo' } }
+
+Ejemplo call_api_batch (solo estructura):
+assistant.tool_call => name: 'call_api_batch', arguments: {
+  'calls': [
+    { 'name': 'academias.listar_academias', 'method': 'GET' },
+    { 'name': 'usuarios.listar_usuarios', 'method': 'GET', 'query': { 'academia_id': 308 } },
+    { 'name': 'usuarios.listar_usuarios', 'method': 'GET', 'query': { 'academia_id': 309 } }
+  ]
 }
-DEBUG 2025-10-20T22:27:26.834492300 [ChatController][chat] Respuesta generada por ChatService (JSON completo, pretty):
-{
-  "status" : "success",
-  "message" : "He obtenido el listado de usuarios, que incluye información como nombre, email, estado y rol. Actualmente hay más usuarios disponibles, por lo que puedes ver más en la siguiente página.",
-  "data" : {
-    "type" : "usuarios",
-    "items" : [ {
-      "id" : 1493,
-      "nombre" : "Usuario Activo",
-      "email" : "activo@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1494,
-      "nombre" : "Usuario Bloqueado",
-      "email" : "bloqueado@academia.com",
-      "estado" : "Bloqueado",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1495,
-      "nombre" : "Usuario Baja",
-      "email" : "baja@academia.com",
-      "estado" : "Baja",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1496,
-      "nombre" : "Admin Plataforma",
-      "email" : "admin_plataforma@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1497,
-      "nombre" : "Admin Academia",
-      "email" : "admin_academia@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1498,
-      "nombre" : "Admin Plataforma 1",
-      "email" : "admin_plataforma_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1499,
-      "nombre" : "Admin Plataforma 2",
-      "email" : "admin_plataforma_2@academia.com",
-      "estado" : "Bloqueado",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1500,
-      "nombre" : "Admin Academia 1",
-      "email" : "admin_academia_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1501,
-      "nombre" : "User Academia 1.1",
-      "email" : "user_academia_1_1@academia.com",
-      "estado" : "Bloqueado",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1502,
-      "nombre" : "User Academia 1.2",
-      "email" : "user_academia_1_2@academia.com",
-      "estado" : "Bloqueado",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1503,
-      "nombre" : "Admin Academia 2",
-      "email" : "admin_academia_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1504,
-      "nombre" : "User Academia 2.1",
-      "email" : "user_academia_2_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1505,
-      "nombre" : "User Academia 2.2",
-      "email" : "user_academia_2_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1506,
-      "nombre" : "Reserve Activo",
-      "email" : "reserve_activo@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1507,
-      "nombre" : "Reserve User A1.1",
-      "email" : "reserve_user_academia_1_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1508,
-      "nombre" : "Reserve Admin Plataforma",
-      "email" : "reserve_admin_plataforma@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1509,
-      "nombre" : "Reserve Admin Academia 1",
-      "email" : "reserve_admin_academia_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1510,
-      "nombre" : "Reserve Admin Academia 2",
-      "email" : "reserve_admin_academia_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1511,
-      "nombre" : "Reserve Admin Plataforma 2",
-      "email" : "reserve_admin_plataforma_2@academia.com",
-      "estado" : "Bloqueado",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1512,
-      "nombre" : "Profesor Test 1",
-      "email" : "profesor_test_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1513,
-      "nombre" : "Profesor Test 2",
-      "email" : "profesor_test_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1514,
-      "nombre" : "Admin Academia Central 2",
-      "email" : "admin_academia_central_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1515,
-      "nombre" : "Admin Academia 1 (2)",
-      "email" : "admin_academia_1_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1516,
-      "nombre" : "Admin Academia 2 (2)",
-      "email" : "admin_academia_2_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1517,
-      "nombre" : "Profesor Central 01",
-      "email" : "prof_central_01@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1518,
-      "nombre" : "Profesor Central 02",
-      "email" : "prof_central_02@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1519,
-      "nombre" : "Profesor Central 03",
-      "email" : "prof_central_03@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1520,
-      "nombre" : "Profesor Central 04",
-      "email" : "prof_central_04@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1521,
-      "nombre" : "Profesor Central 05",
-      "email" : "prof_central_05@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1522,
-      "nombre" : "Profesor Central 06",
-      "email" : "prof_central_06@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1523,
-      "nombre" : "Profesor Central 07",
-      "email" : "prof_central_07@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1524,
-      "nombre" : "Profesor Central 08",
-      "email" : "prof_central_08@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1525,
-      "nombre" : "Profesor Central 09",
-      "email" : "prof_central_09@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1526,
-      "nombre" : "Profesor Central 10",
-      "email" : "prof_central_10@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1527,
-      "nombre" : "Profesor A1 01",
-      "email" : "prof_a1_01@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1528,
-      "nombre" : "Profesor A1 02",
-      "email" : "prof_a1_02@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1529,
-      "nombre" : "Profesor A1 03",
-      "email" : "prof_a1_03@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1530,
-      "nombre" : "Profesor A1 04",
-      "email" : "prof_a1_04@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1531,
-      "nombre" : "Profesor A1 05",
-      "email" : "prof_a1_05@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1532,
-      "nombre" : "Profesor A1 06",
-      "email" : "prof_a1_06@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1533,
-      "nombre" : "Profesor A1 07",
-      "email" : "prof_a1_07@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1534,
-      "nombre" : "Profesor A1 08",
-      "email" : "prof_a1_08@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1535,
-      "nombre" : "Profesor A1 09",
-      "email" : "prof_a1_09@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1536,
-      "nombre" : "Profesor A2 01",
-      "email" : "prof_a2_01@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1537,
-      "nombre" : "Profesor A2 02",
-      "email" : "prof_a2_02@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1538,
-      "nombre" : "Profesor A2 03",
-      "email" : "prof_a2_03@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1539,
-      "nombre" : "Profesor A2 04",
-      "email" : "prof_a2_04@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1540,
-      "nombre" : "Profesor A2 05",
-      "email" : "prof_a2_05@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1541,
-      "nombre" : "Profesor A2 06",
-      "email" : "prof_a2_06@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1542,
-      "nombre" : "Profesor A2 07",
-      "email" : "prof_a2_07@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    } ],
-    "summaryFields" : [ "nombre", "email" ]
-  },
-  "uiSuggestions" : [ ],
-  "uiSuggestionsVersion" : 1,
-  "messages" : [ ]
+(Si hay muchas academias, limita a 3 y sugiere 'continuar' como 'ui_suggestions' de tipo 'Generica').
+
+Mutaciones (modificaciones y bajas): confirmación obligatoria
+- Nunca ejecutes PUT/DELETE en el primer turno.
+- Patrón: (1) Localiza y muestra el detalle con GET; (2) Pide confirmación explícita al usuario; (3) Solo tras recibir un nuevo mensaje de confirmación, procede con PUT/DELETE en un turno posterior.
+- Si hay 0 o >1 coincidencias, no propongas mutar y pide aclaración (filtros o identificador exacto).
+
+Definiciones que necesitas conocer:
+- ui_suggestions: arreglo de sugerencias tipadas para la UI. Cada elemento es un objeto con:
+  { 'id': string, 'display_text': string, 'type': 'Paginacion'|'Registro'|'Generica', 'recordAction'?: 'Alta'|'Baja'|'Modificacion'|'Consulta', 'pagination'?: { 'direction': 'next'|'prev', 'page': number, 'size': number } }
+  · En type='Registro', usa 'recordAction' (camelCase) con uno de los valores indicados.
+  · En type='Paginacion', incluye SIEMPRE 'pagination' con 'direction', 'page' y 'size'. No incluyas 'contextToken'; lo añadirá el backend si hay paginación real. Si no hay paginación real o metadatos, NO devuelvas sugerencias 'Paginacion'.
+- summary_fields: array con 1–2 claves RELEVANTES de los ítems listados (p. ej., ['nombre','email']).
+- Recursos listables: devuelve los arrays bajo la clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores') y copia propiedades originales.
+- Sinónimos útiles (siempre respetando los filtros que existan en la whitelist):
+  · 'activos'/'activas'/'vigentes'/'en alta' => usa query.estado='activo' si existe.
+  · 'dados de baja'/'de baja'/'en baja' => filtra por fecha_baja_gte si el usuario da un rango/fecha; si no existe ese filtro, informa que no hay filtro directo o usa alternativas de la whitelist.
+  · 'recientes'/'últimos'/'más nuevos' => sugiere order_by='fecha_alta' + order_dir='desc' si están soportados.
+  · 'primeros N'/'muestra N'/'enséñame N' => size=N (respetando el tope 50).
+  · 'que contenga X'/'incluya X'/'similar a X' => usa *_contains si existe (p. ej., nombre_contains, email_contains).
+
+Sugerencias de UI (las ui_suggestions son tipadas). Son acciones próximas que le pueden interesar al usuario:
+- Devuelve 2–3 'ui_suggestions' cuando proceda. Cada elemento conforme a la definición anterior.
+- En saludos o mensajes fuera del contexto del API, las 'ui_suggestions' son OBLIGATORIAS (2–3 elementos).
+- Clasificación:
+  · Paginacion: navegación entre páginas reales. 'display_text' minimalista: 'Anterior'/'Siguiente'. Debe incluir 'pagination' {direction,page,size}. Es ERROR devolver 'type':'Paginacion' sin 'pagination'.
+  · Registro: acciones sobre un registro del listado. Indica 'recordAction' en ['Alta','Baja','Modificacion','Consulta'].
+  · Generica: filtros, exportaciones u otras acciones sobre el conjunto.
+
+Ejemplos canónicos de 'ui_suggestions' (solo estructura, usa estos formatos exactos):
+- Paginacion (dos elementos típicos):
+  [
+    { 'id':'pg-prev', 'display_text':'Anterior', 'type':'Paginacion', 'pagination': { 'direction':'prev', 'page': 1, 'size': 50 } },
+    { 'id':'pg-next', 'display_text':'Siguiente', 'type':'Paginacion', 'pagination': { 'direction':'next', 'page': 2, 'size': 50 } }
+  ]
+  (No incluyas 'contextToken'; lo añade el backend si hay paginación real).
+  Ejemplo (estando en página 2 de un listado con más páginas):
+  [
+    { 'id':'pg-prev', 'display_text':'Anterior', 'type':'Paginacion', 'pagination': { 'direction':'prev', 'page': 1, 'size': 50 } },
+    { 'id':'pg-next', 'display_text':'Siguiente', 'type':'Paginacion', 'pagination': { 'direction':'next', 'page': 3, 'size': 50 } }
+  ]
+- Registro (accionar sobre elementos del listado):
+  [
+    { 'id':'sg-r1', 'display_text':'Ver detalles', 'type':'Registro', 'recordAction':'Consulta' },
+    { 'id':'sg-r2', 'display_text':'Crear usuario', 'type':'Registro', 'recordAction':'Alta' },
+    { 'id':'sg-r3', 'display_text':'Editar usuario', 'type':'Registro', 'recordAction':'Modificacion' },
+    { 'id':'sg-r4', 'display_text':'Eliminar usuario', 'type':'Registro', 'recordAction':'Baja' }
+  ]
+- Generica (acciones sobre el conjunto):
+  [
+    { 'id':'sg-g1', 'display_text':'Exportar a CSV', 'type':'Generica' },
+    { 'id':'sg-g2', 'display_text':'Aplicar filtro estado=Activo', 'type':'Generica' }
+  ]
+Reglas: cada sugerencia DEBE tener 'id', 'display_text' y 'type'. Para 'Registro' añade 'recordAction'. Para 'Paginacion' añade 'pagination' con 'direction'|'page'|'size'. Nunca devuelvas 'ui_suggestions': [].
+
+Patrones recomendados por intención (usa estos formatos, adaptando display_text al recurso real):
+- Listado:
+  [
+    { 'id':'sg-g-find-email', 'display_text':'Buscar por email', 'type':'Generica' },
+    { 'id':'sg-r-view', 'display_text':'Ver detalle (ID)', 'type':'Registro', 'recordAction':'Consulta' },
+    { 'id':'sg-g-filter-rol-estado', 'display_text':'Filtrar por rol/estado', 'type':'Generica' }
+  ]
+  y para navegación:
+  [ { 'id':'pg-prev', 'display_text':'Anterior', 'type':'Paginacion', 'pagination': { 'direction':'prev', 'page': 1, 'size': 50 } }, { 'id':'pg-next', 'display_text':'Siguiente', 'type':'Paginacion', 'pagination': { 'direction':'next', 'page': 2, 'size': 50 } } ]
+  (Nunca devuelvas un listado sin antes usar herramientas; si no se han ejecutado tool_calls, no emitas arrays de recursos).
+- Modificar:
+  [
+    { 'id':'sg-g-ask-id-name', 'display_text':'Dime el ID o nombre exacto', 'type':'Generica' },
+    { 'id':'sg-g-find-name', 'display_text':'Buscar por nombre', 'type':'Generica' },
+    { 'id':'sg-r-view-before-edit', 'display_text':'Ver detalle antes de modificar', 'type':'Registro', 'recordAction':'Consulta' }
+  ]
+- Fuera de dominio:
+    { 'id':'sg-g-list-academias', 'display_text':'Listar academias', 'type':'Generica' },
+    { 'id':'sg-g-list-usuarios', 'display_text':'Listar usuarios', 'type':'Generica' },
+    { 'id':'sg-g-help', 'display_text':'Ayuda sobre lo que puedo hacer', 'type':'Generica' }
+  ]
+
+Saludos (inicio de chat):
+- Si detectas saludo/apertura o un mensaje fuera del contexto del API de academias, NO hagas tool_calls. Es OBLIGATORIO devolver: 'text' breve (no vacío) y 'ui_suggestions' (2–3 tipadas). Nunca devuelvas 'ui_suggestions': [] ni 'text' vacío. Compórtate con inteligencia humana.
+- Propón sugerencias acordes al rol y a los recursos disponibles:
+  · Admin_plataforma: 'Listar academias' o 'Listar usuarios'.
+  · Admin_academia: 'Listar cursos' o 'Listar alumnos'.
+  · Profesor_academia: 'Ver mis cursos' o 'Listar alumnos'.
+  Si un recurso no está disponible (p. ej., 'alumnos'), sugiere una alternativa válida (p. ej., 'usuarios' o 'cursos').
+
+Ejemplo (saludo):
+Entrada: 'hola'
+Salida (solo estructura): {
+  'text': '¡Hola! ¿En qué puedo ayudarte?',
+  'ui_suggestions': [ { 'id':'sg-g-list-academias','display_text':'Listar academias','type':'Generica' }, { 'id':'sg-g-list-usuarios','display_text':'Listar usuarios','type':'Generica' } ]
 }
-DEBUG: UsuarioId obtenido del token JWT: 1496
-DEBUG: Delegated token generation moved to ChatService (on demand).
-DEBUG 2025-10-20T22:27:28.467905900 [ChatController][chat] Generando token delegado para el usuario: 1496
-[ChatService][DEBUG] runChat called with incoming: [com.workers.profesores.chat.dto.ChatRequest$Message@202f80d2]
-[ChatService][DEBUG] Authorization header received (masked): Bearer ...
-[JwtDelegationService][DUMP] Delegated Authorization header: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl92ZXJzaW9uIjowLCJhY3RvciI6ImNoYXQtYmFja2VuZCIsInN1YiI6IntcInRva2VuX3ZlcnNpb25cIjowLFwidXN1YXJpb19pZFwiOjE0OTZ9Iiwicm9sZXMiOlsiQWRtaW5fcGxhdGFmb3JtYSJdLCJpc3MiOiJjaGF0LWJhY2tlbmQiLCJleHAiOjE3NjA5OTIzNDgsImlhdCI6MTc2MDk5MjA0OCwianRpIjoiYmI1M2RjM2ItMjRmNy00NzE1LWJmOTQtNzI1Nzk5YWE2ZDg0In0.CSd45HeUWg68sYgeISeppXCxcpGL6fQLrQ8vVwKivgY
-[JwtDelegationService][DUMP] Claims: {token_version=0, actor=chat-backend, sub={"token_version":0,"usuario_id":1496}, roles=[Admin_plataforma], iss=chat-backend, exp=1760992348, iat=1760992048, jti=bb53dc3b-24f7-4715-bf94-725799aa6d84}
-[JwtDelegationService][DUMP] token_header_b64=eyJhbGciOiJIUzI1NiJ9
-[JwtDelegationService][DUMP] token_payload_b64=eyJ0b2tlbl92ZXJzaW9uIjowLCJhY3RvciI6ImNoYXQtYmFja2VuZCIsInN1YiI6IntcInRva2VuX3ZlcnNpb25cIjowLFwidXN1YXJpb19pZFwiOjE0OTZ9Iiwicm9sZXMiOlsiQWRtaW5fcGxhdGFmb3JtYSJdLCJpc3MiOiJjaGF0LWJhY2tlbmQiLCJleHAiOjE3NjA5OTIzNDgsImlhdCI6MTc2MDk5MjA0OCwianRpIjoiYmI1M2RjM2ItMjRmNy00NzE1LWJmOTQtNzI1Nzk5YWE2ZDg0In0
-[JwtDelegationService][DUMP] token_signature_b64=CSd45HeUWg68sYgeISeppXCxcpGL6fQLrQ8vVwKivgY
-[JwtDelegationService][DUMP] token_header_json={"alg":"HS256"}
-[JwtDelegationService][DUMP] token_payload_json={"token_version":0,"actor":"chat-backend","sub":"{\"token_version\":0,\"usuario_id\":1496}","roles":["Admin_plataforma"],"iss":"chat-backend","exp":1760992348,"iat":1760992048,"jti":"bb53dc3b-24f7-4715-bf94-725799aa6d84"}
-[JwtDelegationService][DUMP] token_sha256=1b68889f87ce06c661dc665337e65e6abd5e41a52c75c7ed290e4783afb9779c
-[JwtDelegationService][DUMP] delegationSecret_sha256=a3af8c7ea176f7f591e0b82c9699f5fdee0ebddb89e1cd46e06f79e8a1953cb9 delegationSecret_len=32
-[ChatService][DEBUG] System prompt constructed (trimmed): Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), breve y claro. Te pueden llegar chats sobre temas del contexto del api de academias y la whitelist que tienes disponible y chats que nada tengan que ver, siempre ofrece respuestas inte...
-2025-10-20T22:27:28.481+02:00  INFO 15972 --- [io-8080-exec-10] c.w.p.chat.service.OpenAICallApiService  : Whitelist cargada desde served-openapi.json con 24 endpoints
-2025-10-20T22:27:29.571+02:00  WARN 15972 --- [io-8080-exec-10] c.w.p.chat.service.OpenAICallApiService  : El mensaje recibido no es del tipo esperado: null
-2025-10-20T22:27:29.572+02:00  INFO 15972 --- [io-8080-exec-10] c.w.p.chat.service.OpenAICallApiService  : No hubo tool_calls en la respuesta.
-[API-PROXY][DUMP] sanitizedAuth_preview=eyJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl9...
-[API-PROXY][DUMP] token_sha4=1b68889f token_len=360
-DEBUG: UsuarioId obtenido del token JWT: 1496
-[ChatService][DEBUG] buildEnvelopeFromContentNode(type=usuarios, items=50) =>
-{
-  "status" : "success",
-  "message" : "He obtenido el listado de usuarios, que incluye información como el nombre, email, estado y rol. Aquí tienes los primeros 50 usuarios:",
-  "data" : {
-    "type" : "usuarios",
-    "items" : [ {
-      "id" : 1493,
-      "nombre" : "Usuario Activo",
-      "email" : "activo@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1494,
-      "nombre" : "Usuario Bloqueado",
-      "email" : "bloqueado@academia.com",
-      "estado" : "Bloqueado",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1495,
-      "nombre" : "Usuario Baja",
-      "email" : "baja@academia.com",
-      "estado" : "Baja",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1496,
-      "nombre" : "Admin Plataforma",
-      "email" : "admin_plataforma@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1497,
-      "nombre" : "Admin Academia",
-      "email" : "admin_academia@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1498,
-      "nombre" : "Admin Plataforma 1",
-      "email" : "admin_plataforma_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1499,
-      "nombre" : "Admin Plataforma 2",
-      "email" : "admin_plataforma_2@academia.com",
-      "estado" : "Bloqueado",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1500,
-      "nombre" : "Admin Academia 1",
-      "email" : "admin_academia_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1501,
-      "nombre" : "User Academia 1.1",
-      "email" : "user_academia_1_1@academia.com",
-      "estado" : "Bloqueado",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1502,
-      "nombre" : "User Academia 1.2",
-      "email" : "user_academia_1_2@academia.com",
-      "estado" : "Bloqueado",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1503,
-      "nombre" : "Admin Academia 2",
-      "email" : "admin_academia_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1504,
-      "nombre" : "User Academia 2.1",
-      "email" : "user_academia_2_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1505,
-      "nombre" : "User Academia 2.2",
-      "email" : "user_academia_2_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1506,
-      "nombre" : "Reserve Activo",
-      "email" : "reserve_activo@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1507,
-      "nombre" : "Reserve User A1.1",
-      "email" : "reserve_user_academia_1_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1508,
-      "nombre" : "Reserve Admin Plataforma",
-      "email" : "reserve_admin_plataforma@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1509,
-      "nombre" : "Reserve Admin Academia 1",
-      "email" : "reserve_admin_academia_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1510,
-      "nombre" : "Reserve Admin Academia 2",
-      "email" : "reserve_admin_academia_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1511,
-      "nombre" : "Reserve Admin Plataforma 2",
-      "email" : "reserve_admin_plataforma_2@academia.com",
-      "estado" : "Bloqueado",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1512,
-      "nombre" : "Profesor Test 1",
-      "email" : "profesor_test_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1513,
-      "nombre" : "Profesor Test 2",
-      "email" : "profesor_test_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1514,
-      "nombre" : "Admin Academia Central 2",
-      "email" : "admin_academia_central_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1515,
-      "nombre" : "Admin Academia 1 (2)",
-      "email" : "admin_academia_1_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1516,
-      "nombre" : "Admin Academia 2 (2)",
-      "email" : "admin_academia_2_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1517,
-      "nombre" : "Profesor Central 01",
-      "email" : "prof_central_01@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1518,
-      "nombre" : "Profesor Central 02",
-      "email" : "prof_central_02@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1519,
-      "nombre" : "Profesor Central 03",
-      "email" : "prof_central_03@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1520,
-      "nombre" : "Profesor Central 04",
-      "email" : "prof_central_04@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1521,
-      "nombre" : "Profesor Central 05",
-      "email" : "prof_central_05@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1522,
-      "nombre" : "Profesor Central 06",
-      "email" : "prof_central_06@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1523,
-      "nombre" : "Profesor Central 07",
-      "email" : "prof_central_07@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1524,
-      "nombre" : "Profesor Central 08",
-      "email" : "prof_central_08@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1525,
-      "nombre" : "Profesor Central 09",
-      "email" : "prof_central_09@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1526,
-      "nombre" : "Profesor Central 10",
-      "email" : "prof_central_10@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1527,
-      "nombre" : "Profesor A1 01",
-      "email" : "prof_a1_01@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1528,
-      "nombre" : "Profesor A1 02",
-      "email" : "prof_a1_02@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1529,
-      "nombre" : "Profesor A1 03",
-      "email" : "prof_a1_03@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1530,
-      "nombre" : "Profesor A1 04",
-      "email" : "prof_a1_04@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1531,
-      "nombre" : "Profesor A1 05",
-      "email" : "prof_a1_05@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1532,
-      "nombre" : "Profesor A1 06",
-      "email" : "prof_a1_06@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1533,
-      "nombre" : "Profesor A1 07",
-      "email" : "prof_a1_07@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1534,
-      "nombre" : "Profesor A1 08",
-      "email" : "prof_a1_08@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1535,
-      "nombre" : "Profesor A1 09",
-      "email" : "prof_a1_09@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1536,
-      "nombre" : "Profesor A2 01",
-      "email" : "prof_a2_01@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1537,
-      "nombre" : "Profesor A2 02",
-      "email" : "prof_a2_02@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1538,
-      "nombre" : "Profesor A2 03",
-      "email" : "prof_a2_03@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1539,
-      "nombre" : "Profesor A2 04",
-      "email" : "prof_a2_04@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1540,
-      "nombre" : "Profesor A2 05",
-      "email" : "prof_a2_05@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1541,
-      "nombre" : "Profesor A2 06",
-      "email" : "prof_a2_06@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1542,
-      "nombre" : "Profesor A2 07",
-      "email" : "prof_a2_07@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    } ],
-    "summaryFields" : [ "nombre", "email" ]
-  },
-  "uiSuggestions" : [ ],
-  "uiSuggestionsVersion" : 1,
-  "messages" : [ ]
+
+Ejemplo (modificar sin identificador, reforzando aclaración y próximos pasos):
+Entrada: 'dame de baja al usuario Pepe'
+Salida (solo estructura): {
+  'text': 'Necesito el id o email exacto para continuar. ¿Quieres buscarlo o ver su detalle antes de modificar?',
+  'ui_suggestions': [ { 'id':'sg-g-ask-id-name','display_text':'Dime el ID o nombre exacto','type':'Generica' }, { 'id':'sg-g-find-name','display_text':'Buscar por nombre','type':'Generica' }, { 'id':'sg-r-view-before-edit','display_text':'Ver detalle antes de modificar','type':'Registro','recordAction':'Consulta' } ]
 }
-DEBUG 2025-10-20T22:27:57.988339100 [ChatController][chat] Respuesta generada por ChatService (JSON completo, pretty):
+
+
+
+
+### Endpoints permitidos (descripción)
+- **academias.listar_academias** — Auto-generated operation for academias.listar_academias
+  - `GET /academias`
+  - query: id, nombre, nombre_contains, page, size
+  - nota: respuesta paginada (usa parámetros page/size).
+- **academias.crear_academia** — Auto-generated operation for academias.crear_academia
+  - `POST /academias`
+- **academias.eliminar_academia** — Auto-generated operation for academias.eliminar_academia
+  - `DELETE /academias/{academia_id}`
+- **academias.obtener_academia** — Auto-generated operation for academias.obtener_academia
+  - `GET /academias/{academia_id}`
+- **academias.modificar_academia** — Auto-generated operation for academias.modificar_academia
+  - `PATCH /academias/{academia_id}`
+- **login.login** — Inicio de sesión con email y password
+  - `POST /auth/login`
+- **login.logout** — Auto-generated operation for login_bp.logout
+  - `POST /auth/logout`
+- **login.refresh_tokens** — Auto-generated operation for login_bp.refresh_tokens
+  - `POST /auth/refresh`
+- **login.unblock_user** — Auto-generated operation for login_bp.unblock_user
+  - `POST /auth/unblock`
+- **docs.docs_ui** — Auto-generated operation for docs.docs_ui
+  - `GET /docs`
+- **health** — Auto-generated operation for health
+  - `GET /health`
+- **docs.openapi_json** — Auto-generated operation for docs.openapi_json
+  - `GET /openapi.json`
+
+, role=system}, {content=Perfil_usuario: {"nombre":"Admin Plataforma","id":1496}, role=system}, {content=quería modificar una academia, role=user}]
+2025-10-21T16:28:05.487+02:00  INFO 5244 --- [nio-8080-exec-2] c.w.p.chat.service.OpenAICallApiService  : Whitelist cargada desde served-openapi.json con 24 endpoints
+2025-10-21T16:28:06.693+02:00  WARN 5244 --- [nio-8080-exec-2] c.w.p.chat.service.OpenAICallApiService  : El mensaje recibido no es del tipo esperado: null
+2025-10-21T16:28:06.693+02:00  INFO 5244 --- [nio-8080-exec-2] c.w.p.chat.service.OpenAICallApiService  : No hubo tool_calls en la respuesta.
+[ChatService][DEBUG] Raw OpenAI first response string (pretty):
 {
-  "status" : "success",
-  "message" : "He obtenido el listado de usuarios, que incluye información como el nombre, email, estado y rol. Aquí tienes los primeros 50 usuarios:",
-  "data" : {
-    "type" : "usuarios",
-    "items" : [ {
-      "id" : 1493,
-      "nombre" : "Usuario Activo",
-      "email" : "activo@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1494,
-      "nombre" : "Usuario Bloqueado",
-      "email" : "bloqueado@academia.com",
-      "estado" : "Bloqueado",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1495,
-      "nombre" : "Usuario Baja",
-      "email" : "baja@academia.com",
-      "estado" : "Baja",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1496,
-      "nombre" : "Admin Plataforma",
-      "email" : "admin_plataforma@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1497,
-      "nombre" : "Admin Academia",
-      "email" : "admin_academia@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1498,
-      "nombre" : "Admin Plataforma 1",
-      "email" : "admin_plataforma_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1499,
-      "nombre" : "Admin Plataforma 2",
-      "email" : "admin_plataforma_2@academia.com",
-      "estado" : "Bloqueado",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1500,
-      "nombre" : "Admin Academia 1",
-      "email" : "admin_academia_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1501,
-      "nombre" : "User Academia 1.1",
-      "email" : "user_academia_1_1@academia.com",
-      "estado" : "Bloqueado",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1502,
-      "nombre" : "User Academia 1.2",
-      "email" : "user_academia_1_2@academia.com",
-      "estado" : "Bloqueado",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1503,
-      "nombre" : "Admin Academia 2",
-      "email" : "admin_academia_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1504,
-      "nombre" : "User Academia 2.1",
-      "email" : "user_academia_2_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1505,
-      "nombre" : "User Academia 2.2",
-      "email" : "user_academia_2_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1506,
-      "nombre" : "Reserve Activo",
-      "email" : "reserve_activo@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1507,
-      "nombre" : "Reserve User A1.1",
-      "email" : "reserve_user_academia_1_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1508,
-      "nombre" : "Reserve Admin Plataforma",
-      "email" : "reserve_admin_plataforma@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1509,
-      "nombre" : "Reserve Admin Academia 1",
-      "email" : "reserve_admin_academia_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1510,
-      "nombre" : "Reserve Admin Academia 2",
-      "email" : "reserve_admin_academia_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1511,
-      "nombre" : "Reserve Admin Plataforma 2",
-      "email" : "reserve_admin_plataforma_2@academia.com",
-      "estado" : "Bloqueado",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1512,
-      "nombre" : "Profesor Test 1",
-      "email" : "profesor_test_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1513,
-      "nombre" : "Profesor Test 2",
-      "email" : "profesor_test_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1514,
-      "nombre" : "Admin Academia Central 2",
-      "email" : "admin_academia_central_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1515,
-      "nombre" : "Admin Academia 1 (2)",
-      "email" : "admin_academia_1_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1516,
-      "nombre" : "Admin Academia 2 (2)",
-      "email" : "admin_academia_2_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1517,
-      "nombre" : "Profesor Central 01",
-      "email" : "prof_central_01@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1518,
-      "nombre" : "Profesor Central 02",
-      "email" : "prof_central_02@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1519,
-      "nombre" : "Profesor Central 03",
-      "email" : "prof_central_03@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1520,
-      "nombre" : "Profesor Central 04",
-      "email" : "prof_central_04@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1521,
-      "nombre" : "Profesor Central 05",
-      "email" : "prof_central_05@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1522,
-      "nombre" : "Profesor Central 06",
-      "email" : "prof_central_06@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1523,
-      "nombre" : "Profesor Central 07",
-      "email" : "prof_central_07@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1524,
-      "nombre" : "Profesor Central 08",
-      "email" : "prof_central_08@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1525,
-      "nombre" : "Profesor Central 09",
-      "email" : "prof_central_09@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1526,
-      "nombre" : "Profesor Central 10",
-      "email" : "prof_central_10@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1527,
-      "nombre" : "Profesor A1 01",
-      "email" : "prof_a1_01@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1528,
-      "nombre" : "Profesor A1 02",
-      "email" : "prof_a1_02@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1529,
-      "nombre" : "Profesor A1 03",
-      "email" : "prof_a1_03@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1530,
-      "nombre" : "Profesor A1 04",
-      "email" : "prof_a1_04@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1531,
-      "nombre" : "Profesor A1 05",
-      "email" : "prof_a1_05@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1532,
-      "nombre" : "Profesor A1 06",
-      "email" : "prof_a1_06@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1533,
-      "nombre" : "Profesor A1 07",
-      "email" : "prof_a1_07@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1534,
-      "nombre" : "Profesor A1 08",
-      "email" : "prof_a1_08@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1535,
-      "nombre" : "Profesor A1 09",
-      "email" : "prof_a1_09@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1536,
-      "nombre" : "Profesor A2 01",
-      "email" : "prof_a2_01@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1537,
-      "nombre" : "Profesor A2 02",
-      "email" : "prof_a2_02@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1538,
-      "nombre" : "Profesor A2 03",
-      "email" : "prof_a2_03@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1539,
-      "nombre" : "Profesor A2 04",
-      "email" : "prof_a2_04@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1540,
-      "nombre" : "Profesor A2 05",
-      "email" : "prof_a2_05@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1541,
-      "nombre" : "Profesor A2 06",
-      "email" : "prof_a2_06@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1542,
-      "nombre" : "Profesor A2 07",
-      "email" : "prof_a2_07@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    } ],
-    "summaryFields" : [ "nombre", "email" ]
-  },
-  "uiSuggestions" : [ ],
-  "uiSuggestionsVersion" : 1,
-  "messages" : [ ]
-}
-DEBUG: UsuarioId obtenido del token JWT: 1496
-DEBUG: Delegated token generation moved to ChatService (on demand).
-DEBUG 2025-10-20T22:27:58.690172500 [ChatController][chat] Generando token delegado para el usuario: 1496
-[ChatService][DEBUG] runChat called with incoming: [com.workers.profesores.chat.dto.ChatRequest$Message@66764418]
-[ChatService][DEBUG] Authorization header received (masked): Bearer ...
-[JwtDelegationService][DUMP] Delegated Authorization header: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl92ZXJzaW9uIjowLCJhY3RvciI6ImNoYXQtYmFja2VuZCIsInN1YiI6IntcInRva2VuX3ZlcnNpb25cIjowLFwidXN1YXJpb19pZFwiOjE0OTZ9Iiwicm9sZXMiOlsiQWRtaW5fcGxhdGFmb3JtYSJdLCJpc3MiOiJjaGF0LWJhY2tlbmQiLCJleHAiOjE3NjA5OTIzNzgsImlhdCI6MTc2MDk5MjA3OCwianRpIjoiNTIzODNhYjUtOWRmMS00YTBkLTllMjItMDM0N2M5NzMzZTVjIn0.RaNw9aEcVzhTyU1oV4EGXdLstjFxBDo9nLSmmSj4h88
-[JwtDelegationService][DUMP] Claims: {token_version=0, actor=chat-backend, sub={"token_version":0,"usuario_id":1496}, roles=[Admin_plataforma], iss=chat-backend, exp=1760992378, iat=1760992078, jti=52383ab5-9df1-4a0d-9e22-0347c9733e5c}
-[JwtDelegationService][DUMP] token_header_b64=eyJhbGciOiJIUzI1NiJ9
-[JwtDelegationService][DUMP] token_payload_b64=eyJ0b2tlbl92ZXJzaW9uIjowLCJhY3RvciI6ImNoYXQtYmFja2VuZCIsInN1YiI6IntcInRva2VuX3ZlcnNpb25cIjowLFwidXN1YXJpb19pZFwiOjE0OTZ9Iiwicm9sZXMiOlsiQWRtaW5fcGxhdGFmb3JtYSJdLCJpc3MiOiJjaGF0LWJhY2tlbmQiLCJleHAiOjE3NjA5OTIzNzgsImlhdCI6MTc2MDk5MjA3OCwianRpIjoiNTIzODNhYjUtOWRmMS00YTBkLTllMjItMDM0N2M5NzMzZTVjIn0
-[JwtDelegationService][DUMP] token_signature_b64=RaNw9aEcVzhTyU1oV4EGXdLstjFxBDo9nLSmmSj4h88
-[JwtDelegationService][DUMP] token_header_json={"alg":"HS256"}
-[JwtDelegationService][DUMP] token_payload_json={"token_version":0,"actor":"chat-backend","sub":"{\"token_version\":0,\"usuario_id\":1496}","roles":["Admin_plataforma"],"iss":"chat-backend","exp":1760992378,"iat":1760992078,"jti":"52383ab5-9df1-4a0d-9e22-0347c9733e5c"}
-[JwtDelegationService][DUMP] token_sha256=92612af1ecaeabd77fcfab2f2438237a1267705ffa341f13f45d65cf5b612a12
-[JwtDelegationService][DUMP] delegationSecret_sha256=a3af8c7ea176f7f591e0b82c9699f5fdee0ebddb89e1cd46e06f79e8a1953cb9 delegationSecret_len=32
-[ChatService][DEBUG] System prompt constructed (trimmed): Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), breve y claro. Te pueden llegar chats sobre temas del contexto del api de academias y la whitelist que tienes disponible y chats que nada tengan que ver, siempre ofrece respuestas inte...
-2025-10-20T22:27:58.707+02:00  INFO 15972 --- [nio-8080-exec-3] c.w.p.chat.service.OpenAICallApiService  : Whitelist cargada desde served-openapi.json con 24 endpoints
-2025-10-20T22:27:59.748+02:00  WARN 15972 --- [nio-8080-exec-3] c.w.p.chat.service.OpenAICallApiService  : El mensaje recibido no es del tipo esperado: null
-2025-10-20T22:27:59.748+02:00  INFO 15972 --- [nio-8080-exec-3] c.w.p.chat.service.OpenAICallApiService  : No hubo tool_calls en la respuesta.
-[API-PROXY][DUMP] sanitizedAuth_preview=eyJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl9...
-[API-PROXY][DUMP] token_sha4=92612af1 token_len=360
-DEBUG: UsuarioId obtenido del token JWT: 1496
-[ChatService][DEBUG] buildEnvelopeFromContentNode(type=usuarios, items=50) =>
-{
-  "status" : "success",
-  "message" : "He obtenido el listado de usuarios, que incluye información como el nombre, email, estado y rol de cada uno. Actualmente hay más usuarios disponibles en la siguiente página.",
-  "data" : {
-    "type" : "usuarios",
-    "items" : [ {
-      "id" : 1493,
-      "nombre" : "Usuario Activo",
-      "email" : "activo@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1494,
-      "nombre" : "Usuario Bloqueado",
-      "email" : "bloqueado@academia.com",
-      "estado" : "Bloqueado",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1495,
-      "nombre" : "Usuario Baja",
-      "email" : "baja@academia.com",
-      "estado" : "Baja",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1496,
-      "nombre" : "Admin Plataforma",
-      "email" : "admin_plataforma@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1497,
-      "nombre" : "Admin Academia",
-      "email" : "admin_academia@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1498,
-      "nombre" : "Admin Plataforma 1",
-      "email" : "admin_plataforma_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1499,
-      "nombre" : "Admin Plataforma 2",
-      "email" : "admin_plataforma_2@academia.com",
-      "estado" : "Bloqueado",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1500,
-      "nombre" : "Admin Academia 1",
-      "email" : "admin_academia_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1501,
-      "nombre" : "User Academia 1.1",
-      "email" : "user_academia_1_1@academia.com",
-      "estado" : "Bloqueado",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1502,
-      "nombre" : "User Academia 1.2",
-      "email" : "user_academia_1_2@academia.com",
-      "estado" : "Bloqueado",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1503,
-      "nombre" : "Admin Academia 2",
-      "email" : "admin_academia_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1504,
-      "nombre" : "User Academia 2.1",
-      "email" : "user_academia_2_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1505,
-      "nombre" : "User Academia 2.2",
-      "email" : "user_academia_2_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1506,
-      "nombre" : "Reserve Activo",
-      "email" : "reserve_activo@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1507,
-      "nombre" : "Reserve User A1.1",
-      "email" : "reserve_user_academia_1_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1508,
-      "nombre" : "Reserve Admin Plataforma",
-      "email" : "reserve_admin_plataforma@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1509,
-      "nombre" : "Reserve Admin Academia 1",
-      "email" : "reserve_admin_academia_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1510,
-      "nombre" : "Reserve Admin Academia 2",
-      "email" : "reserve_admin_academia_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1511,
-      "nombre" : "Reserve Admin Plataforma 2",
-      "email" : "reserve_admin_plataforma_2@academia.com",
-      "estado" : "Bloqueado",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1512,
-      "nombre" : "Profesor Test 1",
-      "email" : "profesor_test_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1513,
-      "nombre" : "Profesor Test 2",
-      "email" : "profesor_test_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1514,
-      "nombre" : "Admin Academia Central 2",
-      "email" : "admin_academia_central_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1515,
-      "nombre" : "Admin Academia 1 (2)",
-      "email" : "admin_academia_1_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1516,
-      "nombre" : "Admin Academia 2 (2)",
-      "email" : "admin_academia_2_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1517,
-      "nombre" : "Profesor Central 01",
-      "email" : "prof_central_01@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1518,
-      "nombre" : "Profesor Central 02",
-      "email" : "prof_central_02@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1519,
-      "nombre" : "Profesor Central 03",
-      "email" : "prof_central_03@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1520,
-      "nombre" : "Profesor Central 04",
-      "email" : "prof_central_04@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1521,
-      "nombre" : "Profesor Central 05",
-      "email" : "prof_central_05@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1522,
-      "nombre" : "Profesor Central 06",
-      "email" : "prof_central_06@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1523,
-      "nombre" : "Profesor Central 07",
-      "email" : "prof_central_07@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1524,
-      "nombre" : "Profesor Central 08",
-      "email" : "prof_central_08@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1525,
-      "nombre" : "Profesor Central 09",
-      "email" : "prof_central_09@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1526,
-      "nombre" : "Profesor Central 10",
-      "email" : "prof_central_10@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1527,
-      "nombre" : "Profesor A1 01",
-      "email" : "prof_a1_01@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1528,
-      "nombre" : "Profesor A1 02",
-      "email" : "prof_a1_02@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1529,
-      "nombre" : "Profesor A1 03",
-      "email" : "prof_a1_03@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1530,
-      "nombre" : "Profesor A1 04",
-      "email" : "prof_a1_04@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1531,
-      "nombre" : "Profesor A1 05",
-      "email" : "prof_a1_05@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1532,
-      "nombre" : "Profesor A1 06",
-      "email" : "prof_a1_06@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1533,
-      "nombre" : "Profesor A1 07",
-      "email" : "prof_a1_07@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1534,
-      "nombre" : "Profesor A1 08",
-      "email" : "prof_a1_08@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1535,
-      "nombre" : "Profesor A1 09",
-      "email" : "prof_a1_09@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1536,
-      "nombre" : "Profesor A2 01",
-      "email" : "prof_a2_01@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1537,
-      "nombre" : "Profesor A2 02",
-      "email" : "prof_a2_02@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1538,
-      "nombre" : "Profesor A2 03",
-      "email" : "prof_a2_03@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1539,
-      "nombre" : "Profesor A2 04",
-      "email" : "prof_a2_04@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1540,
-      "nombre" : "Profesor A2 05",
-      "email" : "prof_a2_05@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1541,
-      "nombre" : "Profesor A2 06",
-      "email" : "prof_a2_06@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1542,
-      "nombre" : "Profesor A2 07",
-      "email" : "prof_a2_07@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    } ],
-    "summaryFields" : [ "nombre", "email" ]
-  },
-  "uiSuggestions" : [ ],
-  "uiSuggestionsVersion" : 1,
-  "messages" : [ ]
-}
-DEBUG 2025-10-20T22:28:27.319376600 [ChatController][chat] Respuesta generada por ChatService (JSON completo, pretty):
-{
-  "status" : "success",
-  "message" : "He obtenido el listado de usuarios, que incluye información como el nombre, email, estado y rol de cada uno. Actualmente hay más usuarios disponibles en la siguiente página.",
-  "data" : {
-    "type" : "usuarios",
-    "items" : [ {
-      "id" : 1493,
-      "nombre" : "Usuario Activo",
-      "email" : "activo@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1494,
-      "nombre" : "Usuario Bloqueado",
-      "email" : "bloqueado@academia.com",
-      "estado" : "Bloqueado",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1495,
-      "nombre" : "Usuario Baja",
-      "email" : "baja@academia.com",
-      "estado" : "Baja",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1496,
-      "nombre" : "Admin Plataforma",
-      "email" : "admin_plataforma@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1497,
-      "nombre" : "Admin Academia",
-      "email" : "admin_academia@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1498,
-      "nombre" : "Admin Plataforma 1",
-      "email" : "admin_plataforma_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1499,
-      "nombre" : "Admin Plataforma 2",
-      "email" : "admin_plataforma_2@academia.com",
-      "estado" : "Bloqueado",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1500,
-      "nombre" : "Admin Academia 1",
-      "email" : "admin_academia_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1501,
-      "nombre" : "User Academia 1.1",
-      "email" : "user_academia_1_1@academia.com",
-      "estado" : "Bloqueado",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1502,
-      "nombre" : "User Academia 1.2",
-      "email" : "user_academia_1_2@academia.com",
-      "estado" : "Bloqueado",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1503,
-      "nombre" : "Admin Academia 2",
-      "email" : "admin_academia_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1504,
-      "nombre" : "User Academia 2.1",
-      "email" : "user_academia_2_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1505,
-      "nombre" : "User Academia 2.2",
-      "email" : "user_academia_2_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1506,
-      "nombre" : "Reserve Activo",
-      "email" : "reserve_activo@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1507,
-      "nombre" : "Reserve User A1.1",
-      "email" : "reserve_user_academia_1_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1508,
-      "nombre" : "Reserve Admin Plataforma",
-      "email" : "reserve_admin_plataforma@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1509,
-      "nombre" : "Reserve Admin Academia 1",
-      "email" : "reserve_admin_academia_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1510,
-      "nombre" : "Reserve Admin Academia 2",
-      "email" : "reserve_admin_academia_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1511,
-      "nombre" : "Reserve Admin Plataforma 2",
-      "email" : "reserve_admin_plataforma_2@academia.com",
-      "estado" : "Bloqueado",
-      "rol" : "Admin_plataforma"
-    }, {
-      "id" : 1512,
-      "nombre" : "Profesor Test 1",
-      "email" : "profesor_test_1@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1513,
-      "nombre" : "Profesor Test 2",
-      "email" : "profesor_test_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1514,
-      "nombre" : "Admin Academia Central 2",
-      "email" : "admin_academia_central_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1515,
-      "nombre" : "Admin Academia 1 (2)",
-      "email" : "admin_academia_1_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1516,
-      "nombre" : "Admin Academia 2 (2)",
-      "email" : "admin_academia_2_2@academia.com",
-      "estado" : "Activo",
-      "rol" : "Admin_academia"
-    }, {
-      "id" : 1517,
-      "nombre" : "Profesor Central 01",
-      "email" : "prof_central_01@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1518,
-      "nombre" : "Profesor Central 02",
-      "email" : "prof_central_02@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1519,
-      "nombre" : "Profesor Central 03",
-      "email" : "prof_central_03@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1520,
-      "nombre" : "Profesor Central 04",
-      "email" : "prof_central_04@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1521,
-      "nombre" : "Profesor Central 05",
-      "email" : "prof_central_05@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1522,
-      "nombre" : "Profesor Central 06",
-      "email" : "prof_central_06@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1523,
-      "nombre" : "Profesor Central 07",
-      "email" : "prof_central_07@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1524,
-      "nombre" : "Profesor Central 08",
-      "email" : "prof_central_08@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1525,
-      "nombre" : "Profesor Central 09",
-      "email" : "prof_central_09@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1526,
-      "nombre" : "Profesor Central 10",
-      "email" : "prof_central_10@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1527,
-      "nombre" : "Profesor A1 01",
-      "email" : "prof_a1_01@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1528,
-      "nombre" : "Profesor A1 02",
-      "email" : "prof_a1_02@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1529,
-      "nombre" : "Profesor A1 03",
-      "email" : "prof_a1_03@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1530,
-      "nombre" : "Profesor A1 04",
-      "email" : "prof_a1_04@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1531,
-      "nombre" : "Profesor A1 05",
-      "email" : "prof_a1_05@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1532,
-      "nombre" : "Profesor A1 06",
-      "email" : "prof_a1_06@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1533,
-      "nombre" : "Profesor A1 07",
-      "email" : "prof_a1_07@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1534,
-      "nombre" : "Profesor A1 08",
-      "email" : "prof_a1_08@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1535,
-      "nombre" : "Profesor A1 09",
-      "email" : "prof_a1_09@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1536,
-      "nombre" : "Profesor A2 01",
-      "email" : "prof_a2_01@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1537,
-      "nombre" : "Profesor A2 02",
-      "email" : "prof_a2_02@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1538,
-      "nombre" : "Profesor A2 03",
-      "email" : "prof_a2_03@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1539,
-      "nombre" : "Profesor A2 04",
-      "email" : "prof_a2_04@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1540,
-      "nombre" : "Profesor A2 05",
-      "email" : "prof_a2_05@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1541,
-      "nombre" : "Profesor A2 06",
-      "email" : "prof_a2_06@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    }, {
-      "id" : 1542,
-      "nombre" : "Profesor A2 07",
-      "email" : "prof_a2_07@academia.com",
-      "estado" : "Activo",
-      "rol" : "Profesor_academia"
-    } ],
-    "summaryFields" : [ "nombre", "email" ]
-  },
-  "uiSuggestions" : [ ],
-  "uiSuggestionsVersion" : 1,
-  "messages" : [ ]
-}
-DEBUG: UsuarioId obtenido del token JWT: 1496
-DEBUG: Delegated token generation moved to ChatService (on demand).
-DEBUG 2025-10-20T22:28:28.012102500 [ChatController][chat] Generando token delegado para el usuario: 1496
-DEBUG 2025-10-20T22:28:28.012102500 [ChatController][chat] Llamando al API de academias con token delegado.
-[ChatService][DEBUG] runChat called with incoming: [com.workers.profesores.chat.dto.ChatRequest$Message@54b52900]
-[ChatService][DEBUG] Authorization header received (masked): Bearer ...
-[JwtDelegationService][DUMP] Delegated Authorization header: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl92ZXJzaW9uIjowLCJhY3RvciI6ImNoYXQtYmFja2VuZCIsInN1YiI6IntcInRva2VuX3ZlcnNpb25cIjowLFwidXN1YXJpb19pZFwiOjE0OTZ9Iiwicm9sZXMiOlsiQWRtaW5fcGxhdGFmb3JtYSJdLCJpc3MiOiJjaGF0LWJhY2tlbmQiLCJleHAiOjE3NjA5OTI0MDgsImlhdCI6MTc2MDk5MjEwOCwianRpIjoiMWZhMTUzOGEtYTYyNi00YTNlLWI5ODUtN2E5MzJmNDgyZjNkIn0.jks668lRfzNtIVYfi7gs6n5vOxaa3C0RbBJ76_rTgTM
-[JwtDelegationService][DUMP] Claims: {token_version=0, actor=chat-backend, sub={"token_version":0,"usuario_id":1496}, roles=[Admin_plataforma], iss=chat-backend, exp=1760992408, iat=1760992108, jti=1fa1538a-a626-4a3e-b985-7a932f482f3d}
-[JwtDelegationService][DUMP] token_header_b64=eyJhbGciOiJIUzI1NiJ9
-[JwtDelegationService][DUMP] token_payload_b64=eyJ0b2tlbl92ZXJzaW9uIjowLCJhY3RvciI6ImNoYXQtYmFja2VuZCIsInN1YiI6IntcInRva2VuX3ZlcnNpb25cIjowLFwidXN1YXJpb19pZFwiOjE0OTZ9Iiwicm9sZXMiOlsiQWRtaW5fcGxhdGFmb3JtYSJdLCJpc3MiOiJjaGF0LWJhY2tlbmQiLCJleHAiOjE3NjA5OTI0MDgsImlhdCI6MTc2MDk5MjEwOCwianRpIjoiMWZhMTUzOGEtYTYyNi00YTNlLWI5ODUtN2E5MzJmNDgyZjNkIn0
-[JwtDelegationService][DUMP] token_signature_b64=jks668lRfzNtIVYfi7gs6n5vOxaa3C0RbBJ76_rTgTM
-[JwtDelegationService][DUMP] token_header_json={"alg":"HS256"}
-[JwtDelegationService][DUMP] token_payload_json={"token_version":0,"actor":"chat-backend","sub":"{\"token_version\":0,\"usuario_id\":1496}","roles":["Admin_plataforma"],"iss":"chat-backend","exp":1760992408,"iat":1760992108,"jti":"1fa1538a-a626-4a3e-b985-7a932f482f3d"}
-[JwtDelegationService][DUMP] token_sha256=282d5f5f5d12cd2f272aea7da39f21c57225b561c38e8d4f0415f9c8bf51f125
-[JwtDelegationService][DUMP] delegationSecret_sha256=a3af8c7ea176f7f591e0b82c9699f5fdee0ebddb89e1cd46e06f79e8a1953cb9 delegationSecret_len=32
-[ChatService][DEBUG] System prompt constructed (trimmed): Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), breve y claro. Te pueden llegar chats sobre temas del contexto del api de academias y la whitelist que tienes disponible y chats que nada tengan que ver, siempre ofrece respuestas inte...
-2025-10-20T22:28:28.020+02:00  INFO 15972 --- [nio-8080-exec-5] c.w.p.chat.service.OpenAICallApiService  : Whitelist cargada desde served-openapi.json con 24 endpoints
-2025-10-20T22:28:29.095+02:00  WARN 15972 --- [nio-8080-exec-5] c.w.p.chat.service.OpenAICallApiService  : El mensaje recibido no es del tipo esperado: null
-2025-10-20T22:28:29.096+02:00  INFO 15972 --- [nio-8080-exec-5] c.w.p.chat.service.OpenAICallApiService  : No hubo tool_calls en la respuesta.
-[API-PROXY][DUMP] sanitizedAuth_preview=eyJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl9...
-[API-PROXY][DUMP] token_sha4=282d5f5f token_len=360
-DEBUG: UsuarioId obtenido del token JWT: 1496
-[ChatService][DEBUG] buildEnvelopeFromContentNode(type=academias, items=3) =>
-{
-  "status" : "success",
-  "message" : "He obtenido un listado de academias disponibles. Aquí tienes la información:",
-  "data" : {
-    "type" : "academias",
-    "items" : [ {
-      "id" : 311,
-      "nombre" : "Academia Central"
-    }, {
-      "id" : 312,
-      "nombre" : "Academia 1"
-    }, {
-      "id" : 313,
-      "nombre" : "Academia 2"
-    } ],
-    "summaryFields" : [ "id", "nombre" ]
-  },
-  "uiSuggestions" : [ {
-    "id" : "sg-g-listar-usuarios",
-    "displayText" : "Listar usuarios",
-    "type" : "Generica"
-  }, {
-    "id" : "sg-g-filter-nombre",
-    "displayText" : "Filtrar por nombre",
-    "type" : "Generica"
+  "id" : "chatcmpl-CT7dFYh3tq2D3wkrbhVrOC5Wj8u5L",
+  "object" : "chat.completion",
+  "created" : 1761056885,
+  "model" : "gpt-4o-mini-2024-07-18",
+  "choices" : [ {
+    "index" : 0,
+    "message" : {
+      "role" : "assistant",
+      "content" : "{\"text\":\"Necesito el ID o nombre exacto de la academia que deseas modificar. ¿Quieres buscarla o ver su detalle antes de modificar?\"}",
+      "refusal" : null,
+      "annotations" : [ ]
+    },
+    "logprobs" : null,
+    "finish_reason" : "stop"
   } ],
-  "uiSuggestionsVersion" : 1,
-  "messages" : [ ]
+  "usage" : {
+    "prompt_tokens" : 4434,
+    "completion_tokens" : 36,
+    "total_tokens" : 4470,
+    "prompt_tokens_details" : {
+      "cached_tokens" : 4352,
+      "audio_tokens" : 0
+    },
+    "completion_tokens_details" : {
+      "reasoning_tokens" : 0,
+      "audio_tokens" : 0,
+      "accepted_prediction_tokens" : 0,
+      "rejected_prediction_tokens" : 0
+    }
+  },
+  "service_tier" : "default",
+  "system_fingerprint" : "fp_560af6e559"
 }
-DEBUG 2025-10-20T22:28:32.003787600 [ChatController][chat] Respuesta generada por ChatService (JSON completo, pretty):
+[ChatService][DEBUG] No tool_calls, initial content (pretty):
+{
+  "text" : "Necesito el ID o nombre exacto de la academia que deseas modificar. ¿Quieres buscarla o ver su detalle antes de modificar?"
+}
+DEBUG 2025-10-21T16:28:06.697512 [ChatController][chat] Respuesta generada por ChatService (JSON completo, pretty):
 {
   "status" : "success",
-  "message" : "He obtenido un listado de academias disponibles. Aquí tienes la información:",
+  "message" : "Necesito el ID o nombre exacto de la academia que deseas modificar. ¿Quieres buscarla o ver su detalle antes de modificar?",
   "data" : {
-    "type" : "academias",
-    "items" : [ {
-      "id" : 311,
-      "nombre" : "Academia Central"
-    }, {
-      "id" : 312,
-      "nombre" : "Academia 1"
-    }, {
-      "id" : 313,
-      "nombre" : "Academia 2"
-    } ],
-    "summaryFields" : [ "id", "nombre" ]
+    "type" : "chat",
+    "items" : [ ]
   },
-  "uiSuggestions" : [ {
-    "id" : "sg-g-listar-usuarios",
-    "displayText" : "Listar usuarios",
-    "type" : "Generica"
-  }, {
-    "id" : "sg-g-filter-nombre",
-    "displayText" : "Filtrar por nombre",
-    "type" : "Generica"
-  } ],
-  "uiSuggestionsVersion" : 1,
+  "uiSuggestions" : [ ],
   "messages" : [ ]
 }

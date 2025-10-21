@@ -15,11 +15,6 @@ public class ChatServiceSummaryFieldsTest {
 
     static class DummyOpenAI_NoItems extends OpenAICallApiService {
         @Override
-        public String callPlannerStrict(List<Map<String, Object>> messages, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) {
-            // No planner en tests: evita red
-            return "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"sin plan\"}}]}";
-        }
-        @Override
         public String callChatWithTools(List<Map<String, Object>> messages, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) {
             String contentJson = "{\"text\":\"Hola\",\"suggestions\":[\"Ver academias\"]}";
             return "{\"choices\":[{\"message\":{\"content\":" + quote(contentJson) + "}}]}";
@@ -34,10 +29,6 @@ public class ChatServiceSummaryFieldsTest {
 
     static class DummyOpenAI_WithItems_NoSummary extends OpenAICallApiService {
         @Override
-        public String callPlannerStrict(List<Map<String, Object>> messages, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) {
-            return "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"sin plan\"}}]}";
-        }
-        @Override
         public String callChatWithTools(List<Map<String, Object>> messages, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) {
             String contentJson = "{\"text\":\"He encontrado 1 academia\",\"academias\":[{\"id\":1,\"nombre\":\"Demo\"}],\"suggestions\":[\"Ver detalle\"]}";
             return "{\"choices\":[{\"message\":{\"content\":" + quote(contentJson) + "}}]}";
@@ -51,10 +42,6 @@ public class ChatServiceSummaryFieldsTest {
     }
 
     static class DummyOpenAI_WithItems_WithSummary extends OpenAICallApiService {
-        @Override
-        public String callPlannerStrict(List<Map<String, Object>> messages, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) {
-            return "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"sin plan\"}}]}";
-        }
         @Override
         public String callChatWithTools(List<Map<String, Object>> messages, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) {
             String contentJson = "{\"text\":\"He encontrado 2 academias\",\"academias\":[{\"id\":1,\"nombre\":\"A\"},{\"id\":2,\"nombre\":\"B\"}],\"summary_fields\":[\"nombre\",\"id\"],\"suggestions\":[\"Siguiente página\"]}";

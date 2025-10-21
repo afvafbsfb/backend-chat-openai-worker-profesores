@@ -15,11 +15,6 @@ public class ChatServiceGreetingFallbackTest {
 
     static class DummyOpenAI_EmptyMessage extends OpenAICallApiService {
         @Override
-        public String callPlannerStrict(List<Map<String, Object>> messages, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) {
-            // No planner: fuerza que el flujo continue sin plan y sin red
-            return "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"sin plan\"}}]}";
-        }
-        @Override
         public String callChatWithTools(List<Map<String, Object>> messages, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) {
             // Simula un modelo que devuelve un objeto válido pero con text vacío y sin arrays
             String contentJson = "{\"text\":\"\",\"ui_suggestions\":[]}";
