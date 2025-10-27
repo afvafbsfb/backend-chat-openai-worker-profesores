@@ -100,6 +100,23 @@ public class ApiProxyService {
             }
         }
 
+        // Auto-inject expand=academia for tarifas and usuarios list endpoints
+        String operationId = (String) endpoint.get("operationId");
+        if (operationId != null && 
+            (operationId.equals("tarifas.listar_tarifas") || operationId.equals("usuarios.listar_usuarios"))) {
+            // Check if expand parameter is not already present
+            boolean hasExpand = false;
+            if (query != null && query.has("expand")) {
+                hasExpand = true;
+            }
+            if (!hasExpand) {
+                uri.queryParam("expand", "academia");
+                if (debugApiProxy) {
+                    logger.debug("[ApiProxyService] Auto-injected expand=academia for operationId={}", operationId);
+                }
+            }
+        }
+
         HttpHeaders headers = new HttpHeaders();
     String sanitizedAuth = sanitizeAuthorizationHeader(authorization);
 

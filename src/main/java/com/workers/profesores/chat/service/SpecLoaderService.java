@@ -28,9 +28,18 @@ public class SpecLoaderService {
     private boolean failOnInvalid;
 
     // critical endpoints (path + method) that we expect x-permissions for.
+    // Include all mutation operations (POST, PUT, PATCH, DELETE) as they are equally or more critical
     private final List<Map.Entry<String,String>> critical = List.of(
+            // Usuarios
             Map.entry("/usuarios","get"),
-            Map.entry("/academias","get")
+            Map.entry("/usuarios","post"),
+            // Academias
+            Map.entry("/academias","get"),
+            Map.entry("/academias","post"),
+            // Tarifas
+            Map.entry("/tarifas","get"),
+            Map.entry("/tarifas","post")
+            // Note: PUT/PATCH/DELETE with path params like /usuarios/{id} are checked dynamically below
     );
 
     public List<Map<String,Object>> getWhitelist() {

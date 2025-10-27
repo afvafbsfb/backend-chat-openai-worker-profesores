@@ -5,6 +5,7 @@
         "additionalProperties": false,
         "properties": {
           "direccion": {
+            "example": "Calle Mayor 123, Madrid",
             "type": "string"
           },
           "id": {
@@ -12,9 +13,11 @@
             "type": "integer"
           },
           "nombre": {
+            "example": "Academia de Idiomas Central",
             "type": "string"
           },
           "telefono": {
+            "example": "+34 912 345 678",
             "type": "string"
           }
         },
@@ -128,6 +131,112 @@
         },
         "type": "object"
       },
+      "Tarifa": {
+        "additionalProperties": false,
+        "properties": {
+          "academia_id": {
+            "example": 1,
+            "type": "integer"
+          },
+          "descripcion": {
+            "example": "Tarifa mensual básica",
+            "type": "string"
+          },
+          "fecha_alta": {
+            "example": "2025-10-27T10:30:00",
+            "format": "date-time",
+            "readOnly": true,
+            "type": "string"
+          },
+          "fecha_baja": {
+            "example": null,
+            "format": "date-time",
+            "nullable": true,
+            "readOnly": true,
+            "type": "string"
+          },
+          "fecha_ultima_modificacion": {
+            "example": "2025-10-27T10:30:00",
+            "format": "date-time",
+            "readOnly": true,
+            "type": "string"
+          },
+          "id": {
+            "example": 1,
+            "readOnly": true,
+            "type": "integer"
+          },
+          "precio_base": {
+            "example": 50.0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "academia_id",
+          "descripcion",
+          "precio_base"
+        ],
+        "type": "object"
+      },
+      "TarifaCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "academia_id": {
+            "description": "ID de la academia (obligatorio para admin_plataforma, opcional para admin_academia)",
+            "example": 1,
+            "nullable": true,
+            "type": "integer"
+          },
+          "descripcion": {
+            "description": "Descripción de la tarifa",
+            "example": "Tarifa mensual básica",
+            "type": "string"
+          },
+          "precio_base": {
+            "description": "Precio base de la tarifa (debe ser mayor que 0)",
+            "example": 50.0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "descripcion",
+          "precio_base"
+        ],
+        "type": "object"
+      },
+      "TarifaUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "academia_id": {
+            "nullable": true,
+            "type": "integer",
+            "writeOnly": true
+          },
+          "descripcion": {
+            "description": "Nueva descripción de la tarifa",
+            "example": "Tarifa mensual básica MODIFICADA",
+            "type": "string"
+          },
+          "fecha_alta": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string",
+            "writeOnly": true
+          },
+          "fecha_baja": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string",
+            "writeOnly": true
+          },
+          "precio_base": {
+            "description": "Nuevo precio base (debe ser mayor que 0)",
+            "example": 55.0,
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
       "Usuario": {
         "additionalProperties": false,
         "properties": {
@@ -169,6 +278,26 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Academia"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          }
+        }
+      },
+      "PaginatedTarifa": {
+        "type": "object",
+        "properties": {
+          "totalElements": {
+            "type": "integer"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Tarifa"
             }
           },
           "page": {
@@ -309,7 +438,7 @@
             "Profesor_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-17T14:28:52.709008+00:00"
+          "generated_at": "2025-10-27T13:10:21.121730+00:00"
         }
       },
       "post": {
@@ -358,7 +487,7 @@
           ],
           "scope": "global",
           "source": "permissions_map",
-          "generated_at": "2025-10-17T14:28:52.709008+00:00"
+          "generated_at": "2025-10-27T13:10:21.121730+00:00"
         }
       }
     },
@@ -409,7 +538,7 @@
           ],
           "scope": "global",
           "source": "permissions_map",
-          "generated_at": "2025-10-17T14:28:52.709008+00:00"
+          "generated_at": "2025-10-27T13:10:21.121730+00:00"
         }
       },
       "get": {
@@ -465,7 +594,7 @@
             "Profesor_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-17T14:28:52.709008+00:00"
+          "generated_at": "2025-10-27T13:10:21.121730+00:00"
         }
       },
       "patch": {
@@ -528,7 +657,7 @@
             "Admin_plataforma": "global"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-17T14:28:52.709008+00:00"
+          "generated_at": "2025-10-27T13:10:21.121730+00:00"
         }
       }
     },
@@ -570,7 +699,7 @@
           "note": "Login público (no requiere rol)",
           "scope": "public",
           "source": "permissions_map",
-          "generated_at": "2025-10-17T14:28:52.709008+00:00"
+          "generated_at": "2025-10-27T13:10:21.121730+00:00"
         },
         "security": []
       }
@@ -607,7 +736,7 @@
         ],
         "summary": "POST /auth/logout",
         "tags": [
-          "oauth"
+          "jwt"
         ],
         "x-permissions": {
           "allowed_roles": [
@@ -618,7 +747,7 @@
           "note": "Logout para usuarios autenticados",
           "scope": "own_user",
           "source": "permissions_map",
-          "generated_at": "2025-10-17T14:28:52.709008+00:00"
+          "generated_at": "2025-10-27T13:10:21.121730+00:00"
         }
       }
     },
@@ -644,7 +773,7 @@
         ],
         "summary": "POST /auth/refresh",
         "tags": [
-          "oauth"
+          "jwt"
         ],
         "x-permissions": {
           "allowed_roles": [
@@ -655,7 +784,7 @@
           "note": "Refresh de tokens para usuarios autenticados",
           "scope": "own_user",
           "source": "permissions_map",
-          "generated_at": "2025-10-17T14:28:52.709008+00:00"
+          "generated_at": "2025-10-27T13:10:21.121730+00:00"
         }
       }
     },
@@ -681,7 +810,7 @@
         ],
         "summary": "POST /auth/unblock",
         "tags": [
-          "oauth"
+          "jwt"
         ],
         "x-permissions": {
           "allowed_roles": [
@@ -694,7 +823,7 @@
             "Admin_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-17T14:28:52.709008+00:00"
+          "generated_at": "2025-10-27T13:10:21.121730+00:00"
         }
       }
     },
@@ -759,6 +888,442 @@
         "tags": [
           "Docs/Health"
         ]
+      }
+    },
+    "/tarifas/": {
+      "get": {
+        "description": "Auto-generated operation for tarifas.listar_tarifas",
+        "operationId": "tarifas.listar_tarifas",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "academia_id",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "precio_base_min",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "precio_base_max",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fecha_alta_desde",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fecha_alta_hasta",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fecha_baja_null",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order_by",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order_direction",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "expand",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedTarifa"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /tarifas/",
+        "tags": [
+          "Tarifas"
+        ],
+        "x-permissions": {
+          "allowed_roles": [
+            "Admin_academia",
+            "Admin_plataforma"
+          ],
+          "enforced_filters": {
+            "academia_id": "current_user.academia_id"
+          },
+          "note": "Listado de tarifas: admin_plataforma puede ver todas; admin_academia solo de su academia",
+          "scope_by_role": {
+            "Admin_plataforma": "global",
+            "Admin_academia": "own_academia"
+          },
+          "source": "permissions_map",
+          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+        }
+      },
+      "post": {
+        "description": "Auto-generated operation for tarifas.crear_tarifa",
+        "operationId": "tarifas.crear_tarifa",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TarifaCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedTarifa"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /tarifas/",
+        "tags": [
+          "Tarifas"
+        ],
+        "x-permissions": {
+          "allowed_roles": [
+            "Admin_academia",
+            "Admin_plataforma"
+          ],
+          "note": "Crear tarifa: admin_plataforma requiere academia_id; admin_academia usa su academia vinculada",
+          "scope_by_role": {
+            "Admin_plataforma": "global",
+            "Admin_academia": "own_academia"
+          },
+          "source": "permissions_map",
+          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+        }
+      }
+    },
+    "/tarifas/{tarifa_id}": {
+      "delete": {
+        "description": "Auto-generated operation for tarifas.eliminar_tarifa",
+        "operationId": "tarifas.eliminar_tarifa",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tarifa_id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tarifa"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "DELETE /tarifas/{tarifa_id}",
+        "tags": [
+          "Tarifas"
+        ],
+        "x-permissions": {
+          "allowed_roles": [
+            "Admin_academia",
+            "Admin_plataforma"
+          ],
+          "note": "Eliminar tarifa (soft-delete): admin_plataforma puede eliminar cualquiera; admin_academia solo de su academia. Bloqueado si hay cursos activos asociados",
+          "scope_by_role": {
+            "Admin_plataforma": "global",
+            "Admin_academia": "own_academia"
+          },
+          "source": "permissions_map",
+          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+        }
+      },
+      "get": {
+        "description": "Auto-generated operation for tarifas.obtener_tarifa",
+        "operationId": "tarifas.obtener_tarifa",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tarifa_id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tarifa"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /tarifas/{tarifa_id}",
+        "tags": [
+          "Tarifas"
+        ],
+        "x-permissions": {
+          "allowed_roles": [
+            "Admin_academia",
+            "Admin_plataforma"
+          ],
+          "note": "Ver tarifa: admin_plataforma puede ver cualquiera; admin_academia solo de su academia",
+          "scope_by_role": {
+            "Admin_plataforma": "global",
+            "Admin_academia": "own_academia"
+          },
+          "source": "permissions_map",
+          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+        }
+      },
+      "patch": {
+        "description": "Auto-generated operation for tarifas.actualizar_tarifa",
+        "operationId": "tarifas.actualizar_tarifa_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tarifa_id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TarifaUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tarifa"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "PATCH /tarifas/{tarifa_id}",
+        "tags": [
+          "Tarifas"
+        ],
+        "x-permissions": {
+          "allowed_roles": [
+            "Admin_academia",
+            "Admin_plataforma"
+          ],
+          "note": "Modificar tarifa: admin_plataforma puede modificar cualquiera; admin_academia solo de su academia",
+          "scope_by_role": {
+            "Admin_plataforma": "global",
+            "Admin_academia": "own_academia"
+          },
+          "source": "permissions_map",
+          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+        }
+      },
+      "put": {
+        "description": "Auto-generated operation for tarifas.actualizar_tarifa",
+        "operationId": "tarifas.actualizar_tarifa_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tarifa_id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TarifaUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tarifa"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "PUT /tarifas/{tarifa_id}",
+        "tags": [
+          "Tarifas"
+        ],
+        "x-permissions": {
+          "allowed_roles": [
+            "Admin_academia",
+            "Admin_plataforma"
+          ],
+          "note": "Modificar tarifa: admin_plataforma puede modificar cualquiera; admin_academia solo de su academia",
+          "scope_by_role": {
+            "Admin_plataforma": "global",
+            "Admin_academia": "own_academia"
+          },
+          "source": "permissions_map",
+          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+        }
       }
     },
     "/usuarios/": {
@@ -930,6 +1495,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "expand",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -975,7 +1548,7 @@
             "Profesor_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-17T14:28:52.709008+00:00"
+          "generated_at": "2025-10-27T13:10:21.121730+00:00"
         }
       },
       "post": {
@@ -1037,7 +1610,7 @@
             ]
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-17T14:28:52.709008+00:00"
+          "generated_at": "2025-10-27T13:10:21.121730+00:00"
         }
       }
     },
@@ -1088,7 +1661,7 @@
             "Profesor_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-17T14:28:52.709008+00:00"
+          "generated_at": "2025-10-27T13:10:21.121730+00:00"
         }
       }
     },
@@ -1132,7 +1705,7 @@
           "note": "Cada usuario puede ver su propio perfil; admins pueden verlo según su scope",
           "scope": "own_user",
           "source": "permissions_map",
-          "generated_at": "2025-10-17T14:28:52.709008+00:00"
+          "generated_at": "2025-10-27T13:10:21.121730+00:00"
         }
       }
     },
@@ -1172,7 +1745,7 @@
           "note": "Recuperación de credenciales: la operación puede iniciarse sin sesión (por ejemplo 'forgot password'), pero solo debe permitir recuperar las credenciales del propio usuario. Los admins pueden tener flujos separados para administrar credenciales de otros usuarios.",
           "scope": "own_user",
           "source": "permissions_map",
-          "generated_at": "2025-10-17T14:28:52.709008+00:00"
+          "generated_at": "2025-10-27T13:10:21.121730+00:00"
         }
       }
     },
@@ -1228,7 +1801,7 @@
             "Admin_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-17T14:28:52.709008+00:00"
+          "generated_at": "2025-10-27T13:10:21.121730+00:00"
         }
       },
       "get": {
@@ -1284,7 +1857,7 @@
             "Profesor_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-17T14:28:52.709008+00:00"
+          "generated_at": "2025-10-27T13:10:21.121730+00:00"
         }
       },
       "patch": {
@@ -1368,7 +1941,7 @@
             ]
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-17T14:28:52.709008+00:00"
+          "generated_at": "2025-10-27T13:10:21.121730+00:00"
         }
       },
       "put": {
@@ -1452,7 +2025,7 @@
             ]
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-17T14:28:52.709008+00:00"
+          "generated_at": "2025-10-27T13:10:21.121730+00:00"
         }
       }
     },
@@ -1543,7 +2116,7 @@
             ]
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-17T14:28:52.709008+00:00"
+          "generated_at": "2025-10-27T13:10:21.121730+00:00"
         }
       }
     },
@@ -1609,7 +2182,7 @@
             "Admin_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-17T14:28:52.709008+00:00"
+          "generated_at": "2025-10-27T13:10:21.121730+00:00"
         }
       }
     },
@@ -1675,7 +2248,7 @@
             "Admin_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-17T14:28:52.709008+00:00"
+          "generated_at": "2025-10-27T13:10:21.121730+00:00"
         }
       }
     }
@@ -1686,12 +2259,16 @@
       "name": "login"
     },
     {
-      "description": "Refresh, logout y gestión de tokens.",
-      "name": "oauth"
+      "description": "Refresh, logout y gestión de tokens JWT.",
+      "name": "jwt"
     },
     {
       "description": "Operaciones relacionadas con academias y su configuración.",
       "name": "Academias"
+    },
+    {
+      "description": "",
+      "name": "Tarifas"
     },
     {
       "description": "Gestión de usuarios, perfiles y credenciales.",

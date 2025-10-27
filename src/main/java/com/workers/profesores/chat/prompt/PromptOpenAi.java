@@ -22,7 +22,7 @@ public class PromptOpenAi {
                                     com.workers.profesores.chat.auth.UserClaims claims,
                                     String profileJsonForPrompt) {
     // 1) Rol, alcance y herramientas permitidas
-    String promptBase = "Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), breve y claro. Te pueden llegar chats sobre temas del contexto del api de academias y la whitelist que tienes disponible y chats que nada tengan que ver, siempre ofrece respuestas inteligentes humanas. Si no necesitas obtener datos, responde con texto inteligente y siempre ofrece sugerencias relacionadas con el rol del usuario que te pregunta y con el contexto de la whitelist que tienes disponible. Para obtener o mutar datos cuando sea necesario, usa SOLO las herramientas whitelisteadas: 'call_api' (una llamada) y 'call_api_batch' (varias llamadas en un mismo turno). Todas las llamadas deben respetar las autorizaciones y el ámbito del usuario logueado. Pide confirmación antes de operaciones destructivas (borrar/modificar). Para listados muy grandes, sugiere exportar a CSV/Excel. No uses tablas Markdown en mensajes del sistema.";
+    String promptBase = "Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), breve y claro. Te pueden llegar chats sobre temas del contexto del api de academias y la whitelist que tienes disponible y chats que nada tengan que ver, siempre ofrece respuestas inteligentes humanas. Si no necesitas obtener datos, responde con texto inteligente y siempre ofrece sugerencias relacionadas con el rol del usuario que te pregunta y con el contexto de la whitelist que tienes disponible. Para obtener o mutar datos cuando sea necesario, usa SOLO las herramientas whitelisteadas: 'call_api' (una llamada) y 'call_api_batch' (varias llamadas en un mismo turno). Todas las llamadas deben respetar las autorizaciones y el ámbito del usuario logueado. Pide confirmación antes de operaciones destructivas (borrar/modificar). Para listados muy grandes, sugiere exportar a CSV/Excel. No uses tablas Markdown en mensajes del sistema. IMPORTANTE: En saludos iniciales (cuando el usuario se presenta o saluda por primera vez), responde de forma amable y profesional, preséntate brevemente como asistente de la plataforma, y menciona que puedes ayudar con academias, usuarios, cursos, alumnos, profesores y tarifas según sus permisos.";
         String whitelistTable = openai.renderEndpointsTable();
 
         StringBuilder systemPromptSb = new StringBuilder(promptBase);
@@ -31,7 +31,7 @@ public class PromptOpenAi {
             String rolesStr = claims.roles == null ? "[]" : claims.roles.toString();
             String academiaStr = claims.academiaId == null ? "null" : claims.academiaId.toString();
             systemPromptSb.append(" Contexto del usuario: roles=").append(rolesStr).append(", academiaId=").append(academiaStr).append(". ");
-            systemPromptSb.append("Ámbito por rol: Admin_academia => ámbito 'academia' (limita siempre a su academia). Profesor_academia => solo su academia y cursos propios (puede crear sesiones, añadir anotaciones, consultar lista de alumnos del curso, notas y progreso). Admin_plataforma => intenta inferir la academia objetivo por el contexto; si no es claro, pide confirmación.");
+            systemPromptSb.append("Ámbito por rol: Admin_academia => ámbito 'academia' (limita a su academia: usuarios, cursos, tarifas). Profesor_academia => solo su academia y cursos propios. Admin_plataforma => intenta inferir la academia objetivo por el contexto; si no es claro, pide confirmación.");
         }
         String profile = (profileJsonForPrompt == null || profileJsonForPrompt.isBlank()) ? "{}" : profileJsonForPrompt;
         systemPromptSb.append(" Perfil_usuario: ").append(profile).append(".");
@@ -72,11 +72,18 @@ public class PromptOpenAi {
             "\nContrato de salida (estricto):\n" +
             "- Devuelve SOLO un objeto JSON válido (sin texto fuera del JSON).\n" +
             "- 'text': OBLIGATORIO y NO vacío. Redacta breve, natural y útil.\n" +
-            "- Si devuelves listados, usa SIEMPRE la clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores') y copia propiedades originales.\n" +
+            "- Si devuelves listados, usa SIEMPRE la clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores'|'tarifas') y copia propiedades originales.\n" +
             "  · Puedes añadir campos derivados en castellano (p. ej., 'numero_usuarios'), sin sobrescribir originales.\n" +
-            "  · 'summary_fields': 1–2 claves relevantes (p. ej., ['nombre','email']).\n" +
+            "  · 'summary_fields': ⚠️ ABSOLUTAMENTE OBLIGATORIO en TODOS los listados (arrays con ≥1 registros). NUNCA lo omitas. Indica 2-3 campos clave para mostrar en tabla. \n" +
+            "    REGLA CRÍTICA: NO incluir campos que sean identificadores puros (id, *_id, usuario_id, academia_id, etc.). \n" +
+            "    Prioriza campos descriptivos que el usuario entienda sin contexto técnico.\n" +
+            "    EJEMPLOS ESPECÍFICOS POR ENTIDAD:\n" +
+            "    - usuarios:['nombre','rol']\n" +
+            "    - tarifas: ['descripcion','precio_base'] (NUNCA incluir 'id' ni 'academia_id')\n" +
+            "    - academias: ['nombre','direccion'] o ['nombre','ciudad']\n" +
+            "  · IMPORTANTE sobre objetos anidados: Cuando la respuesta de la API incluya objetos anidados (ej. 'academia': {id, nombre}), puedes usar dot notation en summary_fields para referenciar sus propiedades. Ejemplo: para tarifas con academia expandida, usa ['descripcion','precio_base','academia.nombre']. Para usuarios con academia expandida, usa ['nombre','email','academia.nombre']. Esto permite mostrar información descriptiva de relaciones sin necesidad de mostrar IDs técnicos.\n" +
             "- Si NO has usado herramientas (no hay tool_calls), NO devuelvas arrays de recursos. En ese caso, limita la salida a { 'text': <no vacío>, 'ui_suggestions': [...] (si procede) }. Para listados, DEBES usar herramientas.\n" +
-            "- En el segundo turno, cuando dispongas de tool_outputs con 'items', DEBES devolver el array bajo su clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores'); el backend lo mapeará a data.items.\n" +
+            "- En el segundo turno, cuando dispongas de tool_outputs con 'items', DEBES devolver el array bajo su clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores'|'tarifas'); el backend lo mapeará a data.items.\n" +
             "- 'ui_suggestions': devuelve 2–3 cuando proceda. Tipos: 'Paginacion'|'Registro'|'Generica' (ver definiciones). Cualquier sugerencia con type='Paginacion' que NO incluya el objeto 'pagination' será inválida y rechazada por el backend (no la emitas).\n" +
             "- Optimización listados grandes: si el array tiene ≥30 ítems, limita por ítem los campos mostrados a un resumen útil (id, nombre, email, estado, rol cuando existan) y apóyate en 'summary_fields'. Evita payloads extensos para reducir latencia.\n"
         );
@@ -146,7 +153,7 @@ public class PromptOpenAi {
             "  · En type='Registro', usa 'recordAction' (camelCase) con uno de los valores indicados.\n" +
             "  · En type='Paginacion', incluye SIEMPRE 'pagination' con 'direction', 'page' y 'size'. No incluyas 'contextToken'; lo añadirá el backend si hay paginación real. Si no hay paginación real o metadatos, NO devuelvas sugerencias 'Paginacion'.\n" +
             "- summary_fields: array con 1–2 claves RELEVANTES de los ítems listados (p. ej., ['nombre','email']).\n" +
-            "- Recursos listables: devuelve los arrays bajo la clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores') y copia propiedades originales.\n" +
+            "- Recursos listables: devuelve los arrays bajo la clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores'|'tarifas') y copia propiedades originales.\n" +
             "- Sinónimos útiles (siempre respetando los filtros que existan en la whitelist):\n" +
             "  · 'activos'/'activas'/'vigentes'/'en alta' => usa query.estado='activo' si existe.\n" +
             "  · 'dados de baja'/'de baja'/'en baja' => filtra por fecha_baja_gte si el usuario da un rango/fecha; si no existe ese filtro, informa que no hay filtro directo o usa alternativas de la whitelist.\n" +
@@ -229,7 +236,7 @@ public class PromptOpenAi {
             "- Si detectas saludo/apertura o un mensaje fuera del contexto del API de academias, NO hagas tool_calls. Es OBLIGATORIO devolver: 'text' breve (no vacío) y 'ui_suggestions' (2–3 tipadas). Nunca devuelvas 'ui_suggestions': [] ni 'text' vacío. Compórtate con inteligencia humana.\n" +
             "- Propón sugerencias acordes al rol y a los recursos disponibles:\n" +
             "  · Admin_plataforma: 'Listar academias' o 'Listar usuarios'.\n" +
-            "  · Admin_academia: 'Listar cursos' o 'Listar alumnos'.\n" +
+            "  · Admin_academia: 'Listar tarifas', 'Listar usuarios' o 'Listar cursos'.\n" +
             "  · Profesor_academia: 'Ver mis cursos' o 'Listar alumnos'.\n" +
             "  Si un recurso no está disponible (p. ej., 'alumnos'), sugiere una alternativa válida (p. ej., 'usuarios' o 'cursos').\n"
         );
@@ -267,7 +274,7 @@ public class PromptOpenAi {
      */
 
     public String buildReformatInstruction() {
-    return "Por favor, devuelve únicamente un objeto JSON válido con al menos la propiedad 'text' (string) y que 'text' NO esté vacío; redacta con inteligencia humana. Si el mensaje original era un saludo/apertura o no implica tool_calls ni paginación, incluye además 2–3 'ui_suggestions' tipadas (según las definiciones), sin arrays vacíos. Si devuelves listas de recursos, usa las claves exactas 'usuarios'|'academias'|'cursos'|'alumnos'|'profesores'. No incluyas explicaciones ni texto fuera del JSON. \n" +
+    return "Por favor, devuelve únicamente un objeto JSON válido con al menos la propiedad 'text' (string) y que 'text' NO esté vacío; redacta con inteligencia humana. Si el mensaje original era un saludo/apertura o no implica tool_calls ni paginación, incluye además 2–3 'ui_suggestions' tipadas (según las definiciones), sin arrays vacíos. Si devuelves listas de recursos, usa las claves exactas 'usuarios'|'academias'|'cursos'|'alumnos'|'profesores'|'tarifas'. No incluyas explicaciones ni texto fuera del JSON. \n" +
         "Prohibición: si NO hay tool_calls, NO devuelvas arrays de recursos. En ese caso, limita la salida a { 'text': <no vacío>, 'ui_suggestions': [...] (si procede) }. Para listados, usa herramientas. \n" +
         "'ui_suggestions': cada elemento debe contener 'id' (string), 'display_text' (string), 'type' en ['Paginacion','Registro','Generica'] y, si 'type'=='Registro', 'recordAction' en ['Alta','Baja','Modificacion','Consulta']. Para 'type'='Paginacion', incluye SIEMPRE 'pagination': { 'direction': 'next'|'prev', 'page': number, 'size': number }. No inventes paginación ni 'contextToken'.";
     }
@@ -283,7 +290,7 @@ public class PromptOpenAi {
         String resumen = (resumenEjecucion == null || resumenEjecucion.isBlank()) ? "(sin_resumen)" : resumenEjecucion;
         return String.join("\n",
             "Segundo turno (sin herramientas). Devuelve SOLO un JSON con: 'text' (no vacío) y, si procede, 'ui_suggestions' (2–3).",
-            "Si hay tool_outputs con 'items', devuelve el array bajo su clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores').",
+            "Si hay tool_outputs con 'items', devuelve el array bajo su clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores'|'tarifas').",
             "ui_suggestions (estricto): {'id','display_text','type'}; en 'Registro' añade 'recordAction' ['Alta','Baja','Modificacion','Consulta']; en 'Paginacion' añade 'pagination' {direction:'next'|'prev', page:number, size:number}.",
             "Sin 'contextToken' ni nodo global 'pagination'. Nunca 'ui_suggestions': [].",
             "Paginación: page=1 & has_more=> solo 'Siguiente'; page>1 & has_more=> 'Anterior' y 'Siguiente'; última=> solo 'Anterior'. Si no puedes calcularla, omite. Si el resumen indica prev_allowed=true, incluye 'Anterior'.",
@@ -329,7 +336,7 @@ public class PromptOpenAi {
         sb.append("Eres un asistente (secretaria) para una plataforma de academias en España. ");
         sb.append("Responde SIEMPRE en castellano (España), breve y claro. \n");
         sb.append("Este es el segundo turno: NO puedes usar herramientas. Debes redactar el JSON final a partir del contexto reinyectado.\n");
-        sb.append("Contrato (compacto): devuelve SOLO un JSON; 'text' no vacío. Si hay tool_outputs con items, devuelve el array bajo su clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores').\n");
+        sb.append("Contrato (compacto): devuelve SOLO un JSON; 'text' no vacío. Si hay tool_outputs con items, devuelve el array bajo su clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores'|'tarifas').\n");
         sb.append("ui_suggestions (2–3): {'id','display_text','type'}; 'Registro' añade 'recordAction' ['Alta','Baja','Modificacion','Consulta']; 'Paginacion' añade 'pagination' {direction,page,size}. Sin 'contextToken' ni nodo global 'pagination'; nunca [].\n");
         sb.append("Paginación: page=1 & has_more=> solo 'Siguiente'; page>1 & has_more=> 'Anterior' y 'Siguiente'; última=> solo 'Anterior'. Si no puedes calcular, omite. Si el resumen indica prev_allowed=true, incluye 'Anterior'.\n");
         sb.append("CRÍTICO - Redacción del 'text': NUNCA cuentes los items del array manualmente. Si el payload incluye 'returned' y 'sample_of', el array es una MUESTRA (echo trimming). El count REAL está en 'returned'. Usa SOLO metadatos para redactar. Si sample_of>=1: plural sin números específicos. Si returned>1: plural. Si returned==1: singular. Si returned==0: sin resultados. PROHIBIDO: contar .length cuando sample_of>=1.\n");
