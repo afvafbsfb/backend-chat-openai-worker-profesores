@@ -3,11 +3,14 @@ package com.workers.profesores.chat.auth;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
 @Service
 public class AuthorizationServiceImpl implements AuthorizationService {
+    private static final Logger logger = LoggerFactory.getLogger(AuthorizationServiceImpl.class);
     private final ObjectMapper om = new ObjectMapper();
 
     @Override
@@ -96,14 +99,24 @@ public class AuthorizationServiceImpl implements AuthorizationService {
             java.util.Map<String, Object> result = new java.util.HashMap<>();
             // Heuristics: try to guess transform target by replacing 'listar' with 'obtener' or take from x-permissions.transform_to if present
             Object xp = endpoint.get("x-permissions");
+            System.err.println("=== [AUTH-DEBUG] transformIfNeeded: operationId=" + operationId + ", hasXPermissions=" + (xp != null));
+            logger.info("[DEBUG] transformIfNeeded: operationId={}, hasXPermissions={}", operationId, xp != null);
             if (xp instanceof Map<?, ?>) {
                 Map<?, ?> xperm = (Map<?, ?>) xp;
+                boolean hasTransformKey = xperm.containsKey("transform_to");
                 Object transformTo = xperm.get("transform_to");
-                if (transformTo != null) {
-                    result.put("transform_to", String.valueOf(transformTo));
+                System.err.println("=== [AUTH-DEBUG] x-permissions: hasTransformToKey=" + hasTransformKey + ", transformToValue=" + transformTo);
+                logger.info("[DEBUG] x-permissions: hasTransformToKey={}, transformToValue={}", hasTransformKey, transformTo);
+                // Check if transform_to key EXISTS (even if value is null) - null means "do not transform"
+                if (hasTransformKey) {
+                    result.put("transform_to", transformTo == null ? null : String.valueOf(transformTo));
+                    System.err.println("=== [AUTH-DEBUG] Added transform_to to result: " + result.get("transform_to"));
+                    logger.info("[DEBUG] Added transform_to to result: {}", result.get("transform_to"));
                 }
             }
             if (!result.containsKey("transform_to")) {
+                System.err.println("=== [AUTH-DEBUG] No transform_to in x-permissions, using guess");
+                logger.info("[DEBUG] No transform_to in x-permissions, using guess");
                 String guess = operationId.replace("listar", "obtener");
                 // If guess looks like 'xxx.obtener_yyy' and yyy is plural (ends with 's'),
                 // try a singular form 'yyy' -> 'yy' by removing trailing 's'. This handles

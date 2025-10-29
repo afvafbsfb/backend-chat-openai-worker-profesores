@@ -122,10 +122,12 @@
         "additionalProperties": false,
         "properties": {
           "id": {
+            "example": 2,
             "readOnly": true,
             "type": "integer"
           },
           "nombre": {
+            "example": "Admin_academia",
             "type": "string"
           }
         },
@@ -241,29 +243,161 @@
         "additionalProperties": false,
         "properties": {
           "academia_id": {
+            "description": "ID de la academia a la que pertenece el usuario (null para admin_plataforma)",
+            "example": 1,
             "nullable": true,
             "type": "integer"
           },
           "email": {
+            "description": "Email del usuario (único en el sistema)",
+            "example": "afvidal@abanca.com",
             "format": "email",
             "type": "string"
           },
           "estado": {
+            "description": "Estado del usuario",
+            "enum": [
+              "Activo",
+              "Bloqueado",
+              "Baja"
+            ],
+            "example": "Activo",
+            "readOnly": true,
             "type": "string"
           },
           "fecha_alta": {
+            "example": "2025-10-27T10:30:00",
             "format": "date-time",
+            "readOnly": true,
             "type": "string"
           },
           "id": {
+            "example": 1,
             "readOnly": true,
             "type": "integer"
           },
           "nombre": {
+            "description": "Nombre completo del usuario",
+            "example": "Angel Vidal Fernández",
             "type": "string"
           },
+          "password": {
+            "description": "Contraseña del usuario (opcional en alta, se usará el email como password temporal)",
+            "example": "MiPassword123!",
+            "nullable": true,
+            "type": "string",
+            "writeOnly": true
+          },
           "rol": {
-            "$ref": "#/components/schemas/Rol"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Rol"
+              }
+            ],
+            "description": "Información del rol del usuario"
+          },
+          "rol_id": {
+            "description": "ID del rol asignado al usuario",
+            "example": 2,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "email",
+          "nombre",
+          "rol_id"
+        ],
+        "type": "object"
+      },
+      "UsuarioCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "academia_id": {
+            "description": "ID de la academia (solo admin_plataforma puede especificarlo, admin_academia lo tiene forzado)",
+            "example": 1,
+            "nullable": true,
+            "type": "integer"
+          },
+          "email": {
+            "description": "Email del usuario (debe ser único)",
+            "example": "afvidal@abanca.com",
+            "format": "email",
+            "type": "string"
+          },
+          "nombre": {
+            "description": "Nombre completo del usuario",
+            "example": "Angel Vidal Fernández",
+            "type": "string"
+          },
+          "password": {
+            "description": "Contraseña inicial (opcional). Si no se proporciona, se usará el email como password temporal que deberá cambiarse en el primer login",
+            "example": null,
+            "nullable": true,
+            "type": "string"
+          },
+          "rol_id": {
+            "description": "ID del rol a asignar (1=admin_plataforma, 2=admin_academia, 3=profesor_academia)",
+            "example": 2,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "email",
+          "nombre",
+          "rol_id"
+        ],
+        "type": "object"
+      },
+      "UsuarioUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "academia_id": {
+            "description": "Nueva academia del usuario",
+            "example": 2,
+            "nullable": true,
+            "type": "integer"
+          },
+          "email": {
+            "description": "Nuevo email del usuario",
+            "example": "nuevo_email@abanca.com",
+            "format": "email",
+            "type": "string"
+          },
+          "estado": {
+            "description": "Nuevo estado del usuario",
+            "enum": [
+              "Activo",
+              "Bloqueado",
+              "Baja"
+            ],
+            "example": "Bloqueado",
+            "type": "string"
+          },
+          "fecha_alta": {
+            "format": "date-time",
+            "type": "string",
+            "writeOnly": true
+          },
+          "fecha_baja": {
+            "format": "date-time",
+            "type": "string",
+            "writeOnly": true
+          },
+          "nombre": {
+            "description": "Nuevo nombre del usuario",
+            "example": "Angel Vidal Fernández (Modificado)",
+            "type": "string"
+          },
+          "password": {
+            "description": "Nueva contraseña del usuario",
+            "example": "NuevaPassword123!",
+            "type": "string",
+            "writeOnly": true
+          },
+          "rol_id": {
+            "description": "Nuevo rol del usuario",
+            "example": 3,
+            "type": "integer"
           }
         },
         "type": "object"
@@ -278,6 +412,29 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Academia"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          }
+        }
+      },
+      "Item": {
+        "type": "object"
+      },
+      "PaginatedRole": {
+        "type": "object",
+        "properties": {
+          "totalElements": {
+            "type": "integer"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Item"
             }
           },
           "page": {
@@ -438,7 +595,7 @@
             "Profesor_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+          "generated_at": "2025-10-29T15:09:03.361252+00:00"
         }
       },
       "post": {
@@ -487,7 +644,7 @@
           ],
           "scope": "global",
           "source": "permissions_map",
-          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+          "generated_at": "2025-10-29T15:09:03.361252+00:00"
         }
       }
     },
@@ -538,7 +695,7 @@
           ],
           "scope": "global",
           "source": "permissions_map",
-          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+          "generated_at": "2025-10-29T15:09:03.361252+00:00"
         }
       },
       "get": {
@@ -594,7 +751,7 @@
             "Profesor_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+          "generated_at": "2025-10-29T15:09:03.361252+00:00"
         }
       },
       "patch": {
@@ -657,7 +814,7 @@
             "Admin_plataforma": "global"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+          "generated_at": "2025-10-29T15:09:03.361252+00:00"
         }
       }
     },
@@ -699,7 +856,7 @@
           "note": "Login público (no requiere rol)",
           "scope": "public",
           "source": "permissions_map",
-          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+          "generated_at": "2025-10-29T15:09:03.361252+00:00"
         },
         "security": []
       }
@@ -747,7 +904,7 @@
           "note": "Logout para usuarios autenticados",
           "scope": "own_user",
           "source": "permissions_map",
-          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+          "generated_at": "2025-10-29T15:09:03.361252+00:00"
         }
       }
     },
@@ -784,7 +941,7 @@
           "note": "Refresh de tokens para usuarios autenticados",
           "scope": "own_user",
           "source": "permissions_map",
-          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+          "generated_at": "2025-10-29T15:09:03.361252+00:00"
         }
       }
     },
@@ -823,7 +980,7 @@
             "Admin_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+          "generated_at": "2025-10-29T15:09:03.361252+00:00"
         }
       }
     },
@@ -888,6 +1045,77 @@
         "tags": [
           "Docs/Health"
         ]
+      }
+    },
+    "/roles/": {
+      "get": {
+        "description": "Auto-generated operation for roles.listar_roles",
+        "operationId": "roles.listar_roles",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "nombre",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "nombre_contains",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "id",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedRole"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /roles/",
+        "tags": [
+          "Roles"
+        ],
+        "x-permissions": {
+          "allowed_roles": [
+            "Admin_academia",
+            "Admin_plataforma",
+            "Profesor_academia"
+          ],
+          "note": "Listado de roles disponibles: todos los usuarios autenticados pueden consultar para conocer los roles disponibles al crear/modificar usuarios. transform_to=null evita transformación automática a roles.obtener_role",
+          "transform_to": null,
+          "scope": "global",
+          "source": "permissions_map",
+          "generated_at": "2025-10-29T15:09:03.361252+00:00"
+        }
       }
     },
     "/tarifas/": {
@@ -1030,7 +1258,7 @@
             "Admin_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+          "generated_at": "2025-10-29T15:09:03.361252+00:00"
         }
       },
       "post": {
@@ -1084,7 +1312,7 @@
             "Admin_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+          "generated_at": "2025-10-29T15:09:03.361252+00:00"
         }
       }
     },
@@ -1140,7 +1368,7 @@
             "Admin_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+          "generated_at": "2025-10-29T15:09:03.361252+00:00"
         }
       },
       "get": {
@@ -1194,7 +1422,7 @@
             "Admin_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+          "generated_at": "2025-10-29T15:09:03.361252+00:00"
         }
       },
       "patch": {
@@ -1258,7 +1486,7 @@
             "Admin_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+          "generated_at": "2025-10-29T15:09:03.361252+00:00"
         }
       },
       "put": {
@@ -1322,7 +1550,7 @@
             "Admin_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+          "generated_at": "2025-10-29T15:09:03.361252+00:00"
         }
       }
     },
@@ -1548,7 +1776,7 @@
             "Profesor_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+          "generated_at": "2025-10-29T15:09:03.361252+00:00"
         }
       },
       "post": {
@@ -1558,7 +1786,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Usuario"
+                "$ref": "#/components/schemas/UsuarioCreate"
               }
             }
           },
@@ -1610,7 +1838,7 @@
             ]
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+          "generated_at": "2025-10-29T15:09:03.361252+00:00"
         }
       }
     },
@@ -1661,7 +1889,7 @@
             "Profesor_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+          "generated_at": "2025-10-29T15:09:03.361252+00:00"
         }
       }
     },
@@ -1705,8 +1933,51 @@
           "note": "Cada usuario puede ver su propio perfil; admins pueden verlo según su scope",
           "scope": "own_user",
           "source": "permissions_map",
-          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+          "generated_at": "2025-10-29T15:09:03.361252+00:00"
         }
+      }
+    },
+    "/usuarios/me/credentials": {
+      "put": {
+        "description": "Auto-generated operation for usuarios.actualizar_mis_credenciales",
+        "operationId": "usuarios.actualizar_mis_credenciales",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UsuarioUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Usuario"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "PUT /usuarios/me/credentials",
+        "tags": [
+          "Usuarios"
+        ]
       }
     },
     "/usuarios/recover": {
@@ -1745,7 +2016,7 @@
           "note": "Recuperación de credenciales: la operación puede iniciarse sin sesión (por ejemplo 'forgot password'), pero solo debe permitir recuperar las credenciales del propio usuario. Los admins pueden tener flujos separados para administrar credenciales de otros usuarios.",
           "scope": "own_user",
           "source": "permissions_map",
-          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+          "generated_at": "2025-10-29T15:09:03.361252+00:00"
         }
       }
     },
@@ -1801,7 +2072,7 @@
             "Admin_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+          "generated_at": "2025-10-29T15:09:03.361252+00:00"
         }
       },
       "get": {
@@ -1857,7 +2128,7 @@
             "Profesor_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+          "generated_at": "2025-10-29T15:09:03.361252+00:00"
         }
       },
       "patch": {
@@ -1877,7 +2148,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Usuario"
+                "$ref": "#/components/schemas/UsuarioUpdate"
               }
             }
           },
@@ -1941,7 +2212,7 @@
             ]
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+          "generated_at": "2025-10-29T15:09:03.361252+00:00"
         }
       },
       "put": {
@@ -1961,7 +2232,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Usuario"
+                "$ref": "#/components/schemas/UsuarioUpdate"
               }
             }
           },
@@ -2025,7 +2296,7 @@
             ]
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+          "generated_at": "2025-10-29T15:09:03.361252+00:00"
         }
       }
     },
@@ -2047,7 +2318,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Usuario"
+                "$ref": "#/components/schemas/UsuarioUpdate"
               }
             }
           },
@@ -2116,7 +2387,7 @@
             ]
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+          "generated_at": "2025-10-29T15:09:03.361252+00:00"
         }
       }
     },
@@ -2138,7 +2409,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Usuario"
+                "$ref": "#/components/schemas/UsuarioUpdate"
               }
             }
           },
@@ -2182,7 +2453,7 @@
             "Admin_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+          "generated_at": "2025-10-29T15:09:03.361252+00:00"
         }
       }
     },
@@ -2204,7 +2475,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Usuario"
+                "$ref": "#/components/schemas/UsuarioUpdate"
               }
             }
           },
@@ -2248,7 +2519,7 @@
             "Admin_academia": "own_academia"
           },
           "source": "permissions_map",
-          "generated_at": "2025-10-27T13:10:21.121730+00:00"
+          "generated_at": "2025-10-29T15:09:03.361252+00:00"
         }
       }
     }
@@ -2265,6 +2536,10 @@
     {
       "description": "Operaciones relacionadas con academias y su configuración.",
       "name": "Academias"
+    },
+    {
+      "description": "",
+      "name": "Roles"
     },
     {
       "description": "",

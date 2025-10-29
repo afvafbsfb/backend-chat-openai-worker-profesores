@@ -160,7 +160,7 @@ public class ApiProxyService {
         // With a validated delegated token, enforce authorization policies and potential transforms
         authorizationService.checkAllowed(new com.workers.profesores.chat.auth.UserClaims(claims.usuarioId, claims.roles, claims.academiaId, claims.profesorUsuarioId), endpoint, methodFromModel, pathParams, query);
         java.util.Map<String, Object> transform = authorizationService.transformIfNeeded(new com.workers.profesores.chat.auth.UserClaims(claims.usuarioId, claims.roles, claims.academiaId, claims.profesorUsuarioId), endpoint, pathParams, query);
-        if (transform != null && transform.containsKey("transform_to") && openAICallApiService != null) {
+        if (transform != null && transform.containsKey("transform_to") && transform.get("transform_to") != null && openAICallApiService != null) {
             String newEpName = String.valueOf(transform.get("transform_to"));
             Map<String, Object> newEp = openAICallApiService.getEndpointByName(newEpName);
             if (newEp == null) throw new RuntimeException("Transform error: endpoint metadata not found for " + newEpName);

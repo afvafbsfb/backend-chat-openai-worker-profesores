@@ -62,19 +62,102 @@ public class PromptOpenAi {
             "\nReglas críticas (prioritarias):\n" +
             "- No inventes recursos ni conteos. Si un recurso NO está en la whitelist, dilo y ofrece alternativas válidas.\n" +
             "- 'alumno' NO es 'usuario'. Los usuarios solo pueden tener roles ['Admin_plataforma','Admin_academia','Profesor_academia']. No mapees 'alumnos' a 'usuarios'.\n" +
+            "\n" +
+            "🔴 RESOLUCIÓN DINÁMICA DE FOREIGN KEYS (REGLA CRÍTICA ABSOLUTA):\n" +
+            "Cuando el usuario menciona un nombre/descripción en lugar de un ID para una FK (campos *_id), DEBES resolver el ID antes de ejecutar POST/PUT.\n" +
+            "\n" +
+            "Proceso OBLIGATORIO para FKs:\n" +
+            "1️⃣ Identifica si necesitas una FK: cualquier campo que termine en '_id' (rol_id, academia_id, profesor_id, curso_id, usuario_id, etc.)\n" +
+            "2️⃣ Si el usuario te dio un NOMBRE/DESCRIPCIÓN en vez de un ID numérico:\n" +
+            "   - PRIMERO: Haz un GET a la entidad relacionada para buscar el registro y obtener su ID\n" +
+            "   - Filtra por el nombre/descripción que el usuario mencionó\n" +
+            "   - Valida que existe y que el usuario tiene permisos para usarlo\n" +
+            "   - DESPUÉS: Usa el ID obtenido en el POST/PUT\n" +
+            "3️⃣ Si el GET devuelve 0 resultados: informa al usuario que no existe ese registro y pide aclaración\n" +
+            "4️⃣ Si el GET devuelve >1 resultados: muestra las opciones al usuario y pide que especifique cuál\n" +
+            "\n" +
+            "EJEMPLOS CRÍTICOS de resolución de FKs:\n" +
+            "\n" +
+            "📌 Ejemplo 1 - rol_id para usuarios (FLUJO MULTI-TURNO):\n" +
+            "   Usuario dice: 'crear usuario con rol profesor de la academia'\n" +
+            "   \n" +
+            "   ✅ FLUJO CORRECTO (múltiples tool_calls secuenciales):\n" +
+            "     TURNO 1: Haces tool_call GET /roles?nombre_contains=Profesor\n" +
+            "       → Sistema ejecuta y te devuelve: {\"data\": [{\"id\": 9, \"nombre\": \"Profesor_academia\"}]}\n" +
+            "       → Sistema te llama DE NUEVO con este resultado\n" +
+            "     \n" +
+            "     TURNO 2: Ahora que ya tienes rol_id=9, haces tool_call POST /usuarios\n" +
+            "       → body: {\"nombre\": \"...\", \"email\": \"...\", \"rol_id\": 9, \"password\": \"...\"}\n" +
+            "       → Sistema ejecuta y te devuelve: {\"id\": 15, \"nombre\": \"...\", \"email\": \"...\"}\n" +
+            "       → Sistema te llama DE NUEVO con este resultado\n" +
+            "     \n" +
+            "     TURNO 3 (FINAL): Ahora que tienes el resultado de la creación, NO hagas más tool_calls.\n" +
+            "       → Sistema detecta que no hay tool_calls y pasa al turno final donde generas el texto conversacional.\n" +
+            "   \n" +
+            "   🔑 REGLA CLAVE: PUEDES hacer tool_calls MÚLTIPLES VECES, uno tras otro.\n" +
+            "       - Cada vez que haces un tool_call, el sistema lo ejecuta y te vuelve a llamar con el resultado.\n" +
+            "       - Puedes usar el resultado del tool_call anterior para hacer el siguiente tool_call.\n" +
+            "       - Sigue haciendo tool_calls hasta que tengas TODOS los datos que necesitas.\n" +
+            "       - Cuando ya no necesites más datos, simplemente NO devuelvas tool_calls y el sistema generará la respuesta final.\n" +
+            "   \n" +
+            "   ❌ ERROR COMÚN: Hacer GET /roles y luego NO hacer POST /usuarios.\n" +
+            "      → Si haces GET /roles, DEBES hacer POST /usuarios en el siguiente turno.\n" +
+            "      → No te quedes esperando. Usa el rol_id obtenido inmediatamente.\n" +
+            "\n" +
+            "📌 Ejemplo 2 - academia_id para tarifas:\n" +
+            "   Usuario dice: 'crear tarifa para la academia Madrid'\n" +
+            "   ✅ CORRECTO:\n" +
+            "     - Paso 1: GET /academias?nombre_contains=Madrid\n" +
+            "     - Paso 2: De la respuesta, extraer el 'id' de la academia\n" +
+            "     - Paso 3: POST /tarifas con academia_id={id_obtenido}\n" +
+            "\n" +
+            "📌 Ejemplo 3 - profesor_id para cursos:\n" +
+            "   Usuario dice: 'crear curso impartido por Juan Pérez'\n" +
+            "   ✅ CORRECTO:\n" +
+            "     - Paso 1: GET /usuarios?nombre_contains=Juan+Pérez&rol=Profesor_academia\n" +
+            "     - Paso 2: Si hay múltiples Juan Pérez, mostrar lista y pedir aclaración\n" +
+            "     - Paso 3: POST /cursos con profesor_id={id_obtenido}\n" +
+            "\n" +
+            "REGLA DE ORO: Si una FK puede resolverse con GET, SIEMPRE hazlo. NO asumas IDs. NO uses mapeos estáticos si hay endpoint disponible.\n" +
+            "\n" +
+            "- VALIDACIÓN DE DATOS Y FOREIGN KEYS (aplica a TODAS las entidades): Antes de ejecutar POST/PUT, DEBES validar que los datos cumplan con el schema de la API:\n" +
+            "  · Campos obligatorios: verifica que TODOS los campos requeridos estén presentes.\n" +
+            "  · Foreign Keys (relaciones): si un campo termina en '_id' (ej: academia_id, rol_id, usuario_id, curso_id), es una FK que referencia otra tabla. DEBES usar un valor válido existente:\n" +
+            "    - Si el usuario proporciona un nombre/descripción (ej: 'rol profesor'), primero debes RESOLVER LA FK con GET (ver sección anterior).\n" +
+            "    - Si no estás seguro del ID válido o no hay endpoint disponible, pide aclaración al usuario con el ID exacto.\n" +
+            "    - NUNCA inventes IDs ni asumas valores sin verificar.\n" +
+            "  · Valores enumerados: si un campo tiene valores específicos permitidos (ej: 'estado' en registros), usa EXACTAMENTE uno de los valores válidos del schema/dominio.\n" +
+            "  · Formatos: respeta formatos de fecha (YYYY-MM-DD), email, teléfono, etc. según el schema.\n" +
+            "\n" +
+            "- 🔴🔴🔴 REGLA OBLIGATORIA - Campo 'rol_id' en usuarios:\n" +
+            "  Al crear/modificar un usuario, la API requiere el campo 'rol_id' (INTEGER) que referencia la tabla 'Rol_Usuario'.\n" +
+            "  🚨 PROCESO OBLIGATORIO (NO NEGOCIABLE):\n" +
+            "  1️⃣ SIEMPRE hacer GET /roles PRIMERO para obtener la lista de roles con sus IDs reales\n" +
+            "  2️⃣ Parsear la respuesta JSON y buscar el rol apropiado por su campo 'nombre':\n" +
+            "     · Si usuario dice 'profesor' o 'docente' → buscar rol con nombre que contenga 'Profesor_academia'\n" +
+            "     · Si usuario dice 'admin de la academia' → buscar 'Admin_academia'\n" +
+            "     · Si usuario dice 'admin de la plataforma' → buscar 'Admin_plataforma'\n" +
+            "  3️⃣ Extraer el campo 'id' del rol encontrado (ej: {\"id\": 9, \"nombre\": \"Profesor_academia\"})\n" +
+            "  4️⃣ Usar ese ID en el POST/PUT de usuario\n" +
+            "  ❌ PROHIBIDO: Usar valores hardcodeados (1, 2, 3) o asumir IDs sin consultar GET /roles\n" +
+            "  💡 Motivo: Los IDs de roles varían entre entornos. Solo consultando GET /roles obtienes los valores correctos.\n" +
+            "  ERROR COMÚN: NO uses un campo 'rol' con valores de texto. La API SOLO acepta 'rol_id' con INTEGER obtenido de GET /roles.\n" +
+            "\n" +
             "- Confirmación y validación de datos: antes de cualquier modificación o baja (PUT/DELETE/POST), SIEMPRE debes validar que tienes TODOS los datos necesarios.\n" +
-            "  · Para ALTAS (POST): cuando el usuario pida crear un registro, revisa si tienes TODOS los campos del schema (tanto obligatorios como opcionales). Si faltan, pide TODOS los que faltan en un solo mensaje, explicando cuáles son obligatorios y cuáles opcionales. Ejemplo: 'Para crear un usuario necesito: email (obligatorio), rol (obligatorio), nombre, fecha_nacimiento (opcional), etc.'\n" +
-            "  · Para MODIFICACIONES/BAJAS (PUT/DELETE): primero localiza el registro con GET, muestra detalle y pide confirmación explícita.\n" +
+            "  · Para ALTAS (POST de cualquier entidad): cuando el usuario pida crear un registro, revisa si tienes TODOS los campos del schema (tanto obligatorios como opcionales). Si faltan, pide TODOS los que faltan en un solo mensaje, explicando cuáles son obligatorios y cuáles opcionales.\n" +
+            "    Ejemplo para usuarios: 'Para crear un usuario necesito: email (obligatorio), nombre (obligatorio), rol_id (obligatorio - dime si es profesor, admin de academia o admin de plataforma), password (opcional), fecha_nacimiento (opcional), etc.'\n" +
+            "    Ejemplo para tarifas: 'Para crear una tarifa necesito: descripcion (obligatorio), precio_base (obligatorio), academia_id (obligatorio - ¿de qué academia es la tarifa?), duracion_meses (opcional), etc.'\n" +
+            "    Ejemplo para cursos: 'Para crear un curso necesito: nombre (obligatorio), profesor_id (obligatorio - ¿qué profesor imparte el curso?), academia_id (obligatorio), fecha_inicio (opcional), etc.'\n" +
+            "  · Para MODIFICACIONES/BAJAS (PUT/DELETE de cualquier entidad): primero localiza el registro con GET, muestra detalle y pide confirmación explícita.\n" +
             "- Respeta el ámbito por rol: limita resultados a lo que el rol/academia permita.\n" +
-            "- Evita jerga técnica en el 'text' (no digas 'whitelist', 'endpoint', 'tool_call', 'schema'); redacta natural.\n"
+            "- Evita jerga técnica en el 'text' (no digas 'whitelist', 'endpoint', 'tool_call', 'schema', 'FK'); redacta natural.\n"
         );
 
         // 4) Contrato de salida (JSON único y breve)
         systemPromptSb.append(
             "\nContrato de salida (estricto):\n" +
             "- Devuelve SOLO un objeto JSON válido (sin texto fuera del JSON).\n" +
-            "- 'text': OBLIGATORIO y NO vacío. Redacta breve, natural y útil.\n" +
-            "- ⚠️ CRÍTICO: TODAS las sugerencias en 'ui_suggestions' DEBEN incluir el campo 'requires_clarification' (boolean). Sin excepción.\n" +
+            "- 'text': OBLIGATORIO y NO vacío. Redacta breve, natural y útil. CRÍTICO: NUNCA escribas las sugerencias en el texto del mensaje (ej. 'Aquí tienes algunas sugerencias: - Listar usuarios...'). Las sugerencias SOLO van en el campo 'ui_suggestions' como objetos JSON separados. El texto debe ser conversacional SIN listar las opciones.\n" +
             "- Si devuelves listados, usa SIEMPRE la clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores'|'tarifas') y copia propiedades originales.\n" +
             "  · Puedes añadir campos derivados en castellano (p. ej., 'numero_usuarios'), sin sobrescribir originales.\n" +
             "  · 'summary_fields': ABSOLUTAMENTE OBLIGATORIO en TODOS los listados (arrays con ≥1 registros). NUNCA lo omitas. Indica 2-3 campos clave para mostrar en tabla. \n" +
@@ -112,7 +195,42 @@ public class PromptOpenAi {
             "- Charla breve o preguntas que puedes contestar sin API (p. ej., '¿cuánto es 5 x 5?').\n" +
             "- Consultas fuera de dominio ('perros', 'clima', matemáticas generales).\n" +
             "- Aclaraciones/confirmaciones previas: si piden crear/modificar/borrar y faltan datos obligatorios o hay ambigüedad, primero pregunta o propone listar para ubicar el registro. Incluso si el usuario escribe 'confirmo' en su primer mensaje, NO ejecutes PUT/DELETE/POST en el primer turno sin validación.\n" +
-            "En estos casos, compórtate con inteligencia humana y responde SIN herramientas con un JSON coherente: { 'text': <no vacío>, 'ui_suggestions': [...(2–3 si procede)...] }. No devuelvas arrays de recursos.\n"
+            "En estos casos, compórtate con inteligencia humana y responde SIN herramientas con un JSON coherente: { 'text': <no vacío>, 'ui_suggestions': [...(2–3 si procede)...] }. No devuelvas arrays de recursos.\n" +
+            "\n" +
+            "CRÍTICO - Sugerencias durante operaciones multi-turno (recolección de datos para POST/PUT/DELETE de CUALQUIER entidad):\n" +
+            "Cuando estés recolectando datos para una operación de Registro (crear/modificar/eliminar cualquier recurso), las 'ui_suggestions' DEBEN ser contextuales a esa operación en curso.\n" +
+            "\n" +
+            "🚫 PROHIBICIONES ABSOLUTAS durante operaciones de creación/modificación/eliminación:\n" +
+            "  - NUNCA sugieras 'Listar usuarios' / 'Listar tarifas' / 'Listar [cualquier recurso]' durante creación/modificación (es irrelevante al flujo).\n" +
+            "  - NUNCA sugieras 'Buscar por email' / 'Buscar por nombre' durante creación (ya estamos creando, no buscando).\n" +
+            "  - NUNCA sugieras acciones genéricas que NO ayuden a completar la operación en curso.\n" +
+            "\n" +
+            "✅ SUGERENCIAS CORRECTAS por fase de operación:\n" +
+            "\n" +
+            "1. Durante recolección de datos (faltan campos obligatorios):\n" +
+            "   - 'Cancelar creación de [recurso]' (Generica)\n" +
+            "   - 'Ver [entidad relacionada] disponibles' (Generica) - SOLO si necesitas resolver una FK (ej: 'Ver roles disponibles', 'Ver profesores disponibles')\n" +
+            "   - Si el usuario menciona un nombre/descripción que necesitas mapear a ID, sugiere: 'Buscar [entidad] por nombre' (Generica)\n" +
+            "   Ejemplos concretos:\n" +
+            "     Al crear usuario y falta rol_id → Sugiere: 'Cancelar creación', 'Ver roles disponibles', 'Listar usuarios existentes'\n" +
+            "     Al crear tarifa y falta academia_id → Sugiere: 'Cancelar creación', 'Ver academias disponibles', 'Buscar academia por nombre'\n" +
+            "     Al crear curso y falta profesor_id → Sugiere: 'Cancelar creación', 'Buscar profesor por nombre', 'Ver profesores disponibles'\n" +
+            "\n" +
+            "2. Durante confirmación (tienes TODOS los datos, pides confirmación al usuario):\n" +
+            "   🔴 OBLIGATORIO: SIEMPRE incluye como PRIMERA sugerencia:\n" +
+            "     - Para ALTA: {'id':'sg-confirm','displayText':'Sí, confirmo la creación','type':'Registro','recordAction':'Alta'}\n" +
+            "     - Para MODIFICACIÓN: {'id':'sg-confirm','displayText':'Sí, confirmo los cambios','type':'Registro','recordAction':'Modificacion'}\n" +
+            "     - Para BAJA: {'id':'sg-confirm','displayText':'Sí, confirmo la eliminación','type':'Registro','recordAction':'Baja'}\n" +
+            "   - Además: 'Modificar datos antes de confirmar' (Generica), 'Cancelar operación' (Generica)\n" +
+            "   Ejemplo: Si preguntas '¿Confirmas que quieres crear el usuario con email X, nombre Y, rol Z?'\n" +
+            "   DEBES incluir: [{'id':'sg1','displayText':'Sí, confirmo la creación','type':'Registro','recordAction':'Alta'}, {'id':'sg2','displayText':'Modificar datos','type':'Generica'}, {'id':'sg3','displayText':'Cancelar','type':'Generica'}]\n" +
+            "\n" +
+            "3. Después de operación exitosa:\n" +
+            "   - 'Ver [recurso] creado/modificado' (Generica)\n" +
+            "   - 'Crear otro [recurso]' (Registro-Alta)\n" +
+            "   - 'Listar todos los [recursos]' (Generica)\n" +
+            "\n" +
+            "RESUMEN: Si estás en medio de una creación/modificación/eliminación, las sugerencias DEBEN ayudar a COMPLETAR esa operación o a CANCELARLA. Nada más.\n"
         );
 
 
@@ -152,14 +270,7 @@ public class PromptOpenAi {
         systemPromptSb.append(
             "\nDefiniciones que necesitas conocer:\n" +
             "- ui_suggestions: arreglo de sugerencias tipadas para la UI. Cada elemento es un objeto con:\n" +
-            "  { 'id': string, 'display_text': string, 'type': 'Paginacion'|'Registro'|'Generica', 'requires_clarification': boolean, 'recordAction'?: 'Alta'|'Baja'|'Modificacion'|'Consulta', 'pagination'?: { 'direction': 'next'|'prev', 'page': number, 'size': number } }\n" +
-            "  · 'requires_clarification' (OBLIGATORIO): indica si el cliente debe pedir más información al usuario antes de enviar la sugerencia.\n" +
-            "    REGLAS ESTRICTAS:\n" +
-            "    • type='Paginacion' => SIEMPRE false (tiene toda la info en 'pagination')\n" +
-            "    • type='Registro' => SIEMPRE true (necesita identificar el registro específico)\n" +
-            "    • type='Generica' => depende del contenido:\n" +
-            "      - false si el texto es autosuficiente (ej: 'Listar academias', 'Exportar a CSV')\n" +
-            "      - true si requiere parámetros del usuario (ej: 'Buscar por descripción', 'Filtrar por precio', 'Buscar por nombre', 'Buscar mas registros')\n" +
+            "  { 'id': string, 'display_text': string, 'type': 'Paginacion'|'Registro'|'Generica', 'recordAction'?: 'Alta'|'Baja'|'Modificacion'|'Consulta', 'pagination'?: { 'direction': 'next'|'prev', 'page': number, 'size': number } }\n" +
             "  · En type='Registro', usa 'recordAction' (camelCase) con uno de los valores indicados.\n" +
             "  · En type='Paginacion', incluye SIEMPRE 'pagination' con 'direction', 'page' y 'size'. No incluyas 'contextToken'; lo añadirá el backend si hay paginación real. Si no hay paginación real o metadatos, NO devuelvas sugerencias 'Paginacion'.\n" +
             "  · IMPORTANTE: En listados, NO sugieras 'ver detalle' de registros individuales (el cliente ya tiene todos los campos en el listado y puede verlos desde la UX sin hacer otra petición). Sugiere solo acciones útiles: editar, dar de baja, filtrar, ver datos relacionados (ej: 'Ver clases del curso X'), o exportar a CSV.\n" +
@@ -188,26 +299,26 @@ public class PromptOpenAi {
         // 9.1) Plantillas canónicas de ui_suggestions (claridad total)
         systemPromptSb.append(
             "\nEjemplos canónicos de 'ui_suggestions' (solo estructura, usa estos formatos exactos):\n" +
-            "- Paginacion (dos elementos típicos, SIEMPRE requires_clarification=false):\n" +
+            "- Paginacion (dos elementos típicos):\n" +
             "  [\n" +
-            "    { 'id':'pg-prev', 'display_text':'Anterior', 'type':'Paginacion', 'requires_clarification': false, 'pagination': { 'direction':'prev', 'page': 1, 'size': 50 } },\n" +
-            "    { 'id':'pg-next', 'display_text':'Siguiente', 'type':'Paginacion', 'requires_clarification': false, 'pagination': { 'direction':'next', 'page': 2, 'size': 50 } }\n" +
+            "    { 'id':'pg-prev', 'display_text':'Anterior', 'type':'Paginacion', 'pagination': { 'direction':'prev', 'page': 1, 'size': 50 } },\n" +
+            "    { 'id':'pg-next', 'display_text':'Siguiente', 'type':'Paginacion', 'pagination': { 'direction':'next', 'page': 2, 'size': 50 } }\n" +
             "  ]\n" +
             "  (No incluyas 'contextToken'; lo añade el backend si hay paginación real).\n" +
-            "- Registro (accionar sobre elementos del listado, SIEMPRE requires_clarification=true):\n" +
+            "- Registro (accionar sobre elementos del listado):\n" +
             "  [\n" +
-            "    { 'id':'sg-r1', 'display_text':'Editar usuario', 'type':'Registro', 'requires_clarification': true, 'recordAction':'Modificacion' },\n" +
-            "    { 'id':'sg-r2', 'display_text':'Crear usuario', 'type':'Registro', 'requires_clarification': true, 'recordAction':'Alta' },\n" +
-            "    { 'id':'sg-r3', 'display_text':'Eliminar usuario', 'type':'Registro', 'requires_clarification': true, 'recordAction':'Baja' }\n" +
+            "    { 'id':'sg-r1', 'display_text':'Editar usuario', 'type':'Registro', 'recordAction':'Modificacion' },\n" +
+            "    { 'id':'sg-r2', 'display_text':'Crear usuario', 'type':'Registro', 'recordAction':'Alta' },\n" +
+            "    { 'id':'sg-r3', 'display_text':'Eliminar usuario', 'type':'Registro', 'recordAction':'Baja' }\n" +
             "  ]\n" +
-            "- Generica (acciones sobre el conjunto, requires_clarification según el caso):\n" +
+            "- Generica (acciones sobre el conjunto):\n" +
             "  [\n" +
-            "    { 'id':'sg-g1', 'display_text':'Listar academias', 'type':'Generica', 'requires_clarification': false },\n" +
-            "    { 'id':'sg-g2', 'display_text':'Exportar a CSV', 'type':'Generica', 'requires_clarification': false },\n" +
-            "    { 'id':'sg-g3', 'display_text':'Buscar por descripción', 'type':'Generica', 'requires_clarification': true },\n" +
-            "    { 'id':'sg-g4', 'display_text':'Filtrar por precio', 'type':'Generica', 'requires_clarification': true }\n" +
+            "    { 'id':'sg-g1', 'display_text':'Listar academias', 'type':'Generica' },\n" +
+            "    { 'id':'sg-g2', 'display_text':'Exportar a CSV', 'type':'Generica' },\n" +
+            "    { 'id':'sg-g3', 'display_text':'Buscar por descripción', 'type':'Generica' },\n" +
+            "    { 'id':'sg-g4', 'display_text':'Filtrar por precio', 'type':'Generica' }\n" +
             "  ]\n" +
-            "Reglas: cada sugerencia DEBE tener 'id', 'display_text', 'type' y 'requires_clarification'. Para 'Registro' añade 'recordAction'. Para 'Paginacion' añade 'pagination' con 'direction'|'page'|'size'. Nunca devuelvas 'ui_suggestions': [].\n"
+            "Reglas: cada sugerencia DEBE tener 'id', 'display_text', 'type'. Para 'Registro' añade 'recordAction'. Para 'Paginacion' añade 'pagination' con 'direction'|'page'|'size'. Nunca devuelvas 'ui_suggestions': [].\n"
         );
 
         // 9.2) Patrones recomendados por intención (enriquecidos)
@@ -215,12 +326,12 @@ public class PromptOpenAi {
             "\nPatrones recomendados por intención (usa estos formatos, adaptando display_text al recurso real):\n" +
             "- Listado:\n" +
             "  [\n" +
-            "    { 'id':'sg-g-list', 'display_text':'Listar usuarios', 'type':'Generica', 'requires_clarification': false },\n" +
-            "    { 'id':'sg-g-find', 'display_text':'Buscar por email', 'type':'Generica', 'requires_clarification': true },\n" +
-            "    { 'id':'sg-g-filter', 'display_text':'Filtrar por rol', 'type':'Generica', 'requires_clarification': true }\n" +
+            "    { 'id':'sg-g-list', 'display_text':'Listar usuarios', 'type':'Generica' },\n" +
+            "    { 'id':'sg-g-find', 'display_text':'Buscar por email', 'type':'Generica' },\n" +
+            "    { 'id':'sg-g-filter', 'display_text':'Filtrar por rol', 'type':'Generica' }\n" +
             "  ]\n" +
             "  y para navegación:\n" +
-            "  [ { 'id':'pg-prev', 'display_text':'Anterior', 'type':'Paginacion', 'requires_clarification': false, 'pagination': { 'direction':'prev', 'page': 1, 'size': 50 } }, { 'id':'pg-next', 'display_text':'Siguiente', 'type':'Paginacion', 'requires_clarification': false, 'pagination': { 'direction':'next', 'page': 2, 'size': 50 } } ]\n" +
+            "  [ { 'id':'pg-prev', 'display_text':'Anterior', 'type':'Paginacion', 'pagination': { 'direction':'prev', 'page': 1, 'size': 50 } }, { 'id':'pg-next', 'display_text':'Siguiente', 'type':'Paginacion', 'pagination': { 'direction':'next', 'page': 2, 'size': 50 } } ]\n" +
             "  (Nunca devuelvas un listado sin antes usar herramientas; si no se han ejecutado tool_calls, no emitas arrays de recursos).\n" +
             "- Modificar:\n" +
             "  [\n" +
@@ -251,17 +362,16 @@ public class PromptOpenAi {
 
         // 12) Ejemplos breves (máximo 2)
         systemPromptSb.append(
-            "\nEjemplo (saludo con requires_clarification OBLIGATORIO):\n" +
+            "\nEjemplo (saludo):\n" +
             "Entrada: 'hola'\n" +
             "Salida: {\n" +
             "  'text': '¡Hola! ¿En qué puedo ayudarte?',\n" +
             "  'ui_suggestions': [\n" +
-            "    { 'id':'sg1', 'display_text':'Listar tarifas', 'type':'Generica', 'requires_clarification':false },\n" +
-            "    { 'id':'sg2', 'display_text':'Listar usuarios', 'type':'Generica', 'requires_clarification':false },\n" +
-            "    { 'id':'sg3', 'display_text':'Buscar por nombre', 'type':'Generica', 'requires_clarification':true }\n" +
+            "    { 'id':'sg1', 'display_text':'Listar tarifas', 'type':'Generica' },\n" +
+            "    { 'id':'sg2', 'display_text':'Listar usuarios', 'type':'Generica' },\n" +
+            "    { 'id':'sg3', 'display_text':'Buscar por nombre', 'type':'Generica' }\n" +
             "  ]\n" +
-            "}\n" +
-            "CRÍTICO: TODAS las sugerencias DEBEN incluir 'requires_clarification' (boolean). Sin excepción.\n"
+            "}\n"
         );
         // Ejemplo extra reforzando modificación sin identificador (aclaración y próximos pasos)
         systemPromptSb.append(
@@ -270,18 +380,10 @@ public class PromptOpenAi {
             "Salida: {\n" +
             "  'text': 'Necesito el id o email exacto. ¿Quieres buscarlo?',\n" +
             "  'ui_suggestions': [\n" +
-            "    { 'id':'sg1', 'display_text':'Buscar por nombre', 'type':'Generica', 'requires_clarification':true },\n" +
-            "    { 'id':'sg2', 'display_text':'Listar usuarios', 'type':'Generica', 'requires_clarification':false }\n" +
+            "    { 'id':'sg1', 'display_text':'Buscar por nombre', 'type':'Generica' },\n" +
+            "    { 'id':'sg2', 'display_text':'Listar usuarios', 'type':'Generica' }\n" +
             "  ]\n" +
             "}\n"
-        );
-        
-        // RECORDATORIO FINAL CRÍTICO
-        systemPromptSb.append(
-            "\n⚠️⚠️⚠️ RECORDATORIO FINAL CRÍTICO ⚠️⚠️⚠️\n" +
-            "TODAS las sugerencias en 'ui_suggestions' DEBEN incluir 'requires_clarification': true o false.\n" +
-            "NO omitas este campo bajo ninguna circunstancia. Es OBLIGATORIO en TODAS las sugerencias.\n" +
-            "Formato: { 'id': ..., 'display_text': ..., 'type': ..., 'requires_clarification': boolean }\n\n"
         );
         
         // 13) Whitelist (al final para ahorrar tokens al principio)
@@ -300,27 +402,25 @@ public class PromptOpenAi {
 
     public String buildReformatInstruction() {
     return "Convierte tu respuesta anterior en un JSON válido PRESERVANDO EXACTAMENTE el mensaje inteligente que escribiste.\n" +
-        "IMPORTANTE: El campo 'text' debe contener TU MENSAJE ORIGINAL COMPLETO, no lo cambies por un saludo genérico.\n" +
+        "IMPORTANTE: El campo 'text' debe contener TU MENSAJE ORIGINAL COMPLETO, no lo cambies por un saludo genérico. CRÍTICO: NO incluyas las sugerencias en el 'text' (ej. 'Aquí tienes: - Listar usuarios'). El 'text' debe ser SOLO conversacional, las sugerencias van en 'ui_suggestions'.\n" +
         "Estructura requerida:\n" +
         "{\n" +
-        "  'text': '<TU_MENSAJE_ORIGINAL_AQUÍ>',  // COPIA tu mensaje anterior tal cual\n" +
+        "  'text': '<TU_MENSAJE_ORIGINAL_AQUÍ>',  // COPIA tu mensaje anterior tal cual, SIN listar las sugerencias\n" +
         "  'ui_suggestions': [...]  // 2-3 sugerencias útiles\n" +
         "}\n" +
         "ESTRUCTURA OBLIGATORIA de cada sugerencia:\n" +
         "{\n" +
         "  'id': string,\n" +
         "  'display_text': string,\n" +
-        "  'type': 'Paginacion'|'Registro'|'Generica',\n" +
-        "  'requires_clarification': boolean  // OBLIGATORIO\n" +
+        "  'type': 'Paginacion'|'Registro'|'Generica'\n" +
         "}\n" +
-        "Reglas 'requires_clarification':\n" +
-        "- Paginacion: false (siempre)\n" +
-        "- Registro: true (siempre)\n" +
-        "- Generica: false si el texto es autosuficiente (ej: 'Listar tarifas'), true si necesita parámetros (ej: 'Buscar por descripción')\n" +
+        "Campos adicionales según tipo:\n" +
+        "- Paginacion: añade 'pagination' con {direction,page,size}\n" +
+        "- Registro: añade 'recordAction' ('Alta'|'Baja'|'Modificacion')\n" +
         "\nSi tu mensaje original pedía información para crear/modificar un registro, incluye en 'ui_suggestions' opciones como:\n" +
-        "- {'id':'sg1','display_text':'Buscar por email','type':'Generica','requires_clarification':true}\n" +
-        "- {'id':'sg2','display_text':'Listar usuarios','type':'Generica','requires_clarification':false}\n" +
-        "- {'id':'sg3','display_text':'Dame el email y rol de [nombre]','type':'Generica','requires_clarification':true}";
+        "- {'id':'sg1','display_text':'Buscar por email','type':'Generica'}\n" +
+        "- {'id':'sg2','display_text':'Listar usuarios','type':'Generica'}\n" +
+        "- {'id':'sg3','display_text':'Dame el email y rol de [nombre]','type':'Generica'}";
     }
 
     /**
@@ -333,7 +433,62 @@ public class PromptOpenAi {
     public String buildSecondTurnInstruction(String resumenEjecucion) {
         String resumen = (resumenEjecucion == null || resumenEjecucion.isBlank()) ? "(sin_resumen)" : resumenEjecucion;
         return String.join("\n",
-            "Segundo turno (sin herramientas). Devuelve SOLO un JSON con: 'text' (no vacío) y, si procede, 'ui_suggestions' (2–3).",
+            "Segundo turno (sin herramientas). Devuelve SOLO un JSON con: 'text' (no vacío, conversacional, SIN listar las sugerencias) y, si procede, 'ui_suggestions' (2–3).",
+            "CRÍTICO: Las sugerencias van SOLO en 'ui_suggestions', NUNCA en el 'text' (no escribas 'Aquí tienes: - Listar usuarios...').",
+            "",
+            "🔴🔴🔴 MANEJO DE ERRORES HTTP - MÁXIMA PRIORIDAD (LEE ESTO PRIMERO) 🔴🔴🔴",
+            "ANTES DE REDACTAR CUALQUIER RESPUESTA: Verifica si los tool_outputs contienen 'error':'http_error'.",
+            "Si SÍ hay error, TODA tu respuesta (text + sugerencias) DEBE explicar ESE ERROR. NO inventes contextos ajenos.",
+            "",
+            "Pasos para manejar errores HTTP:",
+            "1️⃣ Identifica el 'status':",
+            "   · 400 = Bad Request (validación/datos incorrectos)",
+            "   · 403 = Forbidden (sin permisos o FK inválida)",
+            "   · 404 = Not Found (recurso no existe)",
+            "   · 409 = Conflict (duplicado)",
+            "   · 500 = Server Error",
+            "",
+            "2️⃣ Lee el 'body' JSON para entender QUÉ falló:",
+            "   · 'missing_fields' = falta campo obligatorio",
+            "   · 'invalid_format' = formato incorrecto",
+            "   · 'foreign_key_violation' = FK inválida",
+            "   · 'invalid_rol_id' = rol_id no válido o sin permisos para asignarlo",
+            "   · 'forbidden' = operación no permitida por permisos o restricciones",
+            "   · 'duplicate' = ya existe",
+            "",
+            "3️⃣ Redacta 'text' EXPLICANDO el error EN CONTEXTO de la operación que estabas intentando:",
+            "   🚫 ERROR COMÚN FATAL: Si intentabas CREAR un usuario y fallas, NO digas 'No se encontraron usuarios en la plataforma'.",
+            "   ✅ CORRECTO: 'No se pudo crear el usuario. [Explicación del error].'",
+            "   ",
+            "   Ejemplos CORRECTOS por contexto + error:",
+            "   · Intentabas CREAR usuario + 400 'missing_fields':",
+            "     Text: 'No se pudo crear el usuario. Falta un campo obligatorio (email, nombre o rol_id). Verifica que proporcionaste todos los datos necesarios.'",
+            "   · Intentabas CREAR usuario + 403 'invalid_rol_id' o 'forbidden':",
+            "     Text: 'No se pudo crear el usuario. El rol especificado no es válido o no tienes permisos para asignarlo. Puede que necesites obtener primero la lista de roles disponibles para tu ámbito.'",
+            "     Sugerencias: [{'id':'sg1','displayText':'Ver roles disponibles','type':'Generica'}, {'id':'sg2','displayText':'Cancelar operación','type':'Generica'}]",
+            "   · Intentabas CREAR tarifa + 400 'foreign_key_violation':",
+            "     Text: 'No se pudo crear la tarifa. La academia especificada no existe o el academia_id es inválido.'",
+            "   · Intentabas MODIFICAR curso + 404:",
+            "     Text: 'No se encontró el curso con el ID proporcionado. Puede haber sido eliminado.'",
+            "   · Intentabas CREAR usuario + 409 'duplicate':",
+            "     Text: 'Ya existe un usuario con ese email. No se puede crear un duplicado.'",
+            "",
+            "4️⃣ Genera sugerencias de RECUPERACIÓN (NO genéricas ajenas):",
+            "   ✅ CORRECTO tras error:",
+            "     [{'id':'sg1','displayText':'Reintentar con datos corregidos','type':'Generica'},",
+            "      {'id':'sg2','displayText':'Ver campos obligatorios','type':'Generica'},",
+            "      {'id':'sg3','displayText':'Cancelar operación','type':'Generica'}]",
+            "   ",
+            "   🚫 PROHIBIDO tras error de creación fallida:",
+            "     - 'Crear nuevo [recurso]' (ya estábamos intentándolo)",
+            "     - 'Listar [recursos]' (irrelevante al error)",
+            "     - 'Buscar por X' (no ayuda)",
+            "     - 'Filtrar por estado' (absurdo en este contexto)",
+            "     - 'Exportar a CSV' (ridículo tras un error)",
+            "",
+            "REGLA DE ORO ABSOLUTA: Si hay 'error':'http_error', tu respuesta COMPLETA se centra 100% en ese error. NADA MÁS.",
+            "",
+            "--- MANEJO DE RESULTADOS EXITOSOS (solo si NO hay error) ---",
             "Si hay tool_outputs con 'items', devuelve el array bajo su clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores'|'tarifas').",
             "ui_suggestions (estricto): {'id','display_text','type'}; en 'Registro' añade 'recordAction' ['Alta','Baja','Modificacion','Consulta']; en 'Paginacion' añade 'pagination' {direction:'next'|'prev', page:number, size:number}.",
             "Sin 'contextToken' ni nodo global 'pagination'. Nunca 'ui_suggestions': [].",
@@ -343,30 +498,31 @@ public class PromptOpenAi {
             "  · Si returned>1 (sin echo): plural. Si returned==1: singular. Si returned==0: sin resultados.",
             "  · PROHIBIDO: contar items del array con .length o enumerar 'uno activo, otro bloqueado' cuando sample_of>=1.",
             "  · Si quieres ser más específico (ej: 'X usuarios encontrados'), usa SOLO el valor de 'returned' del payload o del resumen, NUNCA la longitud del array.",
-            "Listados grandes (>=30): 'text' conciso y 'summary_fields' (1–2 claves).",
+            "Listados: SIEMPRE incluye 'summary_fields' con 2-3 PROPIEDADES de los items (NO el nombre del recurso). Ejemplos: usuarios=>['nombre','rol'], tarifas=>['descripcion','precio_base'], academias=>['nombre','direccion']. NUNCA uses el plural del recurso como summary_field.",
             "",
             "--- SUGERENCIAS INTELIGENTES (segundo turno) ---",
             "Genera 2-3 'ui_suggestions' inteligentes según contexto del resultado y rol del usuario.",
             "⚠️ PROHIBIDO ABSOLUTO: NUNCA sugieras 'Ver detalle de X' o 'Consultar detalle de X' en listados. El cliente YA tiene TODOS los campos disponibles.",
             "Estructuras OBLIGATORIAS por tipo:",
-            "· 'Paginacion': {'id','display_text':'Anterior'|'Siguiente','type':'Paginacion','requires_clarification':false,'pagination':{direction,page,size}}",
-            "· 'Registro': {'id','display_text','type':'Registro','requires_clarification':true,'recordAction':'Alta'|'Baja'|'Modificacion'} <= recordAction OBLIGATORIO (Alta/Baja/Modificacion, NUNCA 'Consulta')",
-            "· 'Generica': {'id','display_text','type':'Generica','requires_clarification':true/false}",
+            "· 'Paginacion': {'id','display_text':'Anterior'|'Siguiente','type':'Paginacion','pagination':{direction,page,size}}",
+            "· 'Registro': {'id','display_text','type':'Registro','recordAction':'Alta'|'Baja'|'Modificacion'} <= recordAction OBLIGATORIO (Alta/Baja/Modificacion, NUNCA 'Consulta')",
+            "· 'Generica': {'id','display_text','type':'Generica'}",
             "",
             "Patrones contextuales (adapta 'display_text' al recurso específico):",
-            "· Listado => Ofrece: 'Editar [recurso]' (Registro-Modificacion), 'Crear [recurso]' (Registro-Alta), 'Buscar por campo relevante' (Generica), 'Filtrar por atributo contextual' (Generica), 'Exportar a CSV' (Generica)",
-            "· Modificar/Borrar => Ofrece: 'Buscar por campo relevante' (Generica), 'Listar todos' (Generica)",
+            "· Listado exitoso => Ofrece: 'Editar [recurso]' (Registro-Modificacion), 'Crear [recurso]' (Registro-Alta), 'Buscar por campo relevante' (Generica), 'Filtrar por atributo contextual' (Generica), 'Exportar a CSV' (Generica)",
+            "· Modificar/Borrar exitoso => Ofrece: 'Ver [recurso] actualizado' (Generica), 'Listar todos' (Generica), 'Crear nuevo' (Registro-Alta)",
+            "· Error en operación (status 400/404/500) => Ofrece: 'Reintentar [operación]' (Generica), 'Ver detalles del error' (Generica), 'Cancelar [operación]' (Generica). NUNCA sugieras la misma acción que acaba de fallar sin contexto correctivo.",
             "· Fuera de dominio/Saludo => Ofrece: 'Listar [recurso disponible según rol]' (Generica), 'Ayuda' (Generica)",
             "",
             "Ejemplos estructurales (copia formato exacto, adapta display_text):",
-            "{'id':'sg-r1','display_text':'Editar usuario','type':'Registro','requires_clarification':true,'recordAction':'Modificacion'}",
-            "{'id':'sg-r2','display_text':'Crear nuevo usuario','type':'Registro','requires_clarification':true,'recordAction':'Alta'}",
-            "{'id':'sg-r3','display_text':'Eliminar usuario','type':'Registro','requires_clarification':true,'recordAction':'Baja'}",
-            "{'id':'sg-g1','display_text':'Buscar por email','type':'Generica','requires_clarification':true}",
-            "{'id':'sg-g2','display_text':'Filtrar por estado','type':'Generica','requires_clarification':true}",
-            "{'id':'sg-g3','display_text':'Exportar a CSV','type':'Generica','requires_clarification':false}",
+            "{'id':'sg-r1','display_text':'Editar usuario','type':'Registro','recordAction':'Modificacion'}",
+            "{'id':'sg-r2','display_text':'Crear nuevo usuario','type':'Registro','recordAction':'Alta'}",
+            "{'id':'sg-r3','display_text':'Eliminar usuario','type':'Registro','recordAction':'Baja'}",
+            "{'id':'sg-g1','display_text':'Buscar por email','type':'Generica'}",
+            "{'id':'sg-g2','display_text':'Filtrar por estado','type':'Generica'}",
+            "{'id':'sg-g3','display_text':'Exportar a CSV','type':'Generica'}",
             "",
-            "PROHIBIDO: omitir 'requires_clarification'; omitir 'recordAction' en tipo 'Registro'; usar 'Consulta' como recordAction; devolver []; usar estructuras no definidas; sugerir 'ver detalle' en listados.",
+            "PROHIBIDO: omitir 'recordAction' en tipo 'Registro'; usar 'Consulta' como recordAction; devolver []; usar estructuras no definidas; sugerir 'ver detalle' en listados.",
             "",
             "Resumen: " + resumen
         );
@@ -381,13 +537,15 @@ public class PromptOpenAi {
         sb.append("Eres un asistente (secretaria) para una plataforma de academias en España. ");
         sb.append("Responde SIEMPRE en castellano (España), breve y claro. \n");
         sb.append("Este es el segundo turno: NO puedes usar herramientas. Debes redactar el JSON final a partir del contexto reinyectado.\n");
-        sb.append("Contrato (compacto): devuelve SOLO un JSON; 'text' no vacío. Si hay tool_outputs con items, devuelve el array bajo su clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores'|'tarifas').\n");
-        sb.append("ui_suggestions (2–3): {'id','display_text','type','requires_clarification'}; 'Registro' añade 'recordAction' ['Alta','Baja','Modificacion'] (NUNCA 'Consulta'); 'Paginacion' añade 'pagination' {direction,page,size}. Sin 'contextToken' ni nodo global 'pagination'; nunca [].\n");
+        sb.append("🔴 CONTEXTO MULTI-PASO: Si llamaste 'roles.listar_roles' como paso previo para obtener un rol_id y luego crear/modificar un usuario, NO redactes la respuesta final sobre los roles. En su lugar, procede con la operación PRINCIPAL (crear/modificar usuario) usando el rol_id obtenido. La consulta de roles es SOLO un paso intermedio, no el objetivo final. Si obtuviste un rol_id válido, úsalo en la siguiente llamada a 'usuarios.crear_usuario' o similar.\n");
+        sb.append("🔴 MANEJO DE ERRORES (PRIORIDAD ABSOLUTA): Si tool_outputs contiene 'error':'http_error', TODA tu respuesta debe explicar ESE ERROR específico. Interpreta 'status': 400=validación/FK inválida/campo faltante (explica QUÉ faltó basándote en el 'body' del error, menciona si puede ser problema con FKs como rol_id, academia_id, profesor_id), 403=sin permisos O FK inválida (especialmente 'invalid_rol_id' o 'forbidden' = no tienes permisos para asignar ese rol o la FK no es válida para tu ámbito - sugiere 'Ver roles/recursos disponibles'), 404=no encontrado, 409=duplicado, 500=error servidor. Redacta 'text' contextual a la operación que falló (ej: si intentabas CREAR usuario y falla con 403 'invalid_rol_id', di 'No se pudo crear el usuario. El rol especificado no es válido o no tienes permisos para asignarlo. Intenta obtener los roles disponibles primero.'). Sugerencias tras error: 'Reintentar', 'Ver campos/roles disponibles', 'Cancelar'. NUNCA: 'Crear nuevo', 'Listar', 'Buscar por X', 'Exportar'.\n");
+        sb.append("Contrato (compacto): devuelve SOLO un JSON; 'text' no vacío y conversacional. CRÍTICO: NUNCA escribas las sugerencias en el 'text' (ej. 'Aquí tienes: - Listar usuarios...'). Las sugerencias van SOLO en 'ui_suggestions'. Si hay tool_outputs con items, devuelve el array bajo su clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores'|'tarifas').\n");
+        sb.append("ui_suggestions (2–3): {'id','display_text','type'}; 'Registro' añade 'recordAction' ['Alta','Baja','Modificacion'] (NUNCA 'Consulta'); 'Paginacion' añade 'pagination' {direction,page,size}. Sin 'contextToken' ni nodo global 'pagination'; nunca [].\n");
         sb.append("⚠️ PROHIBIDO: Nunca sugieras 'Ver detalle' en listados (el cliente YA tiene todos los campos). Sugiere: editar, crear, buscar, filtrar, exportar.\n");
         sb.append("Paginación: page=1 & has_more=> solo 'Siguiente'; page>1 & has_more=> 'Anterior' y 'Siguiente'; última=> solo 'Anterior'. Si no puedes calcular, omite. Si el resumen indica prev_allowed=true, incluye 'Anterior'.\n");
         sb.append("CRÍTICO - Redacción del 'text': NUNCA cuentes los items del array manualmente. Si el payload incluye 'returned' y 'sample_of', el array es una MUESTRA (echo trimming). El count REAL está en 'returned'. Usa SOLO metadatos para redactar. Si sample_of>=1: plural sin números específicos. Si returned>1: plural. Si returned==1: singular. Si returned==0: sin resultados. PROHIBIDO: contar .length cuando sample_of>=1.\n");
-        sb.append("Listados grandes: 'text' conciso y 'summary_fields' (1–2 claves).\n");
-        sb.append("\nSugerencias inteligentes: genera 2-3 según contexto y rol. Registro={'recordAction':'Alta'|'Baja'|'Modificacion', 'requires_clarification':true}. Paginacion={'requires_clarification':false}. Generica={'requires_clarification':true/false según contexto}. Adapta display_text al recurso (usuarios=>email, academias=>nombre, etc). Patrones: Listado=>Editar(Registro-Modificacion)+Crear(Registro-Alta)+Buscar(Generica)+Filtrar(Generica)+Exportar(Generica). NUNCA Ver detalle. Nunca [].\n");
+        sb.append("Listados: OBLIGATORIO incluir 'summary_fields' con 2-3 PROPIEDADES de los items (campos que aparecen en cada item del array), NO el nombre del recurso. Ejemplos correctos: usuarios=>['nombre','rol'], tarifas=>['descripcion','precio_base'], academias=>['nombre','direccion']. INCORRECTO: ['usuarios'], ['tarifas']. NUNCA pongas el plural del recurso.\n");
+        sb.append("\nSugerencias inteligentes: genera 2-3 según contexto y rol. Registro={'recordAction':'Alta'|'Baja'|'Modificacion'}. Paginacion={}. Generica={}. Adapta display_text al recurso (usuarios=>email, academias=>nombre, etc). Patrones: Listado=>Editar(Registro-Modificacion)+Crear(Registro-Alta)+Buscar(Generica)+Filtrar(Generica)+Exportar(Generica). NUNCA Ver detalle. Nunca [].\n");
         return sb.toString();
     }
 

@@ -2,7 +2,6 @@ package com.workers.profesores.chat.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.core.type.TypeReference;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.core.io.ClassPathResource;
@@ -135,7 +134,34 @@ public class SpecLoaderService {
                     if (!queryDetails.isEmpty()) endpoint.put("queryDetails", queryDetails);
                     endpoint.put("body", body);
                     if (op.has("x-permissions")) {
-                        endpoint.put("x-permissions", mapper.convertValue(op.get("x-permissions"), new TypeReference<Map<String,Object>>(){}));
+                        try {
+                            JsonNode xpNode = op.get("x-permissions");
+                            Map<String,Object> xpMap = new HashMap<>();
+                            Iterator<String> fieldNames = xpNode.fieldNames();
+                            while (fieldNames.hasNext()) {
+                                String fieldName = fieldNames.next();
+                                JsonNode fieldValue = xpNode.get(fieldName);
+                                // Explicitly handle null values - if isNull(), store as Java null
+                                if (fieldValue.isNull()) {
+                                    xpMap.put(fieldName, null);
+                                } else {
+                                    xpMap.put(fieldName, mapper.convertValue(fieldValue, Object.class));
+                                }
+                            }
+                            endpoint.put("x-permissions", xpMap);
+                            if (path.equals("/roles/")) {
+                                System.err.println("=== [SPEC-DEBUG] Loaded /roles/ x-permissions: " + xpMap);
+                                System.err.println("=== [SPEC-DEBUG] transform_to key exists: " + xpMap.containsKey("transform_to"));
+                                System.err.println("=== [SPEC-DEBUG] transform_to value: " + xpMap.get("transform_to"));
+                            }
+                        } catch (Exception e) {
+                            logger.error("[SpecLoader] Error processing x-permissions for {} {}: {}", method, path, e.getMessage());
+                            System.err.println("=== [SPEC-ERROR] Failed to load x-permissions for " + path + ": " + e.getMessage());
+                        }
+                    } else {
+                        if (path.equals("/roles/")) {
+                            System.err.println("=== [SPEC-DEBUG] /roles/ has NO x-permissions in OpenAPI spec!");
+                        }
                     }
                     // Detect paginated responses: look at 200 response schema for totalElements/items or page/size
                     boolean paginated = false;

@@ -329,8 +329,9 @@ public class ChatService {
             // Telemetry: tiempo de preparación de seed hasta la primera llamada
             if (xmlLogger != null) xmlLogger.addStep("Telemetry", "seed_ms=" + (System.currentTimeMillis() - t0));
             if (xmlLogger != null) xmlLogger.addStep("OpenAIClient", "Primera llamada a OpenAI (callChatWithTools)");
-            // Pasamos el Authorization (Bearer token) a la llamada a OpenAI service para que las herramientas puedan acceder al token si es necesario
-            String rawFirst = openai.callChatWithTools(seed, xmlLogger, authorization);
+            // Use delegated token for tool_calls if available, otherwise fall back to original authorization
+            String authForToolCalls = delegatedAuthUpfront != null ? delegatedAuthUpfront : authorization;
+            String rawFirst = openai.callChatWithTools(seed, xmlLogger, authForToolCalls);
             if (debug) {
                 // Log del JSON completo con pretty-print (sin afectar la respuesta HTTP)
                 try {
@@ -416,7 +417,7 @@ public class ChatService {
                             // Reinyecta el contenido original del assistant como antecedente
                             reSeed.add(Map.of("role", "assistant", "content", content));
                             reSeed.add(Map.of("role", "user", "content", promptBuilder.buildReformatInstruction()));
-                            String reformatted2 = openai.callChatNoToolsWithExtras(reSeed, openai.buildChatResponseSchemaExtras(), xmlLogger, authorization);
+                            String reformatted2 = openai.callChatNoToolsWithExtras(reSeed, openai.buildChatResponseSchemaExtras(), xmlLogger, authForToolCalls);
                             JsonNode rep2 = om.readTree(reformatted2);
                             if (rep2.has("choices")) {
                                 String c2 = rep2.path("choices").get(0).path("message").path("content").asText("");
@@ -445,7 +446,7 @@ public class ChatService {
                         String reformatInstruction = promptBuilder.buildReformatInstruction();
                         reformatSeed.add(Map.of("role", "user", "content", reformatInstruction));
                         // Enforce JSON schema so 'text' nunca venga vacío
-                        String reformatted = openai.callChatNoToolsWithExtras(reformatSeed, openai.buildChatResponseSchemaExtras(), xmlLogger, authorization);
+                        String reformatted = openai.callChatNoToolsWithExtras(reformatSeed, openai.buildChatResponseSchemaExtras(), xmlLogger, authForToolCalls);
                         if (debug) {
                             try {
                                 JsonNode tmpRef = om.readTree(reformatted == null ? "" : reformatted);
@@ -1376,6 +1377,8 @@ public class ChatService {
             if (xmlLogger != null) xmlLogger.addStep("Telemetry", "decision_ms=" + (System.currentTimeMillis() - t0));
             if (debug) logger.debug("[Telemetry] decision_ms={} (since start)", (System.currentTimeMillis() - t0));
             String finalContent = (finalMsg == null || finalMsg.isMissingNode()) ? "" : finalMsg.path("content").asText("");
+            // DEBUG CRÍTICO: Ver qué contiene finalContent
+            if (xmlLogger != null) xmlLogger.addStep("DEBUG", "finalContent length=" + finalContent.length() + ", preview=" + (finalContent.length() > 100 ? finalContent.substring(0, 100) + "..." : finalContent));
             if (xmlLogger != null) xmlLogger.addStep("OpenAIClient", "Respuesta final generada por OpenAI");
             if (debug) {
                 try {
