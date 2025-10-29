@@ -399,11 +399,14 @@ public class ChatService {
                     JsonNode contentNode = om.readTree(content);
                     ResponseEnvelope envDirect = buildEnvelopeFromContentNode(contentNode);
                     // Si el modelo devolvió JSON válido pero con 'text' vacío y sin items/paginación, reintentar con reformat + schema
+                    // EXCEPCIÓN: Si el content original era texto plano inteligente, preservarlo
                     try {
                         boolean noItems = (envDirect.getData() == null) || (envDirect.getData().getItems() == null) || envDirect.getData().getItems().isEmpty();
                         boolean noPag = (envDirect.getData() == null) || (envDirect.getData().getPagination() == null);
                         String msg0 = envDirect.getMessage();
-                        if ((msg0 == null || msg0.isBlank()) && noItems && noPag) {
+                        // Solo forza reformat si NO es un texto plano inteligente del primer turno
+                        boolean isPlainTextIntelligent = !content.trim().startsWith("{") && content.length() > 10;
+                        if ((msg0 == null || msg0.isBlank()) && noItems && noPag && !isPlainTextIntelligent) {
                             if (debug) System.out.println("[ChatService][DEBUG] Empty text with no tools/items; forcing reformat with schema");
                             List<Map<String, Object>> reSeed = new ArrayList<>();
                             reSeed.add(systemMsg);
@@ -420,6 +423,10 @@ public class ChatService {
                                 try { JsonNode n2 = om.readTree(c2); return applyFinalFallback(buildEnvelopeFromContentNode(n2)); } catch (Exception __p) { /* fallthrough */ }
                             }
                             try { JsonNode n2 = om.readTree(reformatted2); return applyFinalFallback(buildEnvelopeFromContentNode(n2)); } catch (Exception __p2) { /* fallthrough */ }
+                        } else if (isPlainTextIntelligent) {
+                            // Si era texto plano inteligente, crearlo como respuesta válida
+                            if (debug) System.out.println("[ChatService][DEBUG] Preserving plain text intelligent response: " + content.substring(0, Math.min(100, content.length())));
+                            return ResponseEnvelope.success(content, DataSection.of("chat", List.of(), null), List.of(), List.of());
                         }
                     } catch (Exception ignoreGuard) { }
                     return applyFinalFallback(envDirect);

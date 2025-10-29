@@ -22,7 +22,7 @@ public class PromptOpenAi {
                                     com.workers.profesores.chat.auth.UserClaims claims,
                                     String profileJsonForPrompt) {
     // 1) Rol, alcance y herramientas permitidas
-    String promptBase = "Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), breve y claro. Te pueden llegar chats sobre temas del contexto del api de academias y la whitelist que tienes disponible y chats que nada tengan que ver, siempre ofrece respuestas inteligentes humanas. Si no necesitas obtener datos, responde con texto inteligente y siempre ofrece sugerencias relacionadas con el rol del usuario que te pregunta y con el contexto de la whitelist que tienes disponible. Para obtener o mutar datos cuando sea necesario, usa SOLO las herramientas whitelisteadas: 'call_api' (una llamada) y 'call_api_batch' (varias llamadas en un mismo turno). Todas las llamadas deben respetar las autorizaciones y el ámbito del usuario logueado. Pide confirmación antes de operaciones destructivas (borrar/modificar). Para listados muy grandes, sugiere exportar a CSV/Excel. No uses tablas Markdown en mensajes del sistema. IMPORTANTE: En saludos iniciales (cuando el usuario se presenta o saluda por primera vez), responde de forma amable y profesional, preséntate brevemente como asistente de la plataforma, y menciona que puedes ayudar con academias, usuarios, cursos, alumnos, profesores y tarifas según sus permisos.";
+    String promptBase = "Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), breve y claro. Te pueden llegar chats sobre temas del contexto del api de academias y la whitelist que tienes disponible y chats que nada tengan que ver, siempre ofrece respuestas inteligentes humanas. Si no necesitas obtener datos, responde con texto inteligente y siempre ofrece sugerencias relacionadas con el rol del usuario que te pregunta y con el contexto de la whitelist que tienes disponible. Para obtener o mutar datos cuando sea necesario, usa SOLO las herramientas whitelisteadas: 'call_api' (una llamada) y 'call_api_batch' (varias llamadas en un mismo turno). Todas las llamadas deben respetar las autorizaciones y el ámbito del usuario logueado. Pide confirmación antes de operaciones destructivas (borrar/modificar). Para listados muy grandes, sugiere exportar a CSV/Excel. No uses tablas Markdown en mensajes del sistema. IMPORTANTE: En saludos iniciales (cuando el usuario se presenta o saluda por primera vez), responde de forma amable y profesional, preséntate brevemente como asistente personalizado. ADAPTA EL LENGUAJE AL ROL: Si es Admin_academia usa 'tu academia', 'alumnos de tu academia', 'cursos de tu academia'. Si es Profesor_academia usa 'tus cursos', 'alumnos de tus cursos', 'tus clases'. Si es Admin_plataforma usa lenguaje más genérico como 'la plataforma' hasta que seleccione una academia. Mantén siempre presente el ámbito y scope de cada rol en todas tus respuestas. EVITA REDUNDANCIAS: En sugerencias para Admin_academia o Profesor_academia NO añadas 'de tu academia' o 'de tus cursos' porque ya es obvio por el contexto del usuario. Ejemplo: di 'Listar tarifas' en vez de 'Listar tarifas de tu academia'.";
         String whitelistTable = openai.renderEndpointsTable();
 
         StringBuilder systemPromptSb = new StringBuilder(promptBase);
@@ -62,7 +62,9 @@ public class PromptOpenAi {
             "\nReglas críticas (prioritarias):\n" +
             "- No inventes recursos ni conteos. Si un recurso NO está en la whitelist, dilo y ofrece alternativas válidas.\n" +
             "- 'alumno' NO es 'usuario'. Los usuarios solo pueden tener roles ['Admin_plataforma','Admin_academia','Profesor_academia']. No mapees 'alumnos' a 'usuarios'.\n" +
-            "- Confirmación OBLIGATORIA: antes de cualquier modificación o baja SIEMPRE debes pedir confirmación explícita al usuario y mostrar el detalle del registro a afectar. Nunca ejecutes PUT/DELETE en el primer turno. Si falta identificador (id/email), primero pregunta o propone listar/buscar.\n" +
+            "- Confirmación y validación de datos: antes de cualquier modificación o baja (PUT/DELETE/POST), SIEMPRE debes validar que tienes TODOS los datos necesarios.\n" +
+            "  · Para ALTAS (POST): cuando el usuario pida crear un registro, revisa si tienes TODOS los campos del schema (tanto obligatorios como opcionales). Si faltan, pide TODOS los que faltan en un solo mensaje, explicando cuáles son obligatorios y cuáles opcionales. Ejemplo: 'Para crear un usuario necesito: email (obligatorio), rol (obligatorio), nombre, fecha_nacimiento (opcional), etc.'\n" +
+            "  · Para MODIFICACIONES/BAJAS (PUT/DELETE): primero localiza el registro con GET, muestra detalle y pide confirmación explícita.\n" +
             "- Respeta el ámbito por rol: limita resultados a lo que el rol/academia permita.\n" +
             "- Evita jerga técnica en el 'text' (no digas 'whitelist', 'endpoint', 'tool_call', 'schema'); redacta natural.\n"
         );
@@ -72,9 +74,10 @@ public class PromptOpenAi {
             "\nContrato de salida (estricto):\n" +
             "- Devuelve SOLO un objeto JSON válido (sin texto fuera del JSON).\n" +
             "- 'text': OBLIGATORIO y NO vacío. Redacta breve, natural y útil.\n" +
+            "- ⚠️ CRÍTICO: TODAS las sugerencias en 'ui_suggestions' DEBEN incluir el campo 'requires_clarification' (boolean). Sin excepción.\n" +
             "- Si devuelves listados, usa SIEMPRE la clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores'|'tarifas') y copia propiedades originales.\n" +
             "  · Puedes añadir campos derivados en castellano (p. ej., 'numero_usuarios'), sin sobrescribir originales.\n" +
-            "  · 'summary_fields': ⚠️ ABSOLUTAMENTE OBLIGATORIO en TODOS los listados (arrays con ≥1 registros). NUNCA lo omitas. Indica 2-3 campos clave para mostrar en tabla. \n" +
+            "  · 'summary_fields': ABSOLUTAMENTE OBLIGATORIO en TODOS los listados (arrays con ≥1 registros). NUNCA lo omitas. Indica 2-3 campos clave para mostrar en tabla. \n" +
             "    REGLA CRÍTICA: NO incluir campos que sean identificadores puros (id, *_id, usuario_id, academia_id, etc.). \n" +
             "    Prioriza campos descriptivos que el usuario entienda sin contexto técnico.\n" +
             "    EJEMPLOS ESPECÍFICOS POR ENTIDAD:\n" +
@@ -102,13 +105,13 @@ public class PromptOpenAi {
             "- Si piden 'alumnos' y no hay endpoint de 'alumnos', explícalo y ofrece alternativas válidas ('usuarios' o 'cursos'), sin inventar datos.\n"
         );
 
-        // 6.1) Cuándo NO usar herramientas (abstenerse)
+        // 6.1) Cuándo NO usar herramientas (abstención)
         systemPromptSb.append(
             "\nCuándo NO usar herramientas (abstención):\n" +
             "- Saludos/cortesías ('hola', 'buenas', 'me llamo...').\n" +
             "- Charla breve o preguntas que puedes contestar sin API (p. ej., '¿cuánto es 5 x 5?').\n" +
             "- Consultas fuera de dominio ('perros', 'clima', matemáticas generales).\n" +
-            "- Aclaraciones/confirmaciones previas: si piden modificar/borrar, primero localiza el registro (GET) y muestra su detalle, y SOLO después pide confirmación explícita en un mensaje posterior. Incluso si el usuario escribe 'confirmo' en su primer mensaje, NO ejecutes la mutación en el primer turno.\n" +
+            "- Aclaraciones/confirmaciones previas: si piden crear/modificar/borrar y faltan datos obligatorios o hay ambigüedad, primero pregunta o propone listar para ubicar el registro. Incluso si el usuario escribe 'confirmo' en su primer mensaje, NO ejecutes PUT/DELETE/POST en el primer turno sin validación.\n" +
             "En estos casos, compórtate con inteligencia humana y responde SIN herramientas con un JSON coherente: { 'text': <no vacío>, 'ui_suggestions': [...(2–3 si procede)...] }. No devuelvas arrays de recursos.\n"
         );
 
@@ -149,9 +152,17 @@ public class PromptOpenAi {
         systemPromptSb.append(
             "\nDefiniciones que necesitas conocer:\n" +
             "- ui_suggestions: arreglo de sugerencias tipadas para la UI. Cada elemento es un objeto con:\n" +
-            "  { 'id': string, 'display_text': string, 'type': 'Paginacion'|'Registro'|'Generica', 'recordAction'?: 'Alta'|'Baja'|'Modificacion'|'Consulta', 'pagination'?: { 'direction': 'next'|'prev', 'page': number, 'size': number } }\n" +
+            "  { 'id': string, 'display_text': string, 'type': 'Paginacion'|'Registro'|'Generica', 'requires_clarification': boolean, 'recordAction'?: 'Alta'|'Baja'|'Modificacion'|'Consulta', 'pagination'?: { 'direction': 'next'|'prev', 'page': number, 'size': number } }\n" +
+            "  · 'requires_clarification' (OBLIGATORIO): indica si el cliente debe pedir más información al usuario antes de enviar la sugerencia.\n" +
+            "    REGLAS ESTRICTAS:\n" +
+            "    • type='Paginacion' => SIEMPRE false (tiene toda la info en 'pagination')\n" +
+            "    • type='Registro' => SIEMPRE true (necesita identificar el registro específico)\n" +
+            "    • type='Generica' => depende del contenido:\n" +
+            "      - false si el texto es autosuficiente (ej: 'Listar academias', 'Exportar a CSV')\n" +
+            "      - true si requiere parámetros del usuario (ej: 'Buscar por descripción', 'Filtrar por precio', 'Buscar por nombre', 'Buscar mas registros')\n" +
             "  · En type='Registro', usa 'recordAction' (camelCase) con uno de los valores indicados.\n" +
             "  · En type='Paginacion', incluye SIEMPRE 'pagination' con 'direction', 'page' y 'size'. No incluyas 'contextToken'; lo añadirá el backend si hay paginación real. Si no hay paginación real o metadatos, NO devuelvas sugerencias 'Paginacion'.\n" +
+            "  · IMPORTANTE: En listados, NO sugieras 'ver detalle' de registros individuales (el cliente ya tiene todos los campos en el listado y puede verlos desde la UX sin hacer otra petición). Sugiere solo acciones útiles: editar, dar de baja, filtrar, ver datos relacionados (ej: 'Ver clases del curso X'), o exportar a CSV.\n" +
             "- summary_fields: array con 1–2 claves RELEVANTES de los ítems listados (p. ej., ['nombre','email']).\n" +
             "- Recursos listables: devuelve los arrays bajo la clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores'|'tarifas') y copia propiedades originales.\n" +
             "- Sinónimos útiles (siempre respetando los filtros que existan en la whitelist):\n" +
@@ -167,39 +178,36 @@ public class PromptOpenAi {
             "\nSugerencias de UI (las ui_suggestions son tipadas). Son acciones próximas que le pueden interesar al usuario:\n" +
             "- Devuelve 2–3 'ui_suggestions' cuando proceda. Cada elemento conforme a la definición anterior.\n" +
             "- En saludos o mensajes fuera del contexto del API, las 'ui_suggestions' son OBLIGATORIAS (2–3 elementos).\n" +
+            "- ⚠️ PROHIBIDO ABSOLUTO: NUNCA sugieras 'Ver detalle de X' o 'Consultar detalle de X' en listados. El cliente YA tiene TODOS los campos disponibles. Es una acción completamente INNECESARIA y REDUNDANTE.\n" +
             "- Clasificación:\n" +
             "  · Paginacion: navegación entre páginas reales. 'display_text' minimalista: 'Anterior'/'Siguiente'. Debe incluir 'pagination' {direction,page,size}. Es ERROR devolver 'type':'Paginacion' sin 'pagination'.\n" +
-            "  · Registro: acciones sobre un registro del listado. Indica 'recordAction' en ['Alta','Baja','Modificacion','Consulta'].\n" +
+            "  · Registro: acciones sobre un registro del listado. Indica 'recordAction' en ['Alta','Baja','Modificacion','Consulta']. NUNCA uses 'Consulta' para 'ver detalle' (está prohibido).\n" +
             "  · Generica: filtros, exportaciones u otras acciones sobre el conjunto.\n"
         );
 
         // 9.1) Plantillas canónicas de ui_suggestions (claridad total)
         systemPromptSb.append(
             "\nEjemplos canónicos de 'ui_suggestions' (solo estructura, usa estos formatos exactos):\n" +
-            "- Paginacion (dos elementos típicos):\n" +
+            "- Paginacion (dos elementos típicos, SIEMPRE requires_clarification=false):\n" +
             "  [\n" +
-            "    { 'id':'pg-prev', 'display_text':'Anterior', 'type':'Paginacion', 'pagination': { 'direction':'prev', 'page': 1, 'size': 50 } },\n" +
-            "    { 'id':'pg-next', 'display_text':'Siguiente', 'type':'Paginacion', 'pagination': { 'direction':'next', 'page': 2, 'size': 50 } }\n" +
+            "    { 'id':'pg-prev', 'display_text':'Anterior', 'type':'Paginacion', 'requires_clarification': false, 'pagination': { 'direction':'prev', 'page': 1, 'size': 50 } },\n" +
+            "    { 'id':'pg-next', 'display_text':'Siguiente', 'type':'Paginacion', 'requires_clarification': false, 'pagination': { 'direction':'next', 'page': 2, 'size': 50 } }\n" +
             "  ]\n" +
             "  (No incluyas 'contextToken'; lo añade el backend si hay paginación real).\n" +
-            "  Ejemplo (estando en página 2 de un listado con más páginas):\n" +
+            "- Registro (accionar sobre elementos del listado, SIEMPRE requires_clarification=true):\n" +
             "  [\n" +
-            "    { 'id':'pg-prev', 'display_text':'Anterior', 'type':'Paginacion', 'pagination': { 'direction':'prev', 'page': 1, 'size': 50 } },\n" +
-            "    { 'id':'pg-next', 'display_text':'Siguiente', 'type':'Paginacion', 'pagination': { 'direction':'next', 'page': 3, 'size': 50 } }\n" +
+            "    { 'id':'sg-r1', 'display_text':'Editar usuario', 'type':'Registro', 'requires_clarification': true, 'recordAction':'Modificacion' },\n" +
+            "    { 'id':'sg-r2', 'display_text':'Crear usuario', 'type':'Registro', 'requires_clarification': true, 'recordAction':'Alta' },\n" +
+            "    { 'id':'sg-r3', 'display_text':'Eliminar usuario', 'type':'Registro', 'requires_clarification': true, 'recordAction':'Baja' }\n" +
             "  ]\n" +
-            "- Registro (accionar sobre elementos del listado):\n" +
+            "- Generica (acciones sobre el conjunto, requires_clarification según el caso):\n" +
             "  [\n" +
-            "    { 'id':'sg-r1', 'display_text':'Ver detalles', 'type':'Registro', 'recordAction':'Consulta' },\n" +
-            "    { 'id':'sg-r2', 'display_text':'Crear usuario', 'type':'Registro', 'recordAction':'Alta' },\n" +
-            "    { 'id':'sg-r3', 'display_text':'Editar usuario', 'type':'Registro', 'recordAction':'Modificacion' },\n" +
-            "    { 'id':'sg-r4', 'display_text':'Eliminar usuario', 'type':'Registro', 'recordAction':'Baja' }\n" +
+            "    { 'id':'sg-g1', 'display_text':'Listar academias', 'type':'Generica', 'requires_clarification': false },\n" +
+            "    { 'id':'sg-g2', 'display_text':'Exportar a CSV', 'type':'Generica', 'requires_clarification': false },\n" +
+            "    { 'id':'sg-g3', 'display_text':'Buscar por descripción', 'type':'Generica', 'requires_clarification': true },\n" +
+            "    { 'id':'sg-g4', 'display_text':'Filtrar por precio', 'type':'Generica', 'requires_clarification': true }\n" +
             "  ]\n" +
-            "- Generica (acciones sobre el conjunto):\n" +
-            "  [\n" +
-            "    { 'id':'sg-g1', 'display_text':'Exportar a CSV', 'type':'Generica' },\n" +
-            "    { 'id':'sg-g2', 'display_text':'Aplicar filtro estado=Activo', 'type':'Generica' }\n" +
-            "  ]\n" +
-            "Reglas: cada sugerencia DEBE tener 'id', 'display_text' y 'type'. Para 'Registro' añade 'recordAction'. Para 'Paginacion' añade 'pagination' con 'direction'|'page'|'size'. Nunca devuelvas 'ui_suggestions': [].\n"
+            "Reglas: cada sugerencia DEBE tener 'id', 'display_text', 'type' y 'requires_clarification'. Para 'Registro' añade 'recordAction'. Para 'Paginacion' añade 'pagination' con 'direction'|'page'|'size'. Nunca devuelvas 'ui_suggestions': [].\n"
         );
 
         // 9.2) Patrones recomendados por intención (enriquecidos)
@@ -207,12 +215,12 @@ public class PromptOpenAi {
             "\nPatrones recomendados por intención (usa estos formatos, adaptando display_text al recurso real):\n" +
             "- Listado:\n" +
             "  [\n" +
-            "    { 'id':'sg-g-find-email', 'display_text':'Buscar por email', 'type':'Generica' },\n" +
-            "    { 'id':'sg-r-view', 'display_text':'Ver detalle (ID)', 'type':'Registro', 'recordAction':'Consulta' },\n" +
-            "    { 'id':'sg-g-filter-rol-estado', 'display_text':'Filtrar por rol/estado', 'type':'Generica' }\n" +
+            "    { 'id':'sg-g-list', 'display_text':'Listar usuarios', 'type':'Generica', 'requires_clarification': false },\n" +
+            "    { 'id':'sg-g-find', 'display_text':'Buscar por email', 'type':'Generica', 'requires_clarification': true },\n" +
+            "    { 'id':'sg-g-filter', 'display_text':'Filtrar por rol', 'type':'Generica', 'requires_clarification': true }\n" +
             "  ]\n" +
             "  y para navegación:\n" +
-            "  [ { 'id':'pg-prev', 'display_text':'Anterior', 'type':'Paginacion', 'pagination': { 'direction':'prev', 'page': 1, 'size': 50 } }, { 'id':'pg-next', 'display_text':'Siguiente', 'type':'Paginacion', 'pagination': { 'direction':'next', 'page': 2, 'size': 50 } } ]\n" +
+            "  [ { 'id':'pg-prev', 'display_text':'Anterior', 'type':'Paginacion', 'requires_clarification': false, 'pagination': { 'direction':'prev', 'page': 1, 'size': 50 } }, { 'id':'pg-next', 'display_text':'Siguiente', 'type':'Paginacion', 'requires_clarification': false, 'pagination': { 'direction':'next', 'page': 2, 'size': 50 } } ]\n" +
             "  (Nunca devuelvas un listado sin antes usar herramientas; si no se han ejecutado tool_calls, no emitas arrays de recursos).\n" +
             "- Modificar:\n" +
             "  [\n" +
@@ -243,24 +251,41 @@ public class PromptOpenAi {
 
         // 12) Ejemplos breves (máximo 2)
         systemPromptSb.append(
-            "\nEjemplo (saludo):\n" +
+            "\nEjemplo (saludo con requires_clarification OBLIGATORIO):\n" +
             "Entrada: 'hola'\n" +
-            "Salida (solo estructura): {\n" +
+            "Salida: {\n" +
             "  'text': '¡Hola! ¿En qué puedo ayudarte?',\n" +
-            "  'ui_suggestions': [ { 'id':'sg-g-list-academias','display_text':'Listar academias','type':'Generica' }, { 'id':'sg-g-list-usuarios','display_text':'Listar usuarios','type':'Generica' } ]\n" +
-            "}\n"
+            "  'ui_suggestions': [\n" +
+            "    { 'id':'sg1', 'display_text':'Listar tarifas', 'type':'Generica', 'requires_clarification':false },\n" +
+            "    { 'id':'sg2', 'display_text':'Listar usuarios', 'type':'Generica', 'requires_clarification':false },\n" +
+            "    { 'id':'sg3', 'display_text':'Buscar por nombre', 'type':'Generica', 'requires_clarification':true }\n" +
+            "  ]\n" +
+            "}\n" +
+            "CRÍTICO: TODAS las sugerencias DEBEN incluir 'requires_clarification' (boolean). Sin excepción.\n"
         );
         // Ejemplo extra reforzando modificación sin identificador (aclaración y próximos pasos)
         systemPromptSb.append(
-            "\nEjemplo (modificar sin identificador, reforzando aclaración y próximos pasos):\n" +
+            "\nEjemplo (modificar sin identificador):\n" +
             "Entrada: 'dame de baja al usuario Pepe'\n" +
-            "Salida (solo estructura): {\n" +
-            "  'text': 'Necesito el id o email exacto para continuar. ¿Quieres buscarlo o ver su detalle antes de modificar?',\n" +
-            "  'ui_suggestions': [ { 'id':'sg-g-ask-id-name','display_text':'Dime el ID o nombre exacto','type':'Generica' }, { 'id':'sg-g-find-name','display_text':'Buscar por nombre','type':'Generica' }, { 'id':'sg-r-view-before-edit','display_text':'Ver detalle antes de modificar','type':'Registro','recordAction':'Consulta' } ]\n" +
+            "Salida: {\n" +
+            "  'text': 'Necesito el id o email exacto. ¿Quieres buscarlo?',\n" +
+            "  'ui_suggestions': [\n" +
+            "    { 'id':'sg1', 'display_text':'Buscar por nombre', 'type':'Generica', 'requires_clarification':true },\n" +
+            "    { 'id':'sg2', 'display_text':'Listar usuarios', 'type':'Generica', 'requires_clarification':false }\n" +
+            "  ]\n" +
             "}\n"
         );
+        
+        // RECORDATORIO FINAL CRÍTICO
+        systemPromptSb.append(
+            "\n⚠️⚠️⚠️ RECORDATORIO FINAL CRÍTICO ⚠️⚠️⚠️\n" +
+            "TODAS las sugerencias en 'ui_suggestions' DEBEN incluir 'requires_clarification': true o false.\n" +
+            "NO omitas este campo bajo ninguna circunstancia. Es OBLIGATORIO en TODAS las sugerencias.\n" +
+            "Formato: { 'id': ..., 'display_text': ..., 'type': ..., 'requires_clarification': boolean }\n\n"
+        );
+        
         // 13) Whitelist (al final para ahorrar tokens al principio)
-        systemPromptSb.append("\n\n").append(whitelistTable).append("\n");
+        systemPromptSb.append(whitelistTable).append("\n");
 
 
         return systemPromptSb.toString();
@@ -274,9 +299,28 @@ public class PromptOpenAi {
      */
 
     public String buildReformatInstruction() {
-    return "Por favor, devuelve únicamente un objeto JSON válido con al menos la propiedad 'text' (string) y que 'text' NO esté vacío; redacta con inteligencia humana. Si el mensaje original era un saludo/apertura o no implica tool_calls ni paginación, incluye además 2–3 'ui_suggestions' tipadas (según las definiciones), sin arrays vacíos. Si devuelves listas de recursos, usa las claves exactas 'usuarios'|'academias'|'cursos'|'alumnos'|'profesores'|'tarifas'. No incluyas explicaciones ni texto fuera del JSON. \n" +
-        "Prohibición: si NO hay tool_calls, NO devuelvas arrays de recursos. En ese caso, limita la salida a { 'text': <no vacío>, 'ui_suggestions': [...] (si procede) }. Para listados, usa herramientas. \n" +
-        "'ui_suggestions': cada elemento debe contener 'id' (string), 'display_text' (string), 'type' en ['Paginacion','Registro','Generica'] y, si 'type'=='Registro', 'recordAction' en ['Alta','Baja','Modificacion','Consulta']. Para 'type'='Paginacion', incluye SIEMPRE 'pagination': { 'direction': 'next'|'prev', 'page': number, 'size': number }. No inventes paginación ni 'contextToken'.";
+    return "Convierte tu respuesta anterior en un JSON válido PRESERVANDO EXACTAMENTE el mensaje inteligente que escribiste.\n" +
+        "IMPORTANTE: El campo 'text' debe contener TU MENSAJE ORIGINAL COMPLETO, no lo cambies por un saludo genérico.\n" +
+        "Estructura requerida:\n" +
+        "{\n" +
+        "  'text': '<TU_MENSAJE_ORIGINAL_AQUÍ>',  // COPIA tu mensaje anterior tal cual\n" +
+        "  'ui_suggestions': [...]  // 2-3 sugerencias útiles\n" +
+        "}\n" +
+        "ESTRUCTURA OBLIGATORIA de cada sugerencia:\n" +
+        "{\n" +
+        "  'id': string,\n" +
+        "  'display_text': string,\n" +
+        "  'type': 'Paginacion'|'Registro'|'Generica',\n" +
+        "  'requires_clarification': boolean  // OBLIGATORIO\n" +
+        "}\n" +
+        "Reglas 'requires_clarification':\n" +
+        "- Paginacion: false (siempre)\n" +
+        "- Registro: true (siempre)\n" +
+        "- Generica: false si el texto es autosuficiente (ej: 'Listar tarifas'), true si necesita parámetros (ej: 'Buscar por descripción')\n" +
+        "\nSi tu mensaje original pedía información para crear/modificar un registro, incluye en 'ui_suggestions' opciones como:\n" +
+        "- {'id':'sg1','display_text':'Buscar por email','type':'Generica','requires_clarification':true}\n" +
+        "- {'id':'sg2','display_text':'Listar usuarios','type':'Generica','requires_clarification':false}\n" +
+        "- {'id':'sg3','display_text':'Dame el email y rol de [nombre]','type':'Generica','requires_clarification':true}";
     }
 
     /**
@@ -303,25 +347,26 @@ public class PromptOpenAi {
             "",
             "--- SUGERENCIAS INTELIGENTES (segundo turno) ---",
             "Genera 2-3 'ui_suggestions' inteligentes según contexto del resultado y rol del usuario.",
+            "⚠️ PROHIBIDO ABSOLUTO: NUNCA sugieras 'Ver detalle de X' o 'Consultar detalle de X' en listados. El cliente YA tiene TODOS los campos disponibles.",
             "Estructuras OBLIGATORIAS por tipo:",
-            "· 'Paginacion': {'id','display_text':'Anterior'|'Siguiente','type':'Paginacion','pagination':{direction,page,size}}",
-            "· 'Registro': {'id','display_text','type':'Registro','recordAction':'Alta'|'Baja'|'Modificacion'|'Consulta'} <= recordAction OBLIGATORIO con uno de estos 4 valores",
-            "· 'Generica': {'id','display_text','type':'Generica'}",
+            "· 'Paginacion': {'id','display_text':'Anterior'|'Siguiente','type':'Paginacion','requires_clarification':false,'pagination':{direction,page,size}}",
+            "· 'Registro': {'id','display_text','type':'Registro','requires_clarification':true,'recordAction':'Alta'|'Baja'|'Modificacion'} <= recordAction OBLIGATORIO (Alta/Baja/Modificacion, NUNCA 'Consulta')",
+            "· 'Generica': {'id','display_text','type':'Generica','requires_clarification':true/false}",
             "",
             "Patrones contextuales (adapta 'display_text' al recurso específico):",
-            "· Listado => Ofrece: 'Ver detalle del registro' (Registro-Consulta), 'Buscar por campo relevante (email/nombre/etc según recurso)' (Generica), 'Filtrar por atributo contextual (rol/estado/tipo)' (Generica)",
-            "· Modificar/Borrar => Ofrece: 'Buscar por campo relevante' (Generica), 'Ver detalle antes de editar' (Registro-Consulta)",
+            "· Listado => Ofrece: 'Editar [recurso]' (Registro-Modificacion), 'Crear [recurso]' (Registro-Alta), 'Buscar por campo relevante' (Generica), 'Filtrar por atributo contextual' (Generica), 'Exportar a CSV' (Generica)",
+            "· Modificar/Borrar => Ofrece: 'Buscar por campo relevante' (Generica), 'Listar todos' (Generica)",
             "· Fuera de dominio/Saludo => Ofrece: 'Listar [recurso disponible según rol]' (Generica), 'Ayuda' (Generica)",
             "",
             "Ejemplos estructurales (copia formato exacto, adapta display_text):",
-            "{'id':'sg-r1','display_text':'Ver detalles del usuario','type':'Registro','recordAction':'Consulta'}",
-            "{'id':'sg-r2','display_text':'Crear nuevo usuario','type':'Registro','recordAction':'Alta'}",
-            "{'id':'sg-r3','display_text':'Editar usuario','type':'Registro','recordAction':'Modificacion'}",
-            "{'id':'sg-r4','display_text':'Eliminar usuario','type':'Registro','recordAction':'Baja'}",
-            "{'id':'sg-g1','display_text':'Buscar por email','type':'Generica'}",
-            "{'id':'sg-g2','display_text':'Filtrar por estado','type':'Generica'}",
+            "{'id':'sg-r1','display_text':'Editar usuario','type':'Registro','requires_clarification':true,'recordAction':'Modificacion'}",
+            "{'id':'sg-r2','display_text':'Crear nuevo usuario','type':'Registro','requires_clarification':true,'recordAction':'Alta'}",
+            "{'id':'sg-r3','display_text':'Eliminar usuario','type':'Registro','requires_clarification':true,'recordAction':'Baja'}",
+            "{'id':'sg-g1','display_text':'Buscar por email','type':'Generica','requires_clarification':true}",
+            "{'id':'sg-g2','display_text':'Filtrar por estado','type':'Generica','requires_clarification':true}",
+            "{'id':'sg-g3','display_text':'Exportar a CSV','type':'Generica','requires_clarification':false}",
             "",
-            "PROHIBIDO: omitir 'recordAction' en tipo 'Registro'; devolver []; usar estructuras no definidas; sugerencias genéricas sin adaptar al contexto.",
+            "PROHIBIDO: omitir 'requires_clarification'; omitir 'recordAction' en tipo 'Registro'; usar 'Consulta' como recordAction; devolver []; usar estructuras no definidas; sugerir 'ver detalle' en listados.",
             "",
             "Resumen: " + resumen
         );
@@ -337,11 +382,12 @@ public class PromptOpenAi {
         sb.append("Responde SIEMPRE en castellano (España), breve y claro. \n");
         sb.append("Este es el segundo turno: NO puedes usar herramientas. Debes redactar el JSON final a partir del contexto reinyectado.\n");
         sb.append("Contrato (compacto): devuelve SOLO un JSON; 'text' no vacío. Si hay tool_outputs con items, devuelve el array bajo su clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores'|'tarifas').\n");
-        sb.append("ui_suggestions (2–3): {'id','display_text','type'}; 'Registro' añade 'recordAction' ['Alta','Baja','Modificacion','Consulta']; 'Paginacion' añade 'pagination' {direction,page,size}. Sin 'contextToken' ni nodo global 'pagination'; nunca [].\n");
+        sb.append("ui_suggestions (2–3): {'id','display_text','type','requires_clarification'}; 'Registro' añade 'recordAction' ['Alta','Baja','Modificacion'] (NUNCA 'Consulta'); 'Paginacion' añade 'pagination' {direction,page,size}. Sin 'contextToken' ni nodo global 'pagination'; nunca [].\n");
+        sb.append("⚠️ PROHIBIDO: Nunca sugieras 'Ver detalle' en listados (el cliente YA tiene todos los campos). Sugiere: editar, crear, buscar, filtrar, exportar.\n");
         sb.append("Paginación: page=1 & has_more=> solo 'Siguiente'; page>1 & has_more=> 'Anterior' y 'Siguiente'; última=> solo 'Anterior'. Si no puedes calcular, omite. Si el resumen indica prev_allowed=true, incluye 'Anterior'.\n");
         sb.append("CRÍTICO - Redacción del 'text': NUNCA cuentes los items del array manualmente. Si el payload incluye 'returned' y 'sample_of', el array es una MUESTRA (echo trimming). El count REAL está en 'returned'. Usa SOLO metadatos para redactar. Si sample_of>=1: plural sin números específicos. Si returned>1: plural. Si returned==1: singular. Si returned==0: sin resultados. PROHIBIDO: contar .length cuando sample_of>=1.\n");
         sb.append("Listados grandes: 'text' conciso y 'summary_fields' (1–2 claves).\n");
-        sb.append("\nSugerencias inteligentes: genera 2-3 según contexto y rol. Registro={'recordAction':'Alta'|'Baja'|'Modificacion'|'Consulta'}. Adapta display_text al recurso (usuarios=>email, academias=>nombre, etc). Patrones: Listado=>Ver detalle(Registro-Consulta)+Buscar(Generica)+Filtrar(Generica). Nunca [].\n");
+        sb.append("\nSugerencias inteligentes: genera 2-3 según contexto y rol. Registro={'recordAction':'Alta'|'Baja'|'Modificacion', 'requires_clarification':true}. Paginacion={'requires_clarification':false}. Generica={'requires_clarification':true/false según contexto}. Adapta display_text al recurso (usuarios=>email, academias=>nombre, etc). Patrones: Listado=>Editar(Registro-Modificacion)+Crear(Registro-Alta)+Buscar(Generica)+Filtrar(Generica)+Exportar(Generica). NUNCA Ver detalle. Nunca [].\n");
         return sb.toString();
     }
 

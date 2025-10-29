@@ -8,7 +8,9 @@ public class Suggestion {
     private String displayText;
     // "Paginacion" | "Registro" | "Generica"
     private String type;
-    // Solo si type="Registro": "Consulta" | "Modificacion" | "Baja" | "Alta"
+    // Indica si el cliente debe pedir más información al usuario antes de enviar
+    private Boolean requiresClarification;
+    // Solo si type="Registro": "Alta" | "Baja" | "Modificacion"
     private String recordAction;
     private RecordRef record; // Solo si type="Registro"
     private PaginationSuggestion pagination; // Solo si type="Paginacion"
@@ -50,6 +52,8 @@ public class Suggestion {
     public void setDisplayText(String displayText) { this.displayText = displayText; }
     public String getType() { return type; }
     public void setType(String type) { this.type = type; }
+    public Boolean getRequiresClarification() { return requiresClarification; }
+    public void setRequiresClarification(Boolean requiresClarification) { this.requiresClarification = requiresClarification; }
     public String getRecordAction() { return recordAction; }
     public void setRecordAction(String recordAction) { this.recordAction = recordAction; }
     public RecordRef getRecord() { return record; }
