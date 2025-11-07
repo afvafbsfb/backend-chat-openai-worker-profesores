@@ -30,12 +30,32 @@ public class PromptOpenAi {
         if (claims != null) {
             String rolesStr = claims.roles == null ? "[]" : claims.roles.toString();
             String academiaStr = claims.academiaId == null ? "null" : claims.academiaId.toString();
-            systemPromptSb.append(" Contexto del usuario: roles=").append(rolesStr).append(", academiaId=").append(academiaStr).append(". ");
+            systemPromptSb.append(" Contexto del usuario autenticado: roles=").append(rolesStr).append(", academiaId=").append(academiaStr).append(". ");
             systemPromptSb.append("Ámbito por rol: Admin_academia => ámbito 'academia' (limita a su academia: usuarios, cursos, tarifas). Profesor_academia => solo su academia y cursos propios. Admin_plataforma => intenta inferir la academia objetivo por el contexto; si no es claro, pide confirmación.");
         }
+        
+        // 3) Perfil del usuario AUTENTICADO (quien está usando el sistema AHORA)
         String profile = (profileJsonForPrompt == null || profileJsonForPrompt.isBlank()) ? "{}" : profileJsonForPrompt;
-        systemPromptSb.append(" Perfil_usuario: ").append(profile).append(".");
-        systemPromptSb.append("\nTambién recibirás: (a) el historial de la conversación (mensajes previos), y (b) señales de navegación cuando el cliente acepte sugerencias de paginación o cualquier otra sugerencia que le hayas enviado anteriormente (como mensajes especiales del asistente que el backend entiende). Úsalos como contexto, no los repitas al usuario.\n");
+        systemPromptSb.append("\n\n🔐 PERFIL DEL USUARIO AUTENTICADO (quien está usando el sistema AHORA):\n");
+        systemPromptSb.append(profile).append("\n");
+        systemPromptSb.append("\n⚠️ USO CORRECTO DEL PERFIL_USUARIO:\n");
+        systemPromptSb.append("✅ SÍ úsalo para:\n");
+        systemPromptSb.append("  - Saludar personalizadamente (ej: '¡Hola, Juan!')\n");
+        systemPromptSb.append("  - Validar permisos (ej: su rol permite crear usuarios?)\n");
+        systemPromptSb.append("  - Obtener academia_id para POST/PUT (ej: crear usuario en su academia)\n");
+        systemPromptSb.append("  - Contexto de navegación (ej: 'tus cursos', 'tu academia')\n");
+        systemPromptSb.append("\n❌ NUNCA lo uses para:\n");
+        systemPromptSb.append("  - Datos de OTROS usuarios cuando el usuario pide crear/modificar alguien más\n");
+        systemPromptSb.append("  - Nombre/email de usuarios a crear (esos datos vienen del MENSAJE del usuario)\n");
+        systemPromptSb.append("\n🎯 EJEMPLO CRÍTICO:\n");
+        systemPromptSb.append("Perfil_usuario: {nombre:'Juan Pérez', id:10, academia_id:2}\n");
+        systemPromptSb.append("Usuario dice: 'Crear usuario: Maria López, maria@email.com, rol profesor'\n");
+        systemPromptSb.append("✅ CORRECTO: POST {nombre:'Maria López', email:'maria@email.com', rol_id:9, academia_id:2}\n");
+        systemPromptSb.append("              ↑ De mensaje      ↑ De mensaje                              ↑ Del Perfil_usuario\n");
+        systemPromptSb.append("❌ ERROR: POST {nombre:'Juan Pérez', email:'juan.perez@email.com', ...}\n");
+        systemPromptSb.append("          ↑ Usaste Perfil_usuario cuando debías usar el mensaje ← ¡MAL!\n\n");
+        
+        systemPromptSb.append("También recibirás: (a) el historial de la conversación (mensajes previos), y (b) señales de navegación cuando el cliente acepte sugerencias de paginación o cualquier otra sugerencia que le hayas enviado anteriormente (como mensajes especiales del asistente que el backend entiende). Úsalos como contexto, no los repitas al usuario.\n");
         // 3) Recursos disponibles/no disponibles (derivados de la whitelist)
         try {
             Set<String> avail = new HashSet<>();
@@ -104,16 +124,18 @@ public class PromptOpenAi {
             "EJEMPLOS CRÍTICOS de resolución de FKs:\n" +
             "\n" +
             "📌 Ejemplo 1 - rol_id para usuarios (FLUJO MULTI-TURNO):\n" +
-            "   Usuario dice: 'crear usuario con rol profesor de la academia'\n" +
+            "   Contexto: Usuario autenticado con academiaId=2\n" +
+            "   Usuario dice: 'crear usuario: nombre Maria Garcia, email maria@email.com, rol profesor'\n" +
             "   \n" +
             "   ✅ FLUJO CORRECTO (múltiples tool_calls secuenciales):\n" +
-            "     TURNO 1: Haces tool_call GET /roles?nombre_contains=Profesor\n" +
+            "     TURNO 1: Haces tool_call => name: 'call_api', arguments: { 'name':'roles.listar_roles', 'method':'GET', 'query':{ 'nombre_contains':'Profesor' } }\n" +
             "       → Sistema ejecuta y te devuelve: {\"data\": [{\"id\": 9, \"nombre\": \"Profesor_academia\"}]}\n" +
             "       → Sistema te llama DE NUEVO con este resultado\n" +
             "     \n" +
-            "     TURNO 2: Ahora que ya tienes rol_id=9, haces tool_call POST /usuarios\n" +
-            "       → body: {\"nombre\": \"...\", \"email\": \"...\", \"rol_id\": 9, \"password\": \"...\"}\n" +
-            "       → Sistema ejecuta y te devuelve: {\"id\": 15, \"nombre\": \"...\", \"email\": \"...\"}\n" +
+            "     TURNO 2: Ahora que ya tienes rol_id=9, haces tool_call => name: 'call_api', arguments: { 'name':'usuarios.crear_usuario', 'method':'POST', 'body':{ 'nombre':'Maria Garcia', 'email':'maria@email.com', 'rol_id':9, 'academia_id':2 } }\n" +
+            "       ⚠️ IMPORTANTE: Los datos 'Maria Garcia' y 'maria@email.com' vienen del MENSAJE DEL USUARIO.\n" +
+            "       ⚠️ El 'academia_id':2 viene del CONTEXTO (usuario autenticado pertenece a academia 2).\n" +
+            "       → Sistema ejecuta y te devuelve: {\"id\": 15, \"nombre\": \"Maria Garcia\", \"email\": \"maria@email.com\"}\n" +
             "       → Sistema te llama DE NUEVO con este resultado\n" +
             "     \n" +
             "     TURNO 3 (FINAL): Ahora que tienes el resultado de la creación, NO hagas más tool_calls.\n" +
@@ -125,9 +147,13 @@ public class PromptOpenAi {
             "       - Sigue haciendo tool_calls hasta que tengas TODOS los datos que necesitas.\n" +
             "       - Cuando ya no necesites más datos, simplemente NO devuelvas tool_calls y el sistema generará la respuesta final.\n" +
             "   \n" +
-            "   ❌ ERROR COMÚN: Hacer GET /roles y luego NO hacer POST /usuarios.\n" +
+            "   ❌ ERROR COMÚN 1: Hacer GET /roles y luego NO hacer POST /usuarios.\n" +
             "      → Si haces GET /roles, DEBES hacer POST /usuarios en el siguiente turno.\n" +
             "      → No te quedes esperando. Usa el rol_id obtenido inmediatamente.\n" +
+            "   \n" +
+            "   ❌ ERROR COMÚN 2: Usar datos del usuario AUTENTICADO en lugar del mensaje.\n" +
+            "      → El usuario autenticado es quien está usando el sistema. Los datos para crear OTROS usuarios vienen del mensaje.\n" +
+            "      → Si el usuario dice 'crear usuario: Santiago, santi@email.com', usa 'Santiago' y 'santi@email.com' del MENSAJE, no datos del usuario autenticado.\n" +
             "\n" +
             "📌 Ejemplo 2 - academia_id para tarifas:\n" +
             "   Usuario dice: 'crear tarifa para la academia Madrid'\n" +
@@ -275,8 +301,66 @@ public class PromptOpenAi {
         );
         systemPromptSb.append("\nPreferencia de navegación: para cambiar de página dentro de la MISMA entidad, prefiere 'call_api' (una sola llamada) y evita 'call_api_batch' salvo agregaciones multi‑entidad.\n");
         systemPromptSb.append(
-            "\nEjemplo call_api (solo estructura):\n" +
+            "\nEjemplo call_api GET (solo estructura):\n" +
             "assistant.tool_call => name: 'call_api', arguments: { 'name':'usuarios.listar_usuarios', 'method':'GET', 'query':{ 'estado':'activo' } }\n"
+        );
+        systemPromptSb.append(
+            "\nEjemplo call_api POST para crear usuario (solo estructura):\n" +
+            "assistant.tool_call => name: 'call_api', arguments: { 'name':'usuarios.crear_usuario', 'method':'POST', 'body':{ 'nombre':'Angel Fernández', 'email':'angel@email.com', 'rol_id':9, 'academia_id':2 } }\n" +
+            "⚠️ CAMPOS OBLIGATORIOS para usuarios.crear_usuario: 'nombre', 'email', 'rol_id' - TODOS deben venir del mensaje del usuario.\n" +
+            "⚠️ 'academia_id' viene del CONTEXTO (academiaId del usuario autenticado).\n" +
+            "NOTA: password es opcional; si se omite, se usará el email como contraseña temporal.\n"
+        );
+        systemPromptSb.append(
+            "\n🔴 CRÍTICO - Extracción de datos del mensaje del usuario para POST/PUT:\n" +
+            "Cuando el usuario pide crear o modificar un registro, DEBES extraer los datos DEL MENSAJE DEL USUARIO, NO confundir con el usuario autenticado.\n" +
+            "\n" +
+            "🔑 REGLAS FUNDAMENTALES:\n" +
+            "1️⃣ El usuario autenticado (quien está usando el sistema) tiene academiaId disponible en el contexto (ver arriba).\n" +
+            "2️⃣ Cuando crees/modifiques usuarios, cursos, etc., usa 'academia_id' del contexto del usuario autenticado.\n" +
+            "3️⃣ Los datos personales (nombre, email, etc.) para crear OTROS usuarios SIEMPRE vienen del MENSAJE del usuario, NUNCA del usuario autenticado.\n" +
+            "\n" +
+            "✅ EJEMPLO CORRECTO:\n" +
+            "Contexto: academiaId=2 (usuario autenticado pertenece a academia 2)\n" +
+            "Usuario dice: 'Crear usuario: Angel Fernández, afv@gmail.com, rol profesor'\n" +
+            "→ Extraes del MENSAJE: nombre='Angel Fernández', email='afv@gmail.com'\n" +
+            "→ Buscas rol 'profesor' con GET /roles → obtienes rol_id=9\n" +
+            "→ Usas academia_id=2 del CONTEXTO (no del mensaje)\n" +
+            "→ POST con body: { 'nombre':'Angel Fernández', 'email':'afv@gmail.com', 'rol_id':9, 'academia_id':2 }\n" +
+            "\n" +
+            "❌ ERROR GARRAFAL - NO INVENTES OPERACIONES:\n" +
+            "Usuario dice: 'Listar tarifas'\n" +
+            "→ Haces GET /tarifas → obtienes lista de tarifas\n" +
+            "❌ MAL: NO hagas POST /usuarios después (el usuario NUNCA pidió crear usuarios)\n" +
+            "✅ BIEN: Devuelves las tarifas y terminas\n" +
+            "\n" +
+            "Usuario dice: 'Mostrar cursos'\n" +
+            "→ Haces GET /cursos → obtienes lista de cursos\n" +
+            "❌ MAL: NO hagas POST /alumnos o POST /tarifas después\n" +
+            "✅ BIEN: Devuelves los cursos y terminas\n" +
+            "\n" +
+            "🔑 REGLA ABSOLUTA: SOLO haz POST/PUT/DELETE si el usuario EXPLÍCITAMENTE lo pidió.\n" +
+            "- 'Listar X' → Solo GET, NO POST\n" +
+            "- 'Mostrar X' → Solo GET, NO POST\n" +
+            "- 'Ver X' → Solo GET, NO POST\n" +
+            "- 'Crear X' → GET (si necesitas datos) + POST\n" +
+            "- 'Modificar X' → GET (para obtener ID/datos) + PUT\n" +
+            "- 'Eliminar X' → DELETE\n" +
+            "\n" +
+            "❌ ERROR GARRAFAL:\n" +
+            "Usuario dice: 'Crear usuario: Angel Fernández, afv@gmail.com, rol profesor'\n" +
+            "→ Usas nombre del usuario AUTENTICADO en lugar del mensaje ← ¡INCORRECTO!\n" +
+            "→ Inventas o usas email del usuario AUTENTICADO ← ¡INCORRECTO!\n" +
+            "→ POST con body: { 'nombre':'Juan Pérez', 'email':'juan.perez@email.com', 'rol_id':9 } ← ¡ERROR CRÍTICO!\n" +
+            "\n" +
+            "� RESUMEN:\n" +
+            "- academia_id → Del CONTEXTO del usuario autenticado (academiaId arriba)\n" +
+            "- nombre, email → Del MENSAJE del usuario (lo que pide crear)\n" +
+            "- rol_id → Del mensaje (buscas en /roles primero)\n" +
+            "- NUNCA confundas al usuario autenticado con los datos a crear\n" +
+            "\n" +
+            "🔑 REGLA: TODOS los campos requeridos en el schema DEBEN estar presentes. Para usuarios.crear_usuario: email, nombre y rol_id son OBLIGATORIOS.\n" +
+            "\n"
         );
         systemPromptSb.append(
             "\nEjemplo call_api_batch (solo estructura):\n" +
@@ -465,10 +549,12 @@ public class PromptOpenAi {
         String resumen = (resumenEjecucion == null || resumenEjecucion.isBlank()) ? "(sin_resumen)" : resumenEjecucion;
         return String.join("\n",
             "Segundo turno. Devuelve un JSON con 'text' (no vacío, conversacional, SIN listar las sugerencias) y 'ui_suggestions' (2–3).",
+            "",
             "⚠️ REGLA DE HERRAMIENTAS EN SEGUNDO TURNO:",
-            "- Si NECESITAS más datos para completar una operación multi-paso (ej: crear usuario y falta rol_id, crear tarifa y falta academia_id), PUEDES hacer UNA llamada adicional para obtener el dato faltante.",
-            "- Si YA TIENES todos los datos necesarios o no es una operación multi-paso, devuelve el JSON DIRECTAMENTE sin más herramientas.",
-            "- NUNCA hagas llamadas redundantes para datos que ya tienes en los tool_outputs anteriores.",
+            "- Si la operación solicitada por el usuario YA está completada (ya obtuviste los datos, ya creaste/modificaste el registro), devuelve el JSON DIRECTAMENTE sin más herramientas.",
+            "- Si NECESITAS datos adicionales que aún NO tienes para completar la solicitud del usuario, PUEDES hacer UNA llamada para obtenerlos.",
+            "- NUNCA hagas llamadas redundantes para datos que ya tienes en los tool_outputs.",
+            "- NO inventes operaciones que el usuario NO pidió.",
             "",
             "CRÍTICO: Las sugerencias van SOLO en 'ui_suggestions', NUNCA en el 'text' (no escribas 'Aquí tienes: - Listar usuarios...').",
             "",
