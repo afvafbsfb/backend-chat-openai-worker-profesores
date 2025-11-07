@@ -273,8 +273,8 @@ public class OpenAICallApiService {
             extras.remove("tool_choice");
             extras.remove("tools");
         }
-        // Apply a reasonable cap of max_tokens, but allow enough space for reformatting with lists
-        extras.putIfAbsent("max_tokens", 1500);
+        // Apply a conservative cap of max_tokens to avoid long generations in the second turn
+        extras.putIfAbsent("max_tokens", 400);
         Map<String, Object> requestBody = buildRequestBodyNoTools(messages, extras);
         if (xmlLogger != null) {
             xmlLogger.addStep("OpenAI", "Llamada a OpenAI (sin herramientas) - mensajes: " + messagesToLogString(messages));
@@ -360,24 +360,6 @@ public class OpenAICallApiService {
                                 } catch (Exception ignore) { }
                                 if (!queryParams.isEmpty()) ep.put("query", queryParams);
                                 if (paginated) ep.put("paginated", true);
-                                
-                                // Extract x-permissions if present, preserving null values
-                                Object xpObj = opMap.get("x-permissions");
-                                if (xpObj instanceof Map<?, ?>) {
-                                    Map<String, Object> xpMap = new HashMap<>();
-                                    Map<?, ?> xpSource = (Map<?, ?>) xpObj;
-                                    for (Map.Entry<?, ?> entry : xpSource.entrySet()) {
-                                        String key = String.valueOf(entry.getKey());
-                                        Object value = entry.getValue();
-                                        // Preserve null values explicitly
-                                        xpMap.put(key, value);
-                                    }
-                                    ep.put("x-permissions", xpMap);
-                                    if ("/roles/".equals(path)) {
-                                        System.err.println("=== [LOAD-DEBUG] Loaded /roles/ x-permissions: " + xpMap);
-                                    }
-                                }
-                                
                                 paths.add(ep);
                             }
                         }
@@ -458,10 +440,54 @@ public class OpenAICallApiService {
         );
     }
 
+    /**
+     * Detecta si el mensaje del usuario contiene palabras clave de operaciones de listado
+     */
+    private boolean isListOperationByMessage(List<Map<String, Object>> messages) {
+        // Buscar el último mensaje del usuario
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            Map<String, Object> msg = messages.get(i);
+            if ("user".equals(msg.get("role"))) {
+                String content = (String) msg.get("content");
+                if (content != null) {
+                    String lower = content.toLowerCase();
+                    return lower.contains("listar") || 
+                           lower.contains("lista") ||
+                           lower.contains("listame") ||
+                           lower.contains("listado") ||
+                           lower.matches(".*\\bver (todos|todas).*") ||
+                           lower.matches(".*\\bmostrar (todos|todas).*");
+                }
+                break;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Detecta si el tool_call es de un endpoint de listado
+     */
+    private boolean isListOperationByToolCall(Map<String, Object> toolCall) {
+        try {
+            Object argumentsObj = toolCall.get("arguments");
+            if (argumentsObj instanceof Map<?, ?>) {
+                Map<?, ?> args = (Map<?, ?>) argumentsObj;
+                String endpointName = (String) args.get("name");
+                return endpointName != null && endpointName.contains("listar");
+            } else if (argumentsObj instanceof String) {
+                String argsStr = (String) argumentsObj;
+                return argsStr.contains("listar");
+            }
+        } catch (Exception e) {
+            // Silenciar errores de detección
+        }
+        return false;
+    }
+
     private String processMessages(List<Map<String, Object>> messages, List<Map<String, Object>> tools, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) throws Exception {
         List<Map<String, Object>> currentMessages = new ArrayList<>(messages);
         int maxIterations = 10;
-        boolean hadToolCalls = false;
+        boolean isListOperation = isListOperationByMessage(messages);
 
         for (int iter = 0; iter < maxIterations; iter++) {
             if (xmlLogger != null) {
@@ -477,75 +503,20 @@ public class OpenAICallApiService {
             }
 
             Map<String, Object> response = mapper.readValue(responseBody, new TypeReference<Map<String, Object>>() {});
-            
-            // Extraer el mensaje desde choices[0].message (estructura correcta de OpenAI)
-            Map<String, Object> assistantMessage = null;
-            Object choicesObj = response.get("choices");
-            if (choicesObj instanceof List<?> && !((List<?>) choicesObj).isEmpty()) {
-                Object firstChoice = ((List<?>) choicesObj).get(0);
-                if (firstChoice instanceof Map<?, ?>) {
-                    Object messageObj = ((Map<?, ?>) firstChoice).get("message");
-                    if (messageObj instanceof Map<?, ?>) {
-                        try {
-                            assistantMessage = mapper.convertValue(messageObj, new TypeReference<Map<String, Object>>() {});
-                            currentMessages.add(assistantMessage);
-                        } catch (IllegalArgumentException e) {
-                            logger.warn("Error al convertir el mensaje: {}", messageObj, e);
-                        }
-                    }
+            // Validar y convertir de forma segura en processMessages
+            Object messageObj = response.get("message");
+            if (messageObj instanceof Map<?, ?>) {
+                try {
+                    currentMessages.add(mapper.convertValue(messageObj, new TypeReference<Map<String, Object>>() {}));
+                } catch (IllegalArgumentException e) {
+                    logger.warn("Error al convertir el mensaje: {}", messageObj, e);
                 }
-            }
-            
-            if (assistantMessage == null) {
-                logger.warn("No se pudo extraer el mensaje de assistant de la respuesta de OpenAI");
+            } else {
+                logger.warn("El mensaje recibido no es del tipo esperado: {}", messageObj);
             }
 
-            // Procesar tool_calls desde el mensaje del assistant
-            if (assistantMessage != null && processToolCallsFromMessage(assistantMessage, currentMessages, xmlLogger, authorization)) {
-                hadToolCalls = true;
+            if (processToolCalls(response, currentMessages, xmlLogger, authorization, isListOperation)) {
                 continue;
-            }
-
-            // SIEMPRE verificar si la respuesta final es JSON válido (independiente de tool_calls)
-            if (assistantMessage != null) {
-                String content = (String) assistantMessage.get("content");
-                if (content != null && !content.isBlank()) {
-                    boolean isValidJson = false;
-                    try {
-                        mapper.readTree(content);
-                        isValidJson = true;
-                    } catch (Exception e) {
-                        // No es JSON válido
-                    }
-                    
-                    if (!isValidJson) {
-                        // Es texto plano, necesita reformat
-                        String reasonMsg = hadToolCalls 
-                            ? "Detectado texto plano después de tool_calls - reformateando automáticamente" 
-                            : "Detectado texto plano en respuesta directa - reformateando para respetar contrato";
-                        
-                        if (xmlLogger != null) {
-                            xmlLogger.addStep("OpenAI", reasonMsg);
-                        }
-                        
-                        List<Map<String, Object>> reformatMessages = new ArrayList<>(currentMessages);
-                        String reformatInstruction = hadToolCalls
-                            ? "Reformatea tu respuesta anterior en JSON válido según el esquema requerido. IMPORTANTE: Incluye los datos obtenidos de las herramientas en el array 'items'."
-                            : "Reformatea tu respuesta anterior en JSON válido según el esquema requerido del contrato de salida. Si no hay datos específicos, usa un array 'items' vacío.";
-                        
-                        reformatMessages.add(Map.of("role", "user", "content", reformatInstruction));
-                        
-                        Map<String, Object> reformatBody = buildRequestBodyNoTools(reformatMessages, Map.of("max_tokens", 1500));
-                        String reformattedBody = sendRequestToOpenAi(reformatBody, authorization);
-                        
-                        if (reformattedBody != null && !reformattedBody.isBlank()) {
-                            if (xmlLogger != null) {
-                                xmlLogger.addStep("OpenAI", "Respuesta reformateada: " + reformattedBody);
-                            }
-                            return reformattedBody;
-                        }
-                    }
-                }
             }
 
             return responseBody;
@@ -557,7 +528,7 @@ public class OpenAICallApiService {
     private String processMessagesWithExtras(List<Map<String, Object>> messages, List<Map<String, Object>> tools, Map<String,Object> extraBodyProps, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) throws Exception {
         List<Map<String, Object>> currentMessages = new ArrayList<>(messages);
         int maxIterations = 10;
-        boolean hadToolCalls = false;
+        boolean isListOperation = isListOperationByMessage(messages);
 
         for (int iter = 0; iter < maxIterations; iter++) {
             if (xmlLogger != null) {
@@ -573,81 +544,19 @@ public class OpenAICallApiService {
             }
 
             Map<String, Object> response = mapper.readValue(responseBody, new TypeReference<Map<String, Object>>() {});
-            
-            // Extraer el mensaje desde choices[0].message (estructura correcta de OpenAI)
-            Map<String, Object> assistantMessage = null;
-            Object choicesObj = response.get("choices");
-            if (choicesObj instanceof List<?> && !((List<?>) choicesObj).isEmpty()) {
-                Object firstChoice = ((List<?>) choicesObj).get(0);
-                if (firstChoice instanceof Map<?, ?>) {
-                    Object messageObj = ((Map<?, ?>) firstChoice).get("message");
-                    if (messageObj instanceof Map<?, ?>) {
-                        try {
-                            assistantMessage = mapper.convertValue(messageObj, new TypeReference<Map<String, Object>>() {});
-                            currentMessages.add(assistantMessage);
-                        } catch (IllegalArgumentException e) {
-                            logger.warn("Error al convertir el mensaje: {}", messageObj, e);
-                        }
-                    }
+            Object messageObj = response.get("message");
+            if (messageObj instanceof Map<?, ?>) {
+                try {
+                    currentMessages.add(mapper.convertValue(messageObj, new TypeReference<Map<String, Object>>() {}));
+                } catch (IllegalArgumentException e) {
+                    logger.warn("Error al convertir el mensaje: {}", messageObj, e);
                 }
-            }
-            
-            if (assistantMessage == null) {
-                logger.warn("No se pudo extraer el mensaje de assistant de la respuesta de OpenAI");
+            } else {
+                logger.warn("El mensaje recibido no es del tipo esperado: {}", messageObj);
             }
 
-            // Procesar tool_calls desde el mensaje del assistant
-            if (assistantMessage != null && processToolCallsFromMessage(assistantMessage, currentMessages, xmlLogger, authorization)) {
-                hadToolCalls = true;
+            if (processToolCalls(response, currentMessages, xmlLogger, authorization, isListOperation)) {
                 continue;
-            }
-
-            // SIEMPRE verificar si la respuesta final es JSON válido (independiente de tool_calls)
-            if (assistantMessage != null) {
-                String content = (String) assistantMessage.get("content");
-                if (content != null && !content.isBlank()) {
-                    boolean isValidJson = false;
-                    try {
-                        mapper.readTree(content);
-                        isValidJson = true;
-                    } catch (Exception e) {
-                        // No es JSON válido
-                    }
-                    
-                    if (!isValidJson) {
-                        // Es texto plano, necesita reformat
-                        String reasonMsg = hadToolCalls 
-                            ? "Detectado texto plano después de tool_calls - reformateando automáticamente" 
-                            : "Detectado texto plano en respuesta directa - reformateando para respetar contrato";
-                        
-                        if (xmlLogger != null) {
-                            xmlLogger.addStep("OpenAI", reasonMsg);
-                        }
-                        
-                        List<Map<String, Object>> reformatMessages = new ArrayList<>(currentMessages);
-                        String reformatInstruction = hadToolCalls
-                            ? "Reformatea tu respuesta anterior en JSON válido según el esquema requerido. IMPORTANTE: Incluye los datos obtenidos de las herramientas en el array 'items'."
-                            : "Reformatea tu respuesta anterior en JSON válido según el esquema requerido del contrato de salida. Si no hay datos específicos, usa un array 'items' vacío.";
-                        
-                        reformatMessages.add(Map.of("role", "user", "content", reformatInstruction));
-                        
-                        Map<String, Object> reformatExtras = new HashMap<>();
-                        reformatExtras.put("max_tokens", 1500);
-                        if (extraBodyProps != null) {
-                            reformatExtras.putAll(extraBodyProps);
-                        }
-                        
-                        Map<String, Object> reformatBody = buildRequestBodyNoTools(reformatMessages, reformatExtras);
-                        String reformattedBody = sendRequestToOpenAi(reformatBody, authorization);
-                        
-                        if (reformattedBody != null && !reformattedBody.isBlank()) {
-                            if (xmlLogger != null) {
-                                xmlLogger.addStep("OpenAI", "Respuesta reformateada: " + reformattedBody);
-                            }
-                            return reformattedBody;
-                        }
-                    }
-                }
             }
 
             return responseBody;
@@ -710,49 +619,7 @@ public class OpenAICallApiService {
         }
     }
 
-    private boolean processToolCallsFromMessage(Map<String, Object> assistantMessage, List<Map<String, Object>> currentMessages, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) {
-        Object toolCallsObj = assistantMessage.get("tool_calls");
-        List<Map<String, Object>> toolCalls = new ArrayList<>();
-        if (toolCallsObj instanceof List<?>) {
-            for (Object item : (List<?>) toolCallsObj) {
-                if (item instanceof Map<?, ?>) {
-                    try {
-                        toolCalls.add(mapper.convertValue(item, new TypeReference<Map<String, Object>>() {}));
-                    } catch (IllegalArgumentException e) {
-                        logger.warn("Error al convertir tool_call: {}", item, e);
-                    }
-                }
-            }
-        } else {
-            if (toolCallsObj != null) logger.warn("El objeto tool_calls no es del tipo esperado: {}", toolCallsObj);
-        }
-
-        // Si no hay tool calls, no hay motivo para volver a llamar a OpenAI
-        if (toolCalls.isEmpty()) {
-            if (debug) logger.info("No hubo tool_calls en la respuesta.");
-            return false;
-        }
-
-        boolean anyExecuted = false;
-        for (Map<String, Object> toolCall : toolCalls) {
-            String toolCallId = (String) toolCall.get("id");
-            String toolResult = executeToolCall(toolCall, authorization, xmlLogger);
-            if (toolResult != null) {
-                Map<String, Object> toolMessage = new HashMap<>();
-                toolMessage.put("role", "tool");
-                toolMessage.put("content", toolResult);
-                if (toolCallId != null) {
-                    toolMessage.put("tool_call_id", toolCallId);
-                }
-                currentMessages.add(toolMessage);
-                anyExecuted = true;
-            }
-        }
-
-        return anyExecuted;
-    }
-
-    private boolean processToolCalls(Map<String, Object> response, List<Map<String, Object>> currentMessages, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization) {
+    private boolean processToolCalls(Map<String, Object> response, List<Map<String, Object>> currentMessages, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, String authorization, boolean isListOperation) {
         Object toolCallsObj = response.get("tool_calls");
         List<Map<String, Object>> toolCalls = new ArrayList<>();
         if (toolCallsObj instanceof List<?>) {
@@ -777,16 +644,16 @@ public class OpenAICallApiService {
 
         boolean anyExecuted = false;
         for (Map<String, Object> toolCall : toolCalls) {
-            String toolCallId = (String) toolCall.get("id");
-            String toolResult = executeToolCall(toolCall, authorization, xmlLogger);
+            // Si no es operación de listado, verificar por toolCall individual
+            boolean isList = isListOperation || isListOperationByToolCall(toolCall);
+            
+            if (isList && xmlLogger != null) {
+                xmlLogger.addStep("OPTIMIZATION", "Operación de listado detectada - aplicando límites agresivos");
+            }
+            
+            String toolResult = executeToolCall(toolCall, authorization, xmlLogger, isList);
             if (toolResult != null) {
-                Map<String, Object> toolMessage = new HashMap<>();
-                toolMessage.put("role", "tool");
-                toolMessage.put("content", toolResult);
-                if (toolCallId != null) {
-                    toolMessage.put("tool_call_id", toolCallId);
-                }
-                currentMessages.add(toolMessage);
+                currentMessages.add(Map.of("role", "tool", "content", toolResult));
                 anyExecuted = true;
             }
         }
@@ -794,31 +661,18 @@ public class OpenAICallApiService {
         return anyExecuted;
     }
 
-    // New signature used internally (accepts xmlLogger). Keep a backward-compatible wrapper for tests.
-    private String executeToolCall(Map<String, Object> toolCall, String authorization, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger) {
-        // Extraer el nombre de la función desde toolCall.function.name
-        String toolName = null;
-        Object argumentsObj = null;
-        
-        Object functionObj = toolCall.get("function");
-        if (functionObj instanceof Map<?, ?>) {
-            Map<?, ?> functionMap = (Map<?, ?>) functionObj;
-            toolName = (String) functionMap.get("name");
-            argumentsObj = functionMap.get("arguments");
-        } else {
-            // Fallback: formato antiguo donde name y arguments están en la raíz
-            toolName = (String) toolCall.get("name");
-            argumentsObj = toolCall.get("arguments");
-        }
-        
+    // New signature used internally (accepts xmlLogger and isListOperation).
+    private String executeToolCall(Map<String, Object> toolCall, String authorization, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, boolean isListOperation) {
+        String toolName = (String) toolCall.get("name");
         if (!"call_api".equals(toolName) && !"call_api_batch".equals(toolName)) {
             return "{\"error\":\"tool_not_supported\",\"message\":\"Tool no soportada: " + toolName + "\"}";
         }
 
         if ("call_api_batch".equals(toolName)) {
-            return executeToolCallBatch(toolCall, authorization, xmlLogger);
+            return executeToolCallBatch(toolCall, authorization, xmlLogger, isListOperation);
         }
 
+        Object argumentsObj = toolCall.get("arguments");
         Map<String, Object> args;
         if (argumentsObj instanceof Map<?, ?>) {
             try {
@@ -827,15 +681,6 @@ public class OpenAICallApiService {
             } catch (IllegalArgumentException e) {
                 logger.warn("Error al convertir arguments: {}", argumentsObj, e);
                 return "{\"error\":\"bad_arguments\",\"message\":\"Invalid arguments\"}";
-            }
-        } else if (argumentsObj instanceof String) {
-            // Si arguments es un String JSON, parsearlo
-            try {
-                args = mapper.readValue((String) argumentsObj, new TypeReference<Map<String, Object>>() {});
-                logger.info("Arguments JSON parseados correctamente: {}", args);
-            } catch (Exception e) {
-                logger.warn("Error al parsear arguments JSON: {}", argumentsObj, e);
-                return "{\"error\":\"bad_arguments\",\"message\":\"Invalid JSON arguments\"}";
             }
         } else {
             logger.warn("El objeto arguments no es del tipo esperado: {}", argumentsObj);
@@ -857,6 +702,32 @@ public class OpenAICallApiService {
             JsonNode query = mapper.valueToTree(args.getOrDefault("query", Collections.emptyMap()));
             JsonNode body = mapper.valueToTree(args.getOrDefault("body", Collections.emptyMap()));
             String method = args.get("method") == null ? "GET" : String.valueOf(args.get("method"));
+            
+            // ✅ OPTIMIZACIÓN PARA LISTADOS: Limitar paginación agresivamente
+            if (isListOperation && "GET".equals(method)) {
+                // Convertir a ObjectNode para poder modificar
+                com.fasterxml.jackson.databind.node.ObjectNode queryObj;
+                if (query.isObject()) {
+                    queryObj = (com.fasterxml.jackson.databind.node.ObjectNode) query;
+                } else {
+                    queryObj = mapper.createObjectNode();
+                }
+                
+                // Aplicar límites agresivos para listados
+                if (!queryObj.has("limit") || queryObj.get("limit").asInt() > 15) {
+                    queryObj.put("limit", 15);  // Máximo 15 items
+                }
+                if (!queryObj.has("offset")) {
+                    queryObj.put("offset", 0);  // Solo primera página
+                }
+                
+                query = queryObj;
+                
+                if (xmlLogger != null) {
+                    xmlLogger.addStep("OPTIMIZATION", "Límites aplicados para listado: limit=15, offset=0");
+                }
+            }
+            
             // Enforce conservative pagination defaults/caps for paginated endpoints
             query = sanitizePagination(endpoint, method, query);
             return apiProxyService.executeSpecCall(endpoint, method, pathParams, query, body, authorization, xmlLogger);
@@ -869,7 +740,7 @@ public class OpenAICallApiService {
     // Backwards-compatible method used by some unit tests via reflection
     @SuppressWarnings("unused")
     public String executeToolCall(Map<String, Object> toolCall, String authorization) {
-        return executeToolCall(toolCall, authorization, null);
+        return executeToolCall(toolCall, authorization, null, false);
     }
     private String composeCompletionsUrl() {
         String base = openaiApiBaseUrl == null ? "https://api.openai.com/v1" : openaiApiBaseUrl.trim();
@@ -908,7 +779,7 @@ public class OpenAICallApiService {
         );
     }
 
-    private String executeToolCallBatch(Map<String, Object> toolCall, String authorization, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger) {
+    private String executeToolCallBatch(Map<String, Object> toolCall, String authorization, com.workers.profesores.chat.util.RequestFlowXmlLogger xmlLogger, boolean isListOperation) {
         Object argumentsObj = toolCall.get("arguments");
         Map<String, Object> args;
         try {
@@ -928,7 +799,7 @@ public class OpenAICallApiService {
             String single = executeToolCall(Map.of(
                 "name", "call_api",
                 "arguments", call
-            ), authorization, xmlLogger);
+            ), authorization, xmlLogger, isListOperation);  // ← Pasar isListOperation
             // wrap each result as { ok: true/false, result: <json or error> }
             Map<String, Object> wrapped = new HashMap<>();
             try {
