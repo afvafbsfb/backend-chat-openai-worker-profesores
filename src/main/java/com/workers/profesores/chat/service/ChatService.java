@@ -1008,7 +1008,9 @@ public class ChatService {
             String secondRawSafe = null;
             JsonNode second = null;
             try {
-                secondRawSafe = openai.callChatNoToolsWithExtras(followup, openai.buildChatResponseSchemaExtras(), xmlLogger, authorization);
+                // FIX: Usar callChatWithToolsWithExtras para permitir flujo multi-paso (ej: GET /roles → POST /usuarios)
+                // La instrucción del segundo turno ahora permite herramientas si son necesarias para completar operaciones
+                secondRawSafe = openai.callChatWithToolsWithExtras(followup, openai.buildChatResponseSchemaExtras(), xmlLogger, authorization);
                 if (secondRawSafe == null || secondRawSafe.isBlank()) {
                     if (xmlLogger != null) xmlLogger.addStep("OpenAIClient", "Segunda llamada devolvió cuerpo vacío/null; usando fallback seguro");
                 } else {
@@ -1355,7 +1357,9 @@ public class ChatService {
                 } catch (Exception __ignoreIterInstr) {}
                 String iterSecondRaw = null;
                 try {
-                    iterSecondRaw = openai.callChatNoToolsWithExtras(followup, openai.buildChatResponseSchemaExtras(), xmlLogger, authorization);
+                    // FIX: Usar callChatWithToolsWithExtras para permitir flujo multi-paso (ej: GET /roles → POST /usuarios)
+                    // El bucle está diseñado para iteraciones extras con tool_calls, pero necesita tools disponibles
+                    iterSecondRaw = openai.callChatWithToolsWithExtras(followup, openai.buildChatResponseSchemaExtras(), xmlLogger, authorization);
                     second = (iterSecondRaw == null || iterSecondRaw.isBlank()) ? null : om.readTree(iterSecondRaw);
                 } catch (Exception __iterSecondEx) {
                     if (xmlLogger != null) xmlLogger.addStep("OpenAIClient", "Excepción en segunda llamada (iter): " + __iterSecondEx.getMessage());

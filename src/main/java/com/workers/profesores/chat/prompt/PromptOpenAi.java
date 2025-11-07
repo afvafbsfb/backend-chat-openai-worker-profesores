@@ -63,6 +63,31 @@ public class PromptOpenAi {
             "- No inventes recursos ni conteos. Si un recurso NO está en la whitelist, dilo y ofrece alternativas válidas.\n" +
             "- 'alumno' NO es 'usuario'. Los usuarios solo pueden tener roles ['Admin_plataforma','Admin_academia','Profesor_academia']. No mapees 'alumnos' a 'usuarios'.\n" +
             "\n" +
+            "🔴 RESOLUCIÓN DE REFERENCIAS IMPLÍCITAS (CONTEXTO CONVERSACIONAL):\n" +
+            "Cuando el usuario use referencias como 'este usuario', 'esa academia', 'el curso', 'esta tarifa', etc., DEBES extraer el ID del contexto de la conversación.\n" +
+            "\n" +
+            "Proceso OBLIGATORIO:\n" +
+            "1️⃣ Revisa los mensajes previos (rol='assistant') buscando menciones de IDs en formato '(ID: número)'\n" +
+            "2️⃣ Identifica el ÚLTIMO ID mencionado de la entidad referida (usuario/academia/tarifa/curso)\n" +
+            "3️⃣ Usa ese ID en el pathParams de tu tool_call\n" +
+            "\n" +
+            "EJEMPLO REAL:\n" +
+            "[Turno anterior]\n" +
+            "assistant: 'Se encontró al usuario Angel Fernandez2 (ID: 60), email afvafbsfb@gmail.com, estado Activo.'\n" +
+            "\n" +
+            "[Turno actual]\n" +
+            "user: 'dame todos los detalles de este usuario'\n" +
+            "\n" +
+            "✅ ACCIÓN CORRECTA:\n" +
+            "  Extraes '60' del mensaje anterior → tool_call con pathParams: {usuario_id: 60}\n" +
+            "\n" +
+            "❌ ERROR FATAL:\n" +
+            "  tool_call con pathParams: {} vacío (causará error de API)\n" +
+            "\n" +
+            "Si NO encuentras el ID en mensajes previos:\n" +
+            "- Pregunta al usuario: '¿Te refieres a [nombre mencionado]? Necesito confirmación para continuar.'\n" +
+            "- O sugiere: 'Necesito que especifiques el nombre o email del usuario/academia/tarifa/curso.'\n" +
+            "\n" +
             "🔴 RESOLUCIÓN DINÁMICA DE FOREIGN KEYS (REGLA CRÍTICA ABSOLUTA):\n" +
             "Cuando el usuario menciona un nombre/descripción en lugar de un ID para una FK (campos *_id), DEBES resolver el ID antes de ejecutar POST/PUT.\n" +
             "\n" +
@@ -158,6 +183,12 @@ public class PromptOpenAi {
             "\nContrato de salida (estricto):\n" +
             "- Devuelve SOLO un objeto JSON válido (sin texto fuera del JSON).\n" +
             "- 'text': OBLIGATORIO y NO vacío. Redacta breve, natural y útil. CRÍTICO: NUNCA escribas las sugerencias en el texto del mensaje (ej. 'Aquí tienes algunas sugerencias: - Listar usuarios...'). Las sugerencias SOLO van en el campo 'ui_suggestions' como objetos JSON separados. El texto debe ser conversacional SIN listar las opciones.\n" +
+            "  · 🔴 REGLA CRÍTICA - Mencionar IDs en resultados individuales: Cuando reportes el resultado de una búsqueda o consulta individual (1 solo registro), SIEMPRE incluye el ID entre paréntesis después del nombre. Formato: 'nombre (ID: número)'. Ejemplos:\n" +
+            "    ✅ CORRECTO: 'Se encontró al usuario Angel Fernandez2 (ID: 60), email afvafbsfb@gmail.com, estado Activo.'\n" +
+            "    ✅ CORRECTO: 'Encontré la academia Madrid Central (ID: 5), dirección Calle Mayor 10, activa.'\n" +
+            "    ✅ CORRECTO: 'La tarifa Mensual Estándar (ID: 15), precio base 50.00€, para 1 mes.'\n" +
+            "    ❌ INCORRECTO: 'Se encontró al usuario Angel Fernandez2, email afvafbsfb@gmail.com.' (falta ID)\n" +
+            "    Esto permite que en mensajes posteriores cuando el usuario diga 'este usuario', 'esa academia', etc., puedas extraer el ID del contexto conversacional previo.\n" +
             "- Si devuelves listados, usa SIEMPRE la clave plural exacta ('usuarios'|'academias'|'cursos'|'alumnos'|'profesores'|'tarifas') y copia propiedades originales.\n" +
             "  · Puedes añadir campos derivados en castellano (p. ej., 'numero_usuarios'), sin sobrescribir originales.\n" +
             "  · 'summary_fields': ABSOLUTAMENTE OBLIGATORIO en TODOS los listados (arrays con ≥1 registros). NUNCA lo omitas. Indica 2-3 campos clave para mostrar en tabla. \n" +
@@ -433,7 +464,12 @@ public class PromptOpenAi {
     public String buildSecondTurnInstruction(String resumenEjecucion) {
         String resumen = (resumenEjecucion == null || resumenEjecucion.isBlank()) ? "(sin_resumen)" : resumenEjecucion;
         return String.join("\n",
-            "Segundo turno (sin herramientas). Devuelve SOLO un JSON con: 'text' (no vacío, conversacional, SIN listar las sugerencias) y, si procede, 'ui_suggestions' (2–3).",
+            "Segundo turno. Devuelve un JSON con 'text' (no vacío, conversacional, SIN listar las sugerencias) y 'ui_suggestions' (2–3).",
+            "⚠️ REGLA DE HERRAMIENTAS EN SEGUNDO TURNO:",
+            "- Si NECESITAS más datos para completar una operación multi-paso (ej: crear usuario y falta rol_id, crear tarifa y falta academia_id), PUEDES hacer UNA llamada adicional para obtener el dato faltante.",
+            "- Si YA TIENES todos los datos necesarios o no es una operación multi-paso, devuelve el JSON DIRECTAMENTE sin más herramientas.",
+            "- NUNCA hagas llamadas redundantes para datos que ya tienes en los tool_outputs anteriores.",
+            "",
             "CRÍTICO: Las sugerencias van SOLO en 'ui_suggestions', NUNCA en el 'text' (no escribas 'Aquí tienes: - Listar usuarios...').",
             "",
             "🔴🔴🔴 MANEJO DE ERRORES HTTP - MÁXIMA PRIORIDAD (LEE ESTO PRIMERO) 🔴🔴🔴",
