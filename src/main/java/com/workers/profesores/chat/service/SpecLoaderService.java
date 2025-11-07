@@ -56,8 +56,8 @@ public class SpecLoaderService {
             Pattern pathParamRe = Pattern.compile("\\{([^}]+)\\}");
             while (pathIt.hasNext()) {
                 String rawPath = pathIt.next();
-                // Normalize: remove trailing slashes so "/usuarios/" -> "/usuarios"
-                String path = rawPath.replaceAll("/+$", "");
+                // Keep the trailing slash as-is (Flask routes may require it)
+                String path = rawPath;
                 if (path.isEmpty()) path = "/";
                 JsonNode methods = paths.get(rawPath);
                 Iterator<String> methIt = methods.fieldNames();
@@ -133,6 +133,10 @@ public class SpecLoaderService {
                     endpoint.put("query", queryParams);
                     if (!queryDetails.isEmpty()) endpoint.put("queryDetails", queryDetails);
                     endpoint.put("body", body);
+                    // Debug: print all paths that contain "rol" to diagnose path matching
+                    if (path != null && path.toLowerCase().contains("rol")) {
+                        System.err.println("=== [SPEC-DEBUG] Found endpoint with 'rol' in path: path='" + path + "', operationId=" + operationId + ", hasXPermissions=" + op.has("x-permissions"));
+                    }
                     if (op.has("x-permissions")) {
                         try {
                             JsonNode xpNode = op.get("x-permissions");
@@ -149,8 +153,8 @@ public class SpecLoaderService {
                                 }
                             }
                             endpoint.put("x-permissions", xpMap);
-                            if (path.equals("/roles/")) {
-                                System.err.println("=== [SPEC-DEBUG] Loaded /roles/ x-permissions: " + xpMap);
+                            if (path.equals("/roles") || path.equals("/roles/")) {
+                                System.err.println("=== [SPEC-DEBUG] Loaded /roles x-permissions: " + xpMap);
                                 System.err.println("=== [SPEC-DEBUG] transform_to key exists: " + xpMap.containsKey("transform_to"));
                                 System.err.println("=== [SPEC-DEBUG] transform_to value: " + xpMap.get("transform_to"));
                             }
@@ -159,8 +163,9 @@ public class SpecLoaderService {
                             System.err.println("=== [SPEC-ERROR] Failed to load x-permissions for " + path + ": " + e.getMessage());
                         }
                     } else {
-                        if (path.equals("/roles/")) {
-                            System.err.println("=== [SPEC-DEBUG] /roles/ has NO x-permissions in OpenAPI spec!");
+                        // Debug: print when x-permissions is missing
+                        if (path != null && path.toLowerCase().contains("rol")) {
+                            System.err.println("=== [SPEC-WARN] No x-permissions found for path='" + path + "', operationId=" + operationId);
                         }
                     }
                     // Detect paginated responses: look at 200 response schema for totalElements/items or page/size

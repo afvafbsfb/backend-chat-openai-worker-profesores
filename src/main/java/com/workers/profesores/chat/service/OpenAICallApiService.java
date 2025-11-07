@@ -237,8 +237,8 @@ public class OpenAICallApiService {
             logger.debug("[OpenAICallApiService] callChatWithTools called messagesCount={} authorizationPresent={}", messages == null ? 0 : messages.size(), authorization != null);
         }
 
-        // Cargar la whitelist desde served-openapi.json
-        loadWhitelistFromOpenApi();
+        // REMOVED: loadWhitelistFromOpenApi() - whitelist is already loaded from SpecLoaderService with x-permissions
+        // Reloading here would discard x-permissions because loadWhitelistFromOpenApi() doesn't include them
 
     // Crear herramientas call_api y call_api_batch
     Map<String, Object> callApiTool = createCallApiTool();
@@ -253,7 +253,7 @@ public class OpenAICallApiService {
         if (debug) {
             logger.debug("[OpenAICallApiService] callChatWithToolsWithExtras called messagesCount={} extrasKeys={} authorizationPresent={}", messages == null ? 0 : messages.size(), (extraBodyProps==null?0:extraBodyProps.keySet()), authorization != null);
         }
-        loadWhitelistFromOpenApi();
+        // REMOVED: loadWhitelistFromOpenApi() - whitelist is already loaded from SpecLoaderService with x-permissions
     Map<String, Object> callApiTool = createCallApiTool();
     Map<String, Object> callApiBatchTool = createCallApiBatchTool();
     return processMessagesWithExtras(messages, List.of(callApiTool, callApiBatchTool), extraBodyProps, xmlLogger, authorization);
@@ -891,6 +891,12 @@ public class OpenAICallApiService {
         for (Map<String, Object> endpoint : whitelist) {
             Object operationId = endpoint.get("operationId");
             if (operationId != null && operationId.equals(name)) {
+                // Debug: check if x-permissions exists in the endpoint being returned
+                if (name.equals("roles.listar_roles")) {
+                    boolean hasXP = endpoint.containsKey("x-permissions");
+                    Object xpValue = endpoint.get("x-permissions");
+                    System.err.println("=== [OPENAI-DEBUG] getEndpointByName(roles.listar_roles) returning endpoint with hasXPermissions=" + hasXP + ", xpValue=" + xpValue);
+                }
                 return endpoint;
             }
         }
