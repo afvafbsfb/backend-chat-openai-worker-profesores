@@ -273,7 +273,7 @@ public class ChatService {
             seed.add(systemMsg);
             // If we have a profile JSON, add it as a separate system message to make the user's name prominent
             if (profileJsonForPrompt != null && profileJsonForPrompt.trim().length() > 2 && !profileJsonForPrompt.trim().equals("{}")) {
-                seed.add(Map.of("role", "system", "content", "Perfil_usuario: " + profileJsonForPrompt));
+                seed.add(Map.of("role", "system", "content", "🔐 USUARIO_AUTENTICADO (quien está usando el sistema AHORA, NO es un usuario a crear): " + profileJsonForPrompt + " ← ESTOS DATOS SON DEL USUARIO LOGUEADO. Si pide crear OTRO usuario, usa los datos del MENSAJE, NO estos."));
             }
             // Sin store de paginación: la navegación se hará con ui_suggestions + contextToken
             if (incoming != null) for (ChatRequest.Message m : incoming) {
@@ -412,7 +412,7 @@ public class ChatService {
                             List<Map<String, Object>> reSeed = new ArrayList<>();
                             reSeed.add(systemMsg);
                             if (profileJsonForPrompt != null && profileJsonForPrompt.trim().length() > 2 && !profileJsonForPrompt.trim().equals("{}")) {
-                                reSeed.add(Map.of("role", "system", "content", "Perfil_usuario: " + profileJsonForPrompt));
+                                reSeed.add(Map.of("role", "system", "content", "🔐 USUARIO_AUTENTICADO (logueado AHORA): " + profileJsonForPrompt + " ← Del usuario logueado, NO para crear usuarios."));
                             }
                             // Reinyecta el contenido original del assistant como antecedente
                             reSeed.add(Map.of("role", "assistant", "content", content));
@@ -439,7 +439,7 @@ public class ChatService {
                         List<Map<String, Object>> reformatSeed = new ArrayList<>();
                         reformatSeed.add(systemMsg);
                         if (profileJsonForPrompt != null && profileJsonForPrompt.trim().length() > 2 && !profileJsonForPrompt.trim().equals("{}")) {
-                            reformatSeed.add(Map.of("role", "system", "content", "Perfil_usuario: " + profileJsonForPrompt));
+                            reformatSeed.add(Map.of("role", "system", "content", "🔐 USUARIO_AUTENTICADO (logueado): " + profileJsonForPrompt));
                         }
                         reformatSeed.add(Map.of("role", "assistant", "content", content));
                         // Instrucción clara y estricta para devolver JSON
@@ -881,9 +881,22 @@ public class ChatService {
             List<Map<String, Object>> followup = new ArrayList<>();
             followup.add(Map.of("role","system","content", promptBuilder.buildSecondTurnSystemPrompt()));
             if (profileJsonForPrompt != null && profileJsonForPrompt.trim().length() > 2 && !profileJsonForPrompt.trim().equals("{}")) {
-                followup.add(Map.of("role", "system", "content", "Perfil_usuario: " + profileJsonForPrompt));
+                followup.add(Map.of("role", "system", "content", "🔐 USUARIO_AUTENTICADO (logueado): " + profileJsonForPrompt));
             }
             // Sin inserción/almacenado de Contexto_paginacion: navegación será por ui_suggestions + contextToken
+            
+            // 🔑 FIX CRÍTICO: Incluir mensajes originales del usuario para mantener contexto en segundo turno
+            // Esto permite que OpenAI tenga acceso a los datos proporcionados por el usuario (ej: "alberto gomez, agomez@gmial.com")
+            // cuando hace operaciones multi-paso (ej: GET /roles → POST /usuarios)
+            if (seed != null) {
+                for (Map<String, Object> msg : seed) {
+                    String role = (String) msg.get("role");
+                    // Incluir solo mensajes de usuario y assistant (no system, ya tenemos el segundo turno system prompt)
+                    if ("user".equals(role) || "assistant".equals(role)) {
+                        followup.add(msg);
+                    }
+                }
+            }
 
             Map<String, Object> assistantEcho = new HashMap<>();
             assistantEcho.put("role", "assistant");

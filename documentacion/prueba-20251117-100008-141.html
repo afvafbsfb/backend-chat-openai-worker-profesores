@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Flujo de la prueba: prueba-20251117-100008-141</title>
+<style>body{font-family:sans-serif;} table{border-collapse:collapse;width:100%;margin-top:1em;} th,td{border:1px solid #ccc;padding:8px;text-align:left;} th{background:#f0f0f0;} tr:nth-child(even){background:#fafafa;} .step{margin-bottom:1em;} .timestamp{color:#888;font-size:0.9em;} td.desc{white-space:pre-wrap;}</style>
+</head><body>
+<h2>Flujo de la prueba: prueba-20251117-100008-141</h2>
+<table>
+<thead><tr><th>Paso</th><th>Descripción</th><th>Timestamp</th></tr></thead>
+<tbody>
+<tr class='step'><td>1. ChatController</td><td class='desc'>Recibida petición POST /chat - Mensajes recibidos (4):
+[1] assistant: ¡Hola, Juan! Soy tu asistente personalizado. ¿En qué puedo ayudarte hoy?
+[2] user: Listar usuarios
+[3] assistant: Se han encontrado usuarios en la plataforma. Aquí tienes una muestra de algunos de ellos. Puedes gestionar sus datos según sea necesario.
+[4] user: quiero dar de alta un nuevo usuario
+</td><td class='timestamp'>2025-11-17 10:00:08.142</td></tr>
+<tr class='step'><td>2. ChatController</td><td class='desc'>JWT válido: usuarioId=10, roles=[Admin_academia], academiaId=2</td><td class='timestamp'>2025-11-17 10:00:08.143</td></tr>
+<tr class='step'><td>3. ChatService</td><td class='desc'>Inicio de runChat</td><td class='timestamp'>2025-11-17 10:00:08.144</td></tr>
+<tr class='step'><td>4. ChatService</td><td class='desc'>Delegated token creado: preview=Bearer e..., token_sha4=3354e6d8</td><td class='timestamp'>2025-11-17 10:00:08.149</td></tr>
+<tr class='step'><td>5. ChatService</td><td class='desc'>System prompt construido y whitelist añadida</td><td class='timestamp'>2025-11-17 10:00:08.151</td></tr>
+<tr class='step'><td>6. ChatService</td><td class='desc'>Mensajes de usuario preparados para OpenAI</td><td class='timestamp'>2025-11-17 10:00:08.151</td></tr>
+<tr class='step'><td>7. Telemetry</td><td class='desc'>client_messages=4, seed_messages=6, seed_bytes=42240</td><td class='timestamp'>2025-11-17 10:00:08.151</td></tr>
+<tr class='step'><td>8. OpenAIClient</td><td class='desc'>Primera llamada a OpenAI (seedSize=6)</td><td class='timestamp'>2025-11-17 10:00:08.158</td></tr>
+<tr class='step'><td>9. Telemetry</td><td class='desc'>seed_ms=14</td><td class='timestamp'>2025-11-17 10:00:08.158</td></tr>
+<tr class='step'><td>10. OpenAIClient</td><td class='desc'>Primera llamada a OpenAI (callChatWithTools)</td><td class='timestamp'>2025-11-17 10:00:08.158</td></tr>
+<tr class='step'><td>11. OpenAI</td><td class='desc'>Llamada a OpenAI (iteración 0) - mensajes: [system] Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), brev... | [system] 🔐 USUARIO_AUTENTICADO (quien está usando el sistema AHORA, NO es un usuario a crear): {&quot;nombre&quot;:&quot;Juan Pérez&quot;,&quot;id&quot;:10,&quot;a... | [assistant] ¡Hola, Juan! Soy tu asistente personalizado. ¿En qué puedo ayudarte hoy? | [user] Listar usuarios | [assistant] Se han encontrado usuarios en la plataforma. Aquí tienes una muestra de algunos de ellos. Puedes gestionar sus datos seg... | [user] quiero dar de alta un nuevo usuario | </td><td class='timestamp'>2025-11-17 10:00:08.158</td></tr>
+<tr class='step'><td>12. OpenAIClient</td><td class='desc'>OpenAI primera respuesta parseada a JSON</td><td class='timestamp'>2025-11-17 10:00:10.420</td></tr>
+<tr class='step'><td>13. Telemetry</td><td class='desc'>parse_ms=2276</td><td class='timestamp'>2025-11-17 10:00:10.420</td></tr>
+<tr class='step'><td>14. OpenAIClient</td><td class='desc'>No hay tool_calls, respuesta directa de OpenAI</td><td class='timestamp'>2025-11-17 10:00:10.420</td></tr>
+<tr class='step'><td>15. OpenAI</td><td class='desc'>Llamada a OpenAI (sin herramientas) - mensajes: [system] Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), brev... | [system] 🔐 USUARIO_AUTENTICADO (logueado): {&quot;nombre&quot;:&quot;Juan Pérez&quot;,&quot;id&quot;:10,&quot;academia_id&quot;:2} | [assistant] Para crear un nuevo usuario, necesito algunos datos. Por favor, proporciona lo siguiente:
+
+1. Nombre (obligatorio)
+2. Em... | [user] Convierte tu respuesta anterior en un JSON válido PRESERVANDO EXACTAMENTE el mensaje inteligente que escribiste.
+IMPORTA... | </td><td class='timestamp'>2025-11-17 10:00:10.420</td></tr>
+<tr class='step'><td>16. ChatController</td><td class='desc'>runChat() completado (controller_ms_desde_inicio=6475, run_ms=6472)</td><td class='timestamp'>2025-11-17 10:00:14.616</td></tr>
+<tr class='step'><td>17. ChatController</td><td class='desc'>Respuesta generada por ChatService (pretty)=
+{
+  &quot;status&quot; : &quot;success&quot;,
+  &quot;message&quot; : &quot;Para crear un nuevo usuario, necesito algunos datos. Por favor, proporciona lo siguiente:\n\n1. Nombre (obligatorio)\n2. Email (obligatorio)\n3. Rol (obligatorio - ¿será profesor, admin de academia o admin de plataforma?)\n4. Contraseña (opcional)\n\nUna vez que tenga esta información, podré proceder con la creación.&quot;,
+  &quot;data&quot; : {
+    &quot;type&quot; : &quot;chat&quot;,
+    &quot;items&quot; : [ ]
+  },
+  &quot;uiSuggestions&quot; : [ {
+    &quot;id&quot; : &quot;sg1&quot;,
+    &quot;displayText&quot; : &quot;Buscar por email&quot;,
+    &quot;type&quot; : &quot;Generica&quot;
+  }, {
+    &quot;id&quot; : &quot;sg2&quot;,
+    &quot;displayText&quot; : &quot;Listar usuarios&quot;,
+    &quot;type&quot; : &quot;Generica&quot;
+  }, {
+    &quot;id&quot; : &quot;sg3&quot;,
+    &quot;displayText&quot; : &quot;Dame el email y rol de un usuario existente&quot;,
+    &quot;type&quot; : &quot;Generica&quot;
+  } ],
+  &quot;uiSuggestionsVersion&quot; : 1,
+  &quot;messages&quot; : [ ]
+}</td><td class='timestamp'>2025-11-17 10:00:14.617</td></tr>
+<tr class='step'><td>18. ChatController</td><td class='desc'>HTTP listo (server_total_ms=6477, serialize_ms=1, items=0, type=&#39;chat&#39;, envelope_chars=808, envelope_bytes=814)</td><td class='timestamp'>2025-11-17 10:00:14.618</td></tr>
+</tbody></table>
+</body></html>

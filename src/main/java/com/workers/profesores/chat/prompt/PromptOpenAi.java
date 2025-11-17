@@ -36,24 +36,39 @@ public class PromptOpenAi {
         
         // 3) Perfil del usuario AUTENTICADO (quien está usando el sistema AHORA)
         String profile = (profileJsonForPrompt == null || profileJsonForPrompt.isBlank()) ? "{}" : profileJsonForPrompt;
-        systemPromptSb.append("\n\n🔐 PERFIL DEL USUARIO AUTENTICADO (quien está usando el sistema AHORA):\n");
+        systemPromptSb.append("\n\n🔐🔐🔐 PERFIL DEL USUARIO AUTENTICADO (quien está usando el sistema AHORA, NO es un usuario a crear) 🔐🔐🔐:\n");
         systemPromptSb.append(profile).append("\n");
-        systemPromptSb.append("\n⚠️ USO CORRECTO DEL PERFIL_USUARIO:\n");
-        systemPromptSb.append("✅ SÍ úsalo para:\n");
+        systemPromptSb.append("\n⚠️⚠️⚠️ USO CORRECTO DEL PERFIL_USUARIO (LEE ESTO CON MÁXIMA ATENCIÓN) ⚠️⚠️⚠️:\n");
+        systemPromptSb.append("Este perfil contiene los datos del usuario QUE ESTÁ LOGUEADO EN EL SISTEMA (quien te está escribiendo AHORA).\n");
+        systemPromptSb.append("NO es un usuario que debas crear, modificar o eliminar.\n");
+        systemPromptSb.append("NO uses estos datos (nombre, email, id) cuando el usuario pida crear/modificar OTRO usuario.\n");
+        systemPromptSb.append("\n✅ SÍ úsalo para:\n");
         systemPromptSb.append("  - Saludar personalizadamente (ej: '¡Hola, Juan!')\n");
         systemPromptSb.append("  - Validar permisos (ej: su rol permite crear usuarios?)\n");
-        systemPromptSb.append("  - Obtener academia_id para POST/PUT (ej: crear usuario en su academia)\n");
+        systemPromptSb.append("  - Obtener academia_id para POST/PUT cuando crees recursos EN su academia\n");
         systemPromptSb.append("  - Contexto de navegación (ej: 'tus cursos', 'tu academia')\n");
-        systemPromptSb.append("\n❌ NUNCA lo uses para:\n");
+        systemPromptSb.append("\n❌❌❌ NUNCA JAMÁS lo uses para:\n");
         systemPromptSb.append("  - Datos de OTROS usuarios cuando el usuario pide crear/modificar alguien más\n");
-        systemPromptSb.append("  - Nombre/email de usuarios a crear (esos datos vienen del MENSAJE del usuario)\n");
-        systemPromptSb.append("\n🎯 EJEMPLO CRÍTICO:\n");
-        systemPromptSb.append("Perfil_usuario: {nombre:'Juan Pérez', id:10, academia_id:2}\n");
-        systemPromptSb.append("Usuario dice: 'Crear usuario: Maria López, maria@email.com, rol profesor'\n");
-        systemPromptSb.append("✅ CORRECTO: POST {nombre:'Maria López', email:'maria@email.com', rol_id:9, academia_id:2}\n");
-        systemPromptSb.append("              ↑ De mensaje      ↑ De mensaje                              ↑ Del Perfil_usuario\n");
-        systemPromptSb.append("❌ ERROR: POST {nombre:'Juan Pérez', email:'juan.perez@email.com', ...}\n");
-        systemPromptSb.append("          ↑ Usaste Perfil_usuario cuando debías usar el mensaje ← ¡MAL!\n\n");
+        systemPromptSb.append("  - Nombre/email de usuarios a crear (esos datos vienen del MENSAJE del usuario, NO de aquí)\n");
+        systemPromptSb.append("  - Llenar campos 'nombre', 'email' en POST /usuarios (esos vienen del MENSAJE)\n");
+        systemPromptSb.append("\n🎯🎯🎯 EJEMPLO CRÍTICO ABSOLUTO (MEMORIZA ESTO):\n");
+        systemPromptSb.append("Perfil_usuario (LOGUEADO): {nombre:'Juan Pérez', id:10, email:'juan@email.com', academia_id:2}\n");
+        systemPromptSb.append("                           ↑↑↑ Este es quien está USANDO el sistema AHORA\n");
+        systemPromptSb.append("\nUsuario escribe: 'Crear usuario: Maria López, maria@email.com, rol profesor'\n");
+        systemPromptSb.append("                                  ↑↑↑ Estos son los datos del NUEVO usuario a crear\n");
+        systemPromptSb.append("\n✅ CORRECTO: POST /usuarios body={nombre:'Maria López', email:'maria@email.com', rol_id:9, academia_id:2}\n");
+        systemPromptSb.append("                                  ↑ Del MENSAJE    ↑ Del MENSAJE              ↑ Del Perfil_usuario\n");
+        systemPromptSb.append("     Explicación: 'Maria López' y 'maria@email.com' vienen del MENSAJE del usuario.\n");
+        systemPromptSb.append("                  'academia_id:2' viene del Perfil_usuario (creas el usuario EN la academia del usuario logueado).\n");
+        systemPromptSb.append("\n❌❌❌ ERROR GARRAFAL (NO HAGAS ESTO NUNCA): POST /usuarios body={nombre:'Juan Pérez', email:'juan@email.com', ...}\n");
+        systemPromptSb.append("                                                                ↑ Usaste Perfil_usuario ← ¡MAL! ¡INCORRECTO! ¡PROHIBIDO!\n");
+        systemPromptSb.append("     Error: Usaste el nombre/email del usuario LOGUEADO en lugar del MENSAJE.\n");
+        systemPromptSb.append("     Resultado: Crearías un duplicado del usuario logueado en lugar de Maria López.\n");
+        systemPromptSb.append("\n🔑 REGLA DE ORO ABSOLUTA:\n");
+        systemPromptSb.append("   - nombre, email, password del NUEVO usuario → Del MENSAJE del usuario (lo que escribe)\n");
+        systemPromptSb.append("   - academia_id (dónde crear el recurso) → Del Perfil_usuario (su academia)\n");
+        systemPromptSb.append("   - rol_id → Del MENSAJE + GET /roles para resolverlo\n");
+        systemPromptSb.append("   - NUNCA NUNCA NUNCA confundas al usuario logueado con los datos a crear\n\n");
         
         systemPromptSb.append("También recibirás: (a) el historial de la conversación (mensajes previos), y (b) señales de navegación cuando el cliente acepte sugerencias de paginación o cualquier otra sugerencia que le hayas enviado anteriormente (como mensajes especiales del asistente que el backend entiende). Úsalos como contexto, no los repitas al usuario.\n");
         // 3) Recursos disponibles/no disponibles (derivados de la whitelist)
@@ -306,9 +321,17 @@ public class PromptOpenAi {
         );
         systemPromptSb.append(
             "\nEjemplo call_api POST para crear usuario (solo estructura):\n" +
-            "assistant.tool_call => name: 'call_api', arguments: { 'name':'usuarios.crear_usuario', 'method':'POST', 'body':{ 'nombre':'Angel Fernández', 'email':'angel@email.com', 'rol_id':9, 'academia_id':2 } }\n" +
-            "⚠️ CAMPOS OBLIGATORIOS para usuarios.crear_usuario: 'nombre', 'email', 'rol_id' - TODOS deben venir del mensaje del usuario.\n" +
-            "⚠️ 'academia_id' viene del CONTEXTO (academiaId del usuario autenticado).\n" +
+            "Contexto: Perfil_usuario={nombre:'Juan Pérez', id:10, academia_id:2} ← Usuario LOGUEADO\n" +
+            "Usuario escribe: 'Crear usuario: Angel Fernández, angel@email.com, rol profesor'\n" +
+            "                                  ↑↑↑ Datos del NUEVO usuario (NO del logueado)\n" +
+            "\nassistant.tool_call => name: 'call_api', arguments: { 'name':'usuarios.crear_usuario', 'method':'POST', 'body':{ 'nombre':'Angel Fernández', 'email':'angel@email.com', 'rol_id':9, 'academia_id':2 } }\n" +
+            "                                                                                                         ↑ Del MENSAJE    ↑ Del MENSAJE       ↑ Resuelto  ↑ Del Perfil\n" +
+            "\n⚠️⚠️⚠️ CAMPOS OBLIGATORIOS para usuarios.crear_usuario:\n" +
+            "  - 'nombre': OBLIGATORIO, viene del MENSAJE del usuario (NO del Perfil_usuario)\n" +
+            "  - 'email': OBLIGATORIO, viene del MENSAJE del usuario (NO del Perfil_usuario)\n" +
+            "  - 'rol_id': OBLIGATORIO, resuelves haciendo GET /roles primero\n" +
+            "  - 'academia_id': Opcional pero recomendado, viene del Perfil_usuario.academia_id\n" +
+            "\n❌ PROHIBIDO: POST con {'nombre':'Juan Pérez', 'email':'juan.perez@...'} ← ¡Estos son del usuario LOGUEADO, NO del MENSAJE!\n" +
             "NOTA: password es opcional; si se omite, se usará el email como contraseña temporal.\n"
         );
         systemPromptSb.append(

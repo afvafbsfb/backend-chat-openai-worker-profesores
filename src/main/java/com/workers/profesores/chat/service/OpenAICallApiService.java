@@ -420,19 +420,29 @@ public class OpenAICallApiService {
     }
 
     private Map<String, Object> createCallApiTool() {
+        // Build body schema with required fields extracted from served-openapi.json
+        Map<String, Object> bodySchema = new HashMap<>();
+        bodySchema.put("type", "object");
+        bodySchema.put("description", "Cuerpo de la petición. CRÍTICO: Para crear usuarios, los campos 'email', 'nombre' y 'rol_id' son OBLIGATORIOS y deben venir del mensaje del usuario, NO del perfil del usuario autenticado.");
+        
+        // Add a note about required fields visibility
+        Map<String, Object> bodyProperties = new HashMap<>();
+        bodyProperties.put("_note", Map.of("type", "string", "description", "IMPORTANTE: Cada endpoint tiene campos obligatorios específicos. Para usuarios.crear_usuario: email (string), nombre (string), rol_id (integer) son OBLIGATORIOS. Para tarifas.crear_tarifa: descripcion (string), precio_base (number), academia_id (integer) son OBLIGATORIOS. Verifica SIEMPRE los campos required antes de hacer POST/PUT."));
+        bodySchema.put("properties", bodyProperties);
+        
         return Map.of(
             "type", "function",
             "function", Map.of(
                 "name", "call_api",
-                "description", "Llama a un endpoint permitido de la API de la academia.",
+                "description", "Llama a un endpoint permitido de la API de la academia. REGLA CRÍTICA: Para POST/PUT, verifica los campos 'required' del schema de cada endpoint. Para usuarios.crear_usuario: email, nombre y rol_id son OBLIGATORIOS.",
                 "parameters", Map.of(
                     "type", "object",
                     "properties", Map.of(
                         "name", Map.of("type", "string", "description", "Nombre lógico del endpoint (whitelist)"),
                         "method", Map.of("type", "string", "enum", List.of("GET", "POST", "PUT", "DELETE")),
-                        "pathParams", Map.of("type", "object"),
-                        "query", Map.of("type", "object"),
-                        "body", Map.of("type", "object")
+                        "pathParams", Map.of("type", "object", "description", "Parámetros de path como {usuario_id: 123}"),
+                        "query", Map.of("type", "object", "description", "Parámetros de query como {estado: 'activo', page: 1}"),
+                        "body", bodySchema
                     ),
                     "required", List.of("name", "method")
                 )
@@ -750,11 +760,16 @@ public class OpenAICallApiService {
     }
 
     private Map<String, Object> createCallApiBatchTool() {
+        // Build body schema with required fields note
+        Map<String, Object> bodySchema = new HashMap<>();
+        bodySchema.put("type", "object");
+        bodySchema.put("description", "Cuerpo de la petición. Para POST/PUT verifica campos required del endpoint específico.");
+        
         return Map.of(
             "type", "function",
             "function", Map.of(
                 "name", "call_api_batch",
-                "description", "Ejecuta varias llamadas a la API en un único tool_call; el modelo proporciona un array de calls.",
+                "description", "Ejecuta varias llamadas a la API en un único tool_call; el modelo proporciona un array de calls. REGLA: Para POST/PUT, cada endpoint tiene campos required específicos que DEBEN incluirse.",
                 "parameters", Map.of(
                     "type", "object",
                     "properties", Map.of(
@@ -763,11 +778,11 @@ public class OpenAICallApiService {
                             "items", Map.of(
                                 "type", "object",
                                 "properties", Map.of(
-                                    "name", Map.of("type", "string"),
+                                    "name", Map.of("type", "string", "description", "Nombre del endpoint"),
                                     "method", Map.of("type", "string", "enum", List.of("GET","POST","PUT","DELETE")),
-                                    "pathParams", Map.of("type", "object"),
-                                    "query", Map.of("type", "object"),
-                                    "body", Map.of("type", "object")
+                                    "pathParams", Map.of("type", "object", "description", "Parámetros de path"),
+                                    "query", Map.of("type", "object", "description", "Parámetros de query"),
+                                    "body", bodySchema
                                 ),
                                 "required", List.of("name","method")
                             )

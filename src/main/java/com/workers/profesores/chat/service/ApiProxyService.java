@@ -7,6 +7,7 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
+import java.net.URLEncoder;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -96,7 +97,12 @@ public class ApiProxyService {
         List<String> expectedQuery = (List<String>) endpoint.getOrDefault("query", List.of());
         for (String q : expectedQuery) {
             if (query != null && query.has(q)) {
-                uri.queryParam(q, query.get(q).asText());
+                String value = query.get(q).asText();
+                // URL-encode query parameter values to handle spaces and special characters
+                // UriComponentsBuilder.queryParam validates that values don't contain illegal chars,
+                // so we must encode BEFORE passing to .queryParam(). Then use .build(false) to prevent double-encoding.
+                String encodedValue = URLEncoder.encode(value, StandardCharsets.UTF_8);
+                uri.queryParam(q, encodedValue);
             }
         }
 
@@ -190,7 +196,7 @@ public class ApiProxyService {
         }
 
         if (debugApiProxy) {
-            logger.debug("[ApiProxyService] Calling Academy: {} {}", finalMethod, uri.build(true).toUri());
+            logger.debug("[ApiProxyService] Calling Academy: {} {}", finalMethod, uri.build(false).toUri());
             try {
                 HttpHeaders copy = new HttpHeaders();
                 copy.putAll(headers);
@@ -209,7 +215,7 @@ public class ApiProxyService {
             if (!"GET".equals(finalMethod) && !"DELETE".equals(finalMethod)) {
                 logger.debug("[ApiProxyService] Body: {}", entity.getBody());
             }
-            if (xmlLogger != null) xmlLogger.addStep("ApiProxyService", "Llamando a Academia: " + finalMethod + " " + uri.build(true).toUri());
+            if (xmlLogger != null) xmlLogger.addStep("ApiProxyService", "Llamando a Academia: " + finalMethod + " " + uri.build(false).toUri());
         }
 
         final int maxAttempts = 3;
@@ -218,10 +224,10 @@ public class ApiProxyService {
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
                 ResponseEntity<String> resp = switch (finalMethod) {
-                    case "GET" -> restTemplate.exchange(uri.build(true).toUri(), HttpMethod.GET, entity, String.class);
-                    case "POST" -> restTemplate.exchange(uri.build(true).toUri(), HttpMethod.POST, entity, String.class);
-                    case "PUT" -> restTemplate.exchange(uri.build(true).toUri(), HttpMethod.PUT, entity, String.class);
-                    case "DELETE" -> restTemplate.exchange(uri.build(true).toUri(), HttpMethod.DELETE, entity, String.class);
+                    case "GET" -> restTemplate.exchange(uri.build(false).toUri(), HttpMethod.GET, entity, String.class);
+                    case "POST" -> restTemplate.exchange(uri.build(false).toUri(), HttpMethod.POST, entity, String.class);
+                    case "PUT" -> restTemplate.exchange(uri.build(false).toUri(), HttpMethod.PUT, entity, String.class);
+                    case "DELETE" -> restTemplate.exchange(uri.build(false).toUri(), HttpMethod.DELETE, entity, String.class);
                     default -> throw new IllegalArgumentException("Método no soportado: " + finalMethod);
                 };
                 String respBody = resp.getBody();
