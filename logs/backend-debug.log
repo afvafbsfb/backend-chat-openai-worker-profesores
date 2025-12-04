@@ -484,3 +484,99 @@
 10:01:34.808 [http-nio-8080-exec-3] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=tarifas.listar_tarifas, hasXPermissions=true
 10:01:34.808 [http-nio-8080-exec-3] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=false, transformToValue=null
 10:01:34.809 [http-nio-8080-exec-3] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] No transform_to in x-permissions, using guess
+09:00:20.281 [http-nio-8080-exec-6] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=usuarios.listar_usuarios, hasXPermissions=true
+09:00:20.283 [http-nio-8080-exec-6] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=false, transformToValue=null
+09:00:20.283 [http-nio-8080-exec-6] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] No transform_to in x-permissions, using guess
+09:01:35.843 [http-nio-8080-exec-7] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=roles.listar_roles, hasXPermissions=true
+09:01:35.843 [http-nio-8080-exec-7] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=true, transformToValue=null
+09:01:35.843 [http-nio-8080-exec-7] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] Added transform_to to result: null
+09:26:21.960 [http-nio-8080-exec-3] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=usuarios.listar_usuarios, hasXPermissions=true
+09:26:21.964 [http-nio-8080-exec-3] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=false, transformToValue=null
+09:26:21.965 [http-nio-8080-exec-3] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] No transform_to in x-permissions, using guess
+09:27:04.526 [http-nio-8080-exec-8] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=roles.listar_roles, hasXPermissions=true
+09:27:04.527 [http-nio-8080-exec-8] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=true, transformToValue=null
+09:27:04.527 [http-nio-8080-exec-8] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] Added transform_to to result: null
+09:27:25.066 [http-nio-8080-exec-7] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=usuarios.listar_usuarios, hasXPermissions=true
+09:27:25.067 [http-nio-8080-exec-7] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=false, transformToValue=null
+09:27:25.068 [http-nio-8080-exec-7] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] No transform_to in x-permissions, using guess
+09:28:04.209 [http-nio-8080-exec-9] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=tarifas.listar_tarifas, hasXPermissions=true
+09:28:04.209 [http-nio-8080-exec-9] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=false, transformToValue=null
+09:28:04.211 [http-nio-8080-exec-9] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] No transform_to in x-permissions, using guess
+10:07:45.033 [http-nio-8080-exec-6] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=usuarios.listar_usuarios, hasXPermissions=true
+10:07:45.034 [http-nio-8080-exec-6] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=false, transformToValue=null
+10:07:45.034 [http-nio-8080-exec-6] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] No transform_to in x-permissions, using guess
+10:08:46.397 [http-nio-8080-exec-7] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=roles.listar_roles, hasXPermissions=true
+10:08:46.398 [http-nio-8080-exec-7] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=true, transformToValue=null
+10:08:46.399 [http-nio-8080-exec-7] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] Added transform_to to result: null
+10:09:08.711 [http-nio-8080-exec-9] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=usuarios.listar_usuarios, hasXPermissions=true
+10:09:08.711 [http-nio-8080-exec-9] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=false, transformToValue=null
+10:09:08.712 [http-nio-8080-exec-9] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] No transform_to in x-permissions, using guess
+10:09:45.993 [http-nio-8080-exec-10] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=tarifas.listar_tarifas, hasXPermissions=true
+10:09:45.993 [http-nio-8080-exec-10] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=false, transformToValue=null
+10:09:45.993 [http-nio-8080-exec-10] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] No transform_to in x-permissions, using guess
+10:12:10.870 [http-nio-8080-exec-2] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=usuarios.listar_usuarios, hasXPermissions=true
+10:12:10.871 [http-nio-8080-exec-2] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=false, transformToValue=null
+10:12:10.871 [http-nio-8080-exec-2] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] No transform_to in x-permissions, using guess
+10:12:59.192 [http-nio-8080-exec-4] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=roles.listar_roles, hasXPermissions=true
+10:12:59.192 [http-nio-8080-exec-4] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=true, transformToValue=null
+10:12:59.192 [http-nio-8080-exec-4] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] Added transform_to to result: null
+10:13:18.551 [http-nio-8080-exec-3] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=usuarios.listar_usuarios, hasXPermissions=true
+10:13:18.551 [http-nio-8080-exec-3] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=false, transformToValue=null
+10:13:18.552 [http-nio-8080-exec-3] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] No transform_to in x-permissions, using guess
+10:14:05.719 [http-nio-8080-exec-6] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=tarifas.listar_tarifas, hasXPermissions=true
+10:14:05.722 [http-nio-8080-exec-6] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=false, transformToValue=null
+10:14:05.723 [http-nio-8080-exec-6] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] No transform_to in x-permissions, using guess
+11:08:49.024 [http-nio-8080-exec-4] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=usuarios.listar_usuarios, hasXPermissions=true
+11:08:49.028 [http-nio-8080-exec-4] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=false, transformToValue=null
+11:08:49.028 [http-nio-8080-exec-4] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] No transform_to in x-permissions, using guess
+11:09:48.475 [http-nio-8080-exec-7] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=roles.listar_roles, hasXPermissions=true
+11:09:48.475 [http-nio-8080-exec-7] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=true, transformToValue=null
+11:09:48.475 [http-nio-8080-exec-7] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] Added transform_to to result: null
+11:10:06.026 [http-nio-8080-exec-8] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=usuarios.listar_usuarios, hasXPermissions=true
+11:10:06.027 [http-nio-8080-exec-8] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=false, transformToValue=null
+11:10:06.028 [http-nio-8080-exec-8] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] No transform_to in x-permissions, using guess
+11:11:09.796 [http-nio-8080-exec-1] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=tarifas.listar_tarifas, hasXPermissions=true
+11:11:09.796 [http-nio-8080-exec-1] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=false, transformToValue=null
+11:11:09.796 [http-nio-8080-exec-1] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] No transform_to in x-permissions, using guess
+16:47:38.364 [http-nio-8080-exec-3] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=usuarios.listar_usuarios, hasXPermissions=true
+16:47:38.367 [http-nio-8080-exec-3] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=false, transformToValue=null
+16:47:38.367 [http-nio-8080-exec-3] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] No transform_to in x-permissions, using guess
+16:48:38.365 [http-nio-8080-exec-8] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=roles.listar_roles, hasXPermissions=true
+16:48:38.366 [http-nio-8080-exec-8] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=true, transformToValue=null
+16:48:38.366 [http-nio-8080-exec-8] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] Added transform_to to result: null
+16:49:02.330 [http-nio-8080-exec-6] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=usuarios.listar_usuarios, hasXPermissions=true
+16:49:02.330 [http-nio-8080-exec-6] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=false, transformToValue=null
+16:49:02.331 [http-nio-8080-exec-6] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] No transform_to in x-permissions, using guess
+16:56:16.205 [http-nio-8080-exec-10] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=usuarios.listar_usuarios, hasXPermissions=true
+16:56:16.206 [http-nio-8080-exec-10] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=false, transformToValue=null
+16:56:16.206 [http-nio-8080-exec-10] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] No transform_to in x-permissions, using guess
+16:57:17.854 [http-nio-8080-exec-2] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=roles.listar_roles, hasXPermissions=true
+16:57:17.857 [http-nio-8080-exec-2] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=true, transformToValue=null
+16:57:17.858 [http-nio-8080-exec-2] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] Added transform_to to result: null
+16:57:36.799 [http-nio-8080-exec-3] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=usuarios.listar_usuarios, hasXPermissions=true
+16:57:36.799 [http-nio-8080-exec-3] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=false, transformToValue=null
+16:57:36.800 [http-nio-8080-exec-3] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] No transform_to in x-permissions, using guess
+17:00:58.830 [http-nio-8080-exec-7] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=usuarios.listar_usuarios, hasXPermissions=true
+17:00:58.831 [http-nio-8080-exec-7] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=false, transformToValue=null
+17:00:58.831 [http-nio-8080-exec-7] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] No transform_to in x-permissions, using guess
+17:02:29.063 [http-nio-8080-exec-10] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=roles.listar_roles, hasXPermissions=true
+17:02:29.063 [http-nio-8080-exec-10] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=true, transformToValue=null
+17:02:29.065 [http-nio-8080-exec-10] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] Added transform_to to result: null
+17:02:52.062 [http-nio-8080-exec-1] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=usuarios.listar_usuarios, hasXPermissions=true
+17:02:52.062 [http-nio-8080-exec-1] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=false, transformToValue=null
+17:02:52.064 [http-nio-8080-exec-1] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] No transform_to in x-permissions, using guess
+08:28:59.818 [http-nio-8080-exec-8] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=tarifas.listar_tarifas, hasXPermissions=true
+08:28:59.822 [http-nio-8080-exec-8] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=false, transformToValue=null
+08:28:59.823 [http-nio-8080-exec-8] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] No transform_to in x-permissions, using guess
+08:30:02.631 [http-nio-8080-exec-2] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=tarifas.listar_tarifas, hasXPermissions=true
+08:30:02.632 [http-nio-8080-exec-2] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=false, transformToValue=null
+08:30:02.632 [http-nio-8080-exec-2] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] No transform_to in x-permissions, using guess
+08:30:50.663 [http-nio-8080-exec-7] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=tarifas.listar_tarifas, hasXPermissions=true
+08:30:50.665 [http-nio-8080-exec-7] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=false, transformToValue=null
+08:30:50.667 [http-nio-8080-exec-7] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] No transform_to in x-permissions, using guess
+08:31:26.323 [http-nio-8080-exec-3] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=usuarios.listar_usuarios, hasXPermissions=true
+08:31:26.324 [http-nio-8080-exec-3] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=false, transformToValue=null
+08:31:26.324 [http-nio-8080-exec-3] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] No transform_to in x-permissions, using guess
+08:32:58.530 [http-nio-8080-exec-4] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] transformIfNeeded: operationId=usuarios.listar_usuarios, hasXPermissions=true
+08:32:58.530 [http-nio-8080-exec-4] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] x-permissions: hasTransformToKey=false, transformToValue=null
+08:32:58.530 [http-nio-8080-exec-4] INFO  c.w.p.c.a.AuthorizationServiceImpl - [DEBUG] No transform_to in x-permissions, using guess

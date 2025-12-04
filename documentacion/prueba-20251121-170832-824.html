@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Flujo de la prueba: prueba-20251121-170832-824</title>
+<style>body{font-family:sans-serif;} table{border-collapse:collapse;width:100%;margin-top:1em;} th,td{border:1px solid #ccc;padding:8px;text-align:left;} th{background:#f0f0f0;} tr:nth-child(even){background:#fafafa;} .step{margin-bottom:1em;} .timestamp{color:#888;font-size:0.9em;} td.desc{white-space:pre-wrap;}</style>
+</head><body>
+<h2>Flujo de la prueba: prueba-20251121-170832-824</h2>
+<table>
+<thead><tr><th>Paso</th><th>Descripción</th><th>Timestamp</th></tr></thead>
+<tbody>
+<tr class='step'><td>1. ChatController</td><td class='desc'>Recibida petición POST /chat - Mensajes recibidos (11):
+[1] user: Alta de anotación para el alumno Isabel Hernández Moreno (ID: 12):
+• Sesión ID: 100
+• Curso: Matemáticas 1º ESO
+• Fecha: 2025-11-21
+• Horario: 15:30 - 17:30
+• Aula: Aula 3
+
+Tipo: Observacion
+Texto: necesita reforzar ejercicios de integrales
+[2] assistant: Se ha dado de alta la anotación correctamente
+
+Fecha: 2025-11-21
+Horario: 15:30 - 17:30
+Aula: Aula 3
+Curso: Matemáticas 1º ESO
+Alumno: Isabel Hernández Moreno
+Tipo: Observacion
+Descripción: necesita reforzar ejercicios de integrales
+[3] user: Ver clases de hoy
+[4] assistant: Viernes 21 de Noviembre de 2025
+
+Tienes 2 clase(s) programada(s)
+[5] user: Ver alumnos de la sesión:
+• Curso: Matemáticas 1º ESO
+• Fecha: 2025-11-21
+• Horario: 15:30 - 17:30
+• Aula: Aula 3
+• Alumnos inscritos: 7
+[6] assistant: Alumnos de la sesión
+
+Curso: Matemáticas 1º ESO
+Fecha: 2025-11-21
+Horario: 15:30 - 17:30
+Aula: Aula 3
+Profesor: Juan Pérez
+Estado: En curso
+[7] user: Ver toda la semana
+[8] assistant: Semana del 17 al 23 de Noviembre
+
+Tienes 11 clases esta semana
+[9] user: Ver clases de la próxima semana
+[10] assistant: Próxima semana del 24 al 30 de Noviembre
+
+Tienes 11 clases programadas
+[11] user: ok, me puedes dar informacion de coches?
+</td><td class='timestamp'>2025-11-21 17:08:32.824</td></tr>
+<tr class='step'><td>2. ChatController</td><td class='desc'>JWT válido: usuarioId=10, roles=[Admin_academia], academiaId=2</td><td class='timestamp'>2025-11-21 17:08:32.827</td></tr>
+<tr class='step'><td>3. ChatService</td><td class='desc'>Inicio de runChat</td><td class='timestamp'>2025-11-21 17:08:32.828</td></tr>
+<tr class='step'><td>4. ChatService</td><td class='desc'>Delegated token creado: preview=Bearer e..., token_sha4=76567844</td><td class='timestamp'>2025-11-21 17:08:32.832</td></tr>
+<tr class='step'><td>5. ChatService</td><td class='desc'>System prompt construido y whitelist añadida</td><td class='timestamp'>2025-11-21 17:08:32.835</td></tr>
+<tr class='step'><td>6. ChatService</td><td class='desc'>Mensajes de usuario preparados para OpenAI</td><td class='timestamp'>2025-11-21 17:08:32.836</td></tr>
+<tr class='step'><td>7. Telemetry</td><td class='desc'>client_messages=11, seed_messages=13, seed_bytes=43064</td><td class='timestamp'>2025-11-21 17:08:32.836</td></tr>
+<tr class='step'><td>8. OpenAIClient</td><td class='desc'>Primera llamada a OpenAI (seedSize=13)</td><td class='timestamp'>2025-11-21 17:08:32.843</td></tr>
+<tr class='step'><td>9. Telemetry</td><td class='desc'>seed_ms=16</td><td class='timestamp'>2025-11-21 17:08:32.843</td></tr>
+<tr class='step'><td>10. OpenAIClient</td><td class='desc'>Primera llamada a OpenAI (callChatWithTools)</td><td class='timestamp'>2025-11-21 17:08:32.843</td></tr>
+<tr class='step'><td>11. OpenAI</td><td class='desc'>Llamada a OpenAI (iteración 0) - mensajes: [system] Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), brev... | [system] 🔐 USUARIO_AUTENTICADO (quien está usando el sistema AHORA, NO es un usuario a crear): {&quot;nombre&quot;:&quot;Juan Pérez&quot;,&quot;id&quot;:10,&quot;a... | [user] Alta de anotación para el alumno Isabel Hernández Moreno (ID: 12):
+• Sesión ID: 100
+• Curso: Matemáticas 1º ESO
+• Fecha:... | [assistant] Se ha dado de alta la anotación correctamente
+
+Fecha: 2025-11-21
+Horario: 15:30 - 17:30
+Aula: Aula 3
+Curso: Matemáticas ... | [user] Ver clases de hoy | [assistant] Viernes 21 de Noviembre de 2025
+
+Tienes 2 clase(s) programada(s) | [user] Ver alumnos de la sesión:
+• Curso: Matemáticas 1º ESO
+• Fecha: 2025-11-21
+• Horario: 15:30 - 17:30
+• Aula: Aula 3
+• Alum... | [assistant] Alumnos de la sesión
+
+Curso: Matemáticas 1º ESO
+Fecha: 2025-11-21
+Horario: 15:30 - 17:30
+Aula: Aula 3
+Profesor: Juan Pér... | [user] Ver toda la semana | [assistant] Semana del 17 al 23 de Noviembre
+
+Tienes 11 clases esta semana | [user] Ver clases de la próxima semana | [assistant] Próxima semana del 24 al 30 de Noviembre
+
+Tienes 11 clases programadas | [user] ok, me puedes dar informacion de coches? | </td><td class='timestamp'>2025-11-21 17:08:32.843</td></tr>
+<tr class='step'><td>12. OpenAIClient</td><td class='desc'>OpenAI primera respuesta parseada a JSON</td><td class='timestamp'>2025-11-21 17:08:35.049</td></tr>
+<tr class='step'><td>13. Telemetry</td><td class='desc'>parse_ms=2222</td><td class='timestamp'>2025-11-21 17:08:35.049</td></tr>
+<tr class='step'><td>14. OpenAIClient</td><td class='desc'>No hay tool_calls, respuesta directa de OpenAI</td><td class='timestamp'>2025-11-21 17:08:35.049</td></tr>
+<tr class='step'><td>15. OpenAI</td><td class='desc'>Llamada a OpenAI (sin herramientas) - mensajes: [system] Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), brev... | [system] 🔐 USUARIO_AUTENTICADO (logueado): {&quot;nombre&quot;:&quot;Juan Pérez&quot;,&quot;id&quot;:10,&quot;academia_id&quot;:2} | [assistant] Lo siento, pero no puedo ayudarte con información sobre coches. Sin embargo, puedo asistirte con temas relacionados con ... | [user] Convierte tu respuesta anterior en un JSON válido PRESERVANDO EXACTAMENTE el mensaje inteligente que escribiste.
+IMPORTA... | </td><td class='timestamp'>2025-11-21 17:08:35.051</td></tr>
+<tr class='step'><td>16. ChatController</td><td class='desc'>runChat() completado (controller_ms_desde_inicio=6722, run_ms=6719)</td><td class='timestamp'>2025-11-21 17:08:39.546</td></tr>
+<tr class='step'><td>17. ChatController</td><td class='desc'>Respuesta generada por ChatService (pretty)=
+{
+  &quot;status&quot; : &quot;success&quot;,
+  &quot;message&quot; : &quot;Lo siento, pero no puedo ayudarte con información sobre coches. Sin embargo, puedo asistirte con temas relacionados con tu academia, como clases, alumnos o tarifas. ¿Te gustaría consultar algo en particular sobre esos temas?&quot;,
+  &quot;data&quot; : {
+    &quot;type&quot; : &quot;chat&quot;,
+    &quot;items&quot; : [ ]
+  },
+  &quot;uiSuggestions&quot; : [ {
+    &quot;id&quot; : &quot;sg1&quot;,
+    &quot;displayText&quot; : &quot;Listar tarifas&quot;,
+    &quot;type&quot; : &quot;Generica&quot;
+  }, {
+    &quot;id&quot; : &quot;sg2&quot;,
+    &quot;displayText&quot; : &quot;Listar usuarios&quot;,
+    &quot;type&quot; : &quot;Generica&quot;
+  }, {
+    &quot;id&quot; : &quot;sg3&quot;,
+    &quot;displayText&quot; : &quot;Ver mis cursos&quot;,
+    &quot;type&quot; : &quot;Generica&quot;
+  } ],
+  &quot;uiSuggestionsVersion&quot; : 1,
+  &quot;messages&quot; : [ ]
+}</td><td class='timestamp'>2025-11-21 17:08:39.548</td></tr>
+<tr class='step'><td>18. ChatController</td><td class='desc'>HTTP listo (server_total_ms=6724, serialize_ms=2, items=0, type=&#39;chat&#39;, envelope_chars=683, envelope_bytes=686)</td><td class='timestamp'>2025-11-21 17:08:39.548</td></tr>
+</tbody></table>
+</body></html>

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Flujo de la prueba: prueba-20251203-082918-066</title>
+<style>body{font-family:sans-serif;} table{border-collapse:collapse;width:100%;margin-top:1em;} th,td{border:1px solid #ccc;padding:8px;text-align:left;} th{background:#f0f0f0;} tr:nth-child(even){background:#fafafa;} .step{margin-bottom:1em;} .timestamp{color:#888;font-size:0.9em;} td.desc{white-space:pre-wrap;}</style>
+</head><body>
+<h2>Flujo de la prueba: prueba-20251203-082918-066</h2>
+<table>
+<thead><tr><th>Paso</th><th>Descripción</th><th>Timestamp</th></tr></thead>
+<tbody>
+<tr class='step'><td>1. ChatController</td><td class='desc'>Recibida petición POST /chat - Mensajes recibidos (4):
+[1] assistant: ¡Hola, Juan! Soy tu asistente personalizado. ¿En qué puedo ayudarte hoy?
+[2] user: Listar tarifas
+[3] assistant: Se han encontrado tarifas en la plataforma. Aquí tienes una muestra de las tarifas disponibles en la Academia Central. Si necesitas más información o deseas realizar alguna acción sobre ellas, házmelo saber.
+[4] user: quiero dar de baja la Tarifa 1
+</td><td class='timestamp'>2025-12-03 08:29:18.066</td></tr>
+<tr class='step'><td>2. ChatController</td><td class='desc'>JWT válido: usuarioId=10, roles=[Admin_academia], academiaId=2</td><td class='timestamp'>2025-12-03 08:29:18.067</td></tr>
+<tr class='step'><td>3. ChatService</td><td class='desc'>Inicio de runChat</td><td class='timestamp'>2025-12-03 08:29:18.068</td></tr>
+<tr class='step'><td>4. ChatService</td><td class='desc'>Delegated token creado: preview=Bearer e..., token_sha4=f7905b02</td><td class='timestamp'>2025-12-03 08:29:18.071</td></tr>
+<tr class='step'><td>5. ChatService</td><td class='desc'>System prompt construido y whitelist añadida</td><td class='timestamp'>2025-12-03 08:29:18.073</td></tr>
+<tr class='step'><td>6. ChatService</td><td class='desc'>Mensajes de usuario preparados para OpenAI</td><td class='timestamp'>2025-12-03 08:29:18.074</td></tr>
+<tr class='step'><td>7. Telemetry</td><td class='desc'>client_messages=4, seed_messages=6, seed_bytes=42307</td><td class='timestamp'>2025-12-03 08:29:18.074</td></tr>
+<tr class='step'><td>8. OpenAIClient</td><td class='desc'>Primera llamada a OpenAI (seedSize=6)</td><td class='timestamp'>2025-12-03 08:29:18.076</td></tr>
+<tr class='step'><td>9. Telemetry</td><td class='desc'>seed_ms=8</td><td class='timestamp'>2025-12-03 08:29:18.076</td></tr>
+<tr class='step'><td>10. OpenAIClient</td><td class='desc'>Primera llamada a OpenAI (callChatWithTools)</td><td class='timestamp'>2025-12-03 08:29:18.076</td></tr>
+<tr class='step'><td>11. OpenAI</td><td class='desc'>Llamada a OpenAI (iteración 0) - mensajes: [system] Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), brev... | [system] 🔐 USUARIO_AUTENTICADO (quien está usando el sistema AHORA, NO es un usuario a crear): {&quot;nombre&quot;:&quot;Juan Pérez&quot;,&quot;id&quot;:10,&quot;a... | [assistant] ¡Hola, Juan! Soy tu asistente personalizado. ¿En qué puedo ayudarte hoy? | [user] Listar tarifas | [assistant] Se han encontrado tarifas en la plataforma. Aquí tienes una muestra de las tarifas disponibles en la Academia Central. S... | [user] quiero dar de baja la Tarifa 1 | </td><td class='timestamp'>2025-12-03 08:29:18.077</td></tr>
+<tr class='step'><td>12. OpenAIClient</td><td class='desc'>OpenAI primera respuesta parseada a JSON</td><td class='timestamp'>2025-12-03 08:29:20.441</td></tr>
+<tr class='step'><td>13. Telemetry</td><td class='desc'>parse_ms=2373</td><td class='timestamp'>2025-12-03 08:29:20.441</td></tr>
+<tr class='step'><td>14. OpenAIClient</td><td class='desc'>No hay tool_calls, respuesta directa de OpenAI</td><td class='timestamp'>2025-12-03 08:29:20.441</td></tr>
+<tr class='step'><td>15. OpenAI</td><td class='desc'>Llamada a OpenAI (sin herramientas) - mensajes: [system] Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), brev... | [system] 🔐 USUARIO_AUTENTICADO (logueado): {&quot;nombre&quot;:&quot;Juan Pérez&quot;,&quot;id&quot;:10,&quot;academia_id&quot;:2} | [assistant] Necesito confirmar el ID de la tarifa que deseas dar de baja. ¿Te refieres a la tarifa que mencionaste como &quot;Tarifa 1&quot;? ... | [user] Convierte tu respuesta anterior en un JSON válido PRESERVANDO EXACTAMENTE el mensaje inteligente que escribiste.
+IMPORTA... | </td><td class='timestamp'>2025-12-03 08:29:20.441</td></tr>
+<tr class='step'><td>16. ChatController</td><td class='desc'>runChat() completado (controller_ms_desde_inicio=5275, run_ms=5273)</td><td class='timestamp'>2025-12-03 08:29:23.341</td></tr>
+<tr class='step'><td>17. ChatController</td><td class='desc'>Respuesta generada por ChatService (pretty)=
+{
+  &quot;status&quot; : &quot;success&quot;,
+  &quot;message&quot; : &quot;Necesito confirmar el ID de la tarifa que deseas dar de baja. ¿Te refieres a la tarifa que mencionaste como \&quot;Tarifa 1\&quot;? Si es así, por favor confirma o proporciona el ID exacto para proceder.&quot;,
+  &quot;data&quot; : {
+    &quot;type&quot; : &quot;chat&quot;,
+    &quot;items&quot; : [ ]
+  },
+  &quot;uiSuggestions&quot; : [ {
+    &quot;id&quot; : &quot;sg1&quot;,
+    &quot;displayText&quot; : &quot;Listar tarifas&quot;,
+    &quot;type&quot; : &quot;Generica&quot;
+  }, {
+    &quot;id&quot; : &quot;sg2&quot;,
+    &quot;displayText&quot; : &quot;Buscar tarifa por descripción&quot;,
+    &quot;type&quot; : &quot;Generica&quot;
+  }, {
+    &quot;id&quot; : &quot;sg3&quot;,
+    &quot;displayText&quot; : &quot;Cancelar operación&quot;,
+    &quot;type&quot; : &quot;Generica&quot;
+  } ],
+  &quot;uiSuggestionsVersion&quot; : 1,
+  &quot;messages&quot; : [ ]
+}</td><td class='timestamp'>2025-12-03 08:29:23.349</td></tr>
+<tr class='step'><td>18. ChatController</td><td class='desc'>HTTP listo (server_total_ms=5283, serialize_ms=8, items=0, type=&#39;chat&#39;, envelope_chars=670, envelope_bytes=674)</td><td class='timestamp'>2025-12-03 08:29:23.349</td></tr>
+</tbody></table>
+</body></html>

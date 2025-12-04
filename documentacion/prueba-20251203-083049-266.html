@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Flujo de la prueba: prueba-20251203-083049-266</title>
+<style>body{font-family:sans-serif;} table{border-collapse:collapse;width:100%;margin-top:1em;} th,td{border:1px solid #ccc;padding:8px;text-align:left;} th{background:#f0f0f0;} tr:nth-child(even){background:#fafafa;} .step{margin-bottom:1em;} .timestamp{color:#888;font-size:0.9em;} td.desc{white-space:pre-wrap;}</style>
+</head><body>
+<h2>Flujo de la prueba: prueba-20251203-083049-266</h2>
+<table>
+<thead><tr><th>Paso</th><th>Descripción</th><th>Timestamp</th></tr></thead>
+<tbody>
+<tr class='step'><td>1. ChatController</td><td class='desc'>Recibida petición POST /chat - Mensajes recibidos (10):
+[1] assistant: ¡Hola, Juan! Soy tu asistente personalizado. ¿En qué puedo ayudarte hoy?
+[2] user: Listar tarifas
+[3] assistant: Se han encontrado tarifas en la plataforma. Aquí tienes una muestra de las tarifas disponibles en la Academia Central. Si necesitas más información o deseas realizar alguna acción sobre ellas, házmelo saber.
+[4] user: quiero dar de baja la Tarifa 1
+[5] assistant: Necesito confirmar el ID de la tarifa que deseas dar de baja. ¿Te refieres a la tarifa que mencionaste como &quot;Tarifa 1&quot;? Si es así, por favor confirma o proporciona el ID exacto para proceder.
+[6] user: si, Tarifa 1
+[7] assistant: No se pudo dar de baja la tarifa. Parece que el endpoint que intenté utilizar no está permitido. Te recomiendo que verifiques si tienes los permisos necesarios para realizar esta acción o si hay otra forma de gestionar las tarifas.
+[8] user: Quiero dar de baja la Tarifa 1 cuyo Id es 12
+[9] assistant: La tarifa &quot;Tarifa 1&quot; ha sido dada de baja correctamente. Si necesitas realizar alguna otra acción o tienes alguna pregunta, no dudes en decírmelo.
+[10] user: listar tarifas
+</td><td class='timestamp'>2025-12-03 08:30:49.266</td></tr>
+<tr class='step'><td>2. ChatController</td><td class='desc'>JWT válido: usuarioId=10, roles=[Admin_academia], academiaId=2</td><td class='timestamp'>2025-12-03 08:30:49.267</td></tr>
+<tr class='step'><td>3. ChatService</td><td class='desc'>Inicio de runChat</td><td class='timestamp'>2025-12-03 08:30:49.268</td></tr>
+<tr class='step'><td>4. ChatService</td><td class='desc'>Delegated token creado: preview=Bearer e..., token_sha4=6ef92bbd</td><td class='timestamp'>2025-12-03 08:30:49.272</td></tr>
+<tr class='step'><td>5. ChatService</td><td class='desc'>System prompt construido y whitelist añadida</td><td class='timestamp'>2025-12-03 08:30:49.272</td></tr>
+<tr class='step'><td>6. ChatService</td><td class='desc'>Mensajes de usuario preparados para OpenAI</td><td class='timestamp'>2025-12-03 08:30:49.273</td></tr>
+<tr class='step'><td>7. Telemetry</td><td class='desc'>client_messages=10, seed_messages=12, seed_bytes=42952</td><td class='timestamp'>2025-12-03 08:30:49.274</td></tr>
+<tr class='step'><td>8. OpenAIClient</td><td class='desc'>Primera llamada a OpenAI (seedSize=12)</td><td class='timestamp'>2025-12-03 08:30:49.276</td></tr>
+<tr class='step'><td>9. Telemetry</td><td class='desc'>seed_ms=8</td><td class='timestamp'>2025-12-03 08:30:49.276</td></tr>
+<tr class='step'><td>10. OpenAIClient</td><td class='desc'>Primera llamada a OpenAI (callChatWithTools)</td><td class='timestamp'>2025-12-03 08:30:49.276</td></tr>
+<tr class='step'><td>11. OpenAI</td><td class='desc'>Llamada a OpenAI (iteración 0) - mensajes: [system] Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), brev... | [system] 🔐 USUARIO_AUTENTICADO (quien está usando el sistema AHORA, NO es un usuario a crear): {&quot;nombre&quot;:&quot;Juan Pérez&quot;,&quot;id&quot;:10,&quot;a... | [assistant] ¡Hola, Juan! Soy tu asistente personalizado. ¿En qué puedo ayudarte hoy? | [user] Listar tarifas | [assistant] Se han encontrado tarifas en la plataforma. Aquí tienes una muestra de las tarifas disponibles en la Academia Central. S... | [user] quiero dar de baja la Tarifa 1 | [assistant] Necesito confirmar el ID de la tarifa que deseas dar de baja. ¿Te refieres a la tarifa que mencionaste como &quot;Tarifa 1&quot;? ... | [user] si, Tarifa 1 | [assistant] No se pudo dar de baja la tarifa. Parece que el endpoint que intenté utilizar no está permitido. Te recomiendo que verif... | [user] Quiero dar de baja la Tarifa 1 cuyo Id es 12 | [assistant] La tarifa &quot;Tarifa 1&quot; ha sido dada de baja correctamente. Si necesitas realizar alguna otra acción o tienes alguna pregun... | [user] listar tarifas | </td><td class='timestamp'>2025-12-03 08:30:49.276</td></tr>
+<tr class='step'><td>12. OpenAIClient</td><td class='desc'>OpenAI primera respuesta parseada a JSON</td><td class='timestamp'>2025-12-03 08:30:50.654</td></tr>
+<tr class='step'><td>13. Telemetry</td><td class='desc'>parse_ms=1386</td><td class='timestamp'>2025-12-03 08:30:50.654</td></tr>
+<tr class='step'><td>14. OpenAIClient</td><td class='desc'>Procesando tool_call: call_api</td><td class='timestamp'>2025-12-03 08:30:50.654</td></tr>
+<tr class='step'><td>15. ApiProxyService</td><td class='desc'>Llamada a API: tarifas.listar_tarifas (GET)&lt;br&gt;pathParams=&lt;br&gt;query={&quot;academia_id&quot;:2}&lt;br&gt;body=</td><td class='timestamp'>2025-12-03 08:30:50.656</td></tr>
+<tr class='step'><td>16. ApiProxyService</td><td class='desc'>Authorization preview=Bearer e..., token_sha4=6ef92bbd</td><td class='timestamp'>2025-12-03 08:30:50.656</td></tr>
+<tr class='step'><td>17. Telemetry</td><td class='desc'>api_call_ms=245 (single)</td><td class='timestamp'>2025-12-03 08:30:50.901</td></tr>
+<tr class='step'><td>18. ApiProxyService</td><td class='desc'>Respuesta recibida de API: tarifas.listar_tarifas (result_snippet={
+  &quot;ok&quot;: true,
+  &quot;result&quot;: [
+    {
+      &quot;academia&quot;: {
+        &quot;id&quot;: 2,
+        &quot;nombre&quot;: &quot;Academia Central&quot;
+      },
+      &quot;academia_id&quot;: 2,
+      &quot;descripcion&quot;: &quot;Tarifa General&quot;,
+      &quot;fecha_alta&quot;...)</td><td class='timestamp'>2025-12-03 08:30:50.901</td></tr>
+<tr class='step'><td>19. OpenAIClient</td><td class='desc'>Segunda llamada a OpenAI (reinyectando resultados de tools)</td><td class='timestamp'>2025-12-03 08:30:50.903</td></tr>
+<tr class='step'><td>20. Telemetry</td><td class='desc'>api_ms_total=245, calls_in_batch=0, reinject_payload_bytes=3764, followup_messages=14, followup_bytes=8680</td><td class='timestamp'>2025-12-03 08:30:50.903</td></tr>
+<tr class='step'><td>21. Telemetry</td><td class='desc'>echo_sample_used=2, large_list_context=true</td><td class='timestamp'>2025-12-03 08:30:50.903</td></tr>
+<tr class='step'><td>22. OpenAI</td><td class='desc'>Llamada a OpenAI (iteración 0) - mensajes: [system] Eres un asistente (secretaria) para una plataforma de academias en España. Responde SIEMPRE en castellano (España), brev... | [system] 🔐 USUARIO_AUTENTICADO (logueado): {&quot;nombre&quot;:&quot;Juan Pérez&quot;,&quot;id&quot;:10,&quot;academia_id&quot;:2} | [assistant] ¡Hola, Juan! Soy tu asistente personalizado. ¿En qué puedo ayudarte hoy? | [user] Listar tarifas | [assistant] Se han encontrado tarifas en la plataforma. Aquí tienes una muestra de las tarifas disponibles en la Academia Central. S... | [user] quiero dar de baja la Tarifa 1 | [assistant] Necesito confirmar el ID de la tarifa que deseas dar de baja. ¿Te refieres a la tarifa que mencionaste como &quot;Tarifa 1&quot;? ... | [user] si, Tarifa 1 | [assistant] No se pudo dar de baja la tarifa. Parece que el endpoint que intenté utilizar no está permitido. Te recomiendo que verif... | [user] Quiero dar de baja la Tarifa 1 cuyo Id es 12 | [assistant] La tarifa &quot;Tarifa 1&quot; ha sido dada de baja correctamente. Si necesitas realizar alguna otra acción o tienes alguna pregun... | [user] listar tarifas | [assistant]  tool_calls: [{id=call_LNHKUj3RsR9pkb2LLfEhU4r4, type=function, function={name=call_api, arguments={&quot;name&quot;:&quot;tarifas.listar_tarifas&quot;,&quot;method&quot;:&quot;GET&quot;,&quot;query&quot;:{&quot;academia_id&quot;:2}}}}] | [tool] {
+  &quot;ok&quot;: true,
+  &quot;result&quot;: [
+    {
+      &quot;academia&quot;: {
+        &quot;id&quot;: 2,
+        &quot;nombre&quot;: &quot;Academia Central&quot;
+      },
+ ... tool_call_id: call_LNHKUj3RsR9pkb2LLfEhU4r4 | [user] Segundo turno. Devuelve un JSON con &#39;text&#39; (no vacío, conversacional, SIN listar las sugerencias) y &#39;ui_suggestions&#39; (2–... | </td><td class='timestamp'>2025-12-03 08:30:50.905</td></tr>
+<tr class='step'><td>23. Telemetry</td><td class='desc'>second_ms=3906</td><td class='timestamp'>2025-12-03 08:30:54.809</td></tr>
+<tr class='step'><td>24. Telemetry</td><td class='desc'>decision_ms_first_second_turn=5541</td><td class='timestamp'>2025-12-03 08:30:54.809</td></tr>
+<tr class='step'><td>25. Telemetry</td><td class='desc'>decision_ms=5541</td><td class='timestamp'>2025-12-03 08:30:54.809</td></tr>
+<tr class='step'><td>26. DEBUG</td><td class='desc'>finalContent length=710, preview={&quot;text&quot;:&quot;Se han encontrado tarifas en la Academia Central. Aquí tienes una muestra de las tarifas di...</td><td class='timestamp'>2025-12-03 08:30:54.810</td></tr>
+<tr class='step'><td>27. OpenAIClient</td><td class='desc'>Respuesta final generada por OpenAI</td><td class='timestamp'>2025-12-03 08:30:54.810</td></tr>
+<tr class='step'><td>28. Telemetry</td><td class='desc'>summary seed_ms+api_ms+second_ms decision_ms=5551, items_returned=11, calls_in_batch=0</td><td class='timestamp'>2025-12-03 08:30:54.819</td></tr>
+<tr class='step'><td>29. Telemetry</td><td class='desc'>render_ms=5551</td><td class='timestamp'>2025-12-03 08:30:54.819</td></tr>
+<tr class='step'><td>30. ChatController</td><td class='desc'>runChat() completado (controller_ms_desde_inicio=5556, run_ms=5554)</td><td class='timestamp'>2025-12-03 08:30:54.822</td></tr>
+<tr class='step'><td>31. ChatController</td><td class='desc'>Respuesta generada por ChatService (pretty)=
+{
+  &quot;status&quot; : &quot;success&quot;,
+  &quot;message&quot; : &quot;Se han encontrado tarifas en la Academia Central. Aquí tienes una muestra de las tarifas disponibles. Si necesitas realizar alguna acción sobre ellas, házmelo saber.&quot;,
+  &quot;data&quot; : {
+    &quot;type&quot; : &quot;tarifas&quot;,
+    &quot;items&quot; : [ {
+      &quot;academia&quot; : {
+        &quot;id&quot; : 2,
+        &quot;nombre&quot; : &quot;Academia Central&quot;
+      },
+      &quot;academia_id&quot; : 2,
+      &quot;descripcion&quot; : &quot;Tarifa General&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-23T19:06:01&quot;,
+      &quot;fecha_baja&quot; : null,
+      &quot;fecha_ultima_modificacion&quot; : &quot;2025-10-23T19:06:01&quot;,
+      &quot;id&quot; : 2,
+      &quot;precio_base&quot; : 50.0
+    }, {
+      &quot;academia&quot; : {
+        &quot;id&quot; : 2,
+        &quot;nombre&quot; : &quot;Academia Central&quot;
+      },
+      &quot;academia_id&quot; : 2,
+      &quot;descripcion&quot; : &quot;Tarifa mensual MODIFICADA&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-27T09:59:06&quot;,
+      &quot;fecha_baja&quot; : &quot;2025-10-27T09:59:10&quot;,
+      &quot;fecha_ultima_modificacion&quot; : &quot;2025-10-27T09:59:10&quot;,
+      &quot;id&quot; : 9,
+      &quot;precio_base&quot; : 65.0
+    }, {
+      &quot;academia&quot; : {
+        &quot;id&quot; : 2,
+        &quot;nombre&quot; : &quot;Academia Central&quot;
+      },
+      &quot;academia_id&quot; : 2,
+      &quot;descripcion&quot; : &quot;Tarifa descuento familia&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-27T09:59:06&quot;,
+      &quot;fecha_baja&quot; : &quot;2025-10-27T09:59:10&quot;,
+      &quot;fecha_ultima_modificacion&quot; : &quot;2025-10-27T09:59:09&quot;,
+      &quot;id&quot; : 10,
+      &quot;precio_base&quot; : 50.0
+    }, {
+      &quot;academia&quot; : {
+        &quot;id&quot; : 2,
+        &quot;nombre&quot; : &quot;Academia Central&quot;
+      },
+      &quot;academia_id&quot; : 2,
+      &quot;descripcion&quot; : &quot;Tarifa 1&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-27T09:59:12&quot;,
+      &quot;fecha_baja&quot; : &quot;2025-12-03T07:30:35&quot;,
+      &quot;fecha_ultima_modificacion&quot; : &quot;2025-12-03T07:30:34&quot;,
+      &quot;id&quot; : 12,
+      &quot;precio_base&quot; : 30.0
+    }, {
+      &quot;academia&quot; : {
+        &quot;id&quot; : 2,
+        &quot;nombre&quot; : &quot;Academia Central&quot;
+      },
+      &quot;academia_id&quot; : 2,
+      &quot;descripcion&quot; : &quot;Tarifa 2&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-27T09:59:12&quot;,
+      &quot;fecha_baja&quot; : &quot;2025-10-27T09:59:15&quot;,
+      &quot;fecha_ultima_modificacion&quot; : &quot;2025-10-27T09:59:14&quot;,
+      &quot;id&quot; : 13,
+      &quot;precio_base&quot; : 50.0
+    }, {
+      &quot;academia&quot; : {
+        &quot;id&quot; : 2,
+        &quot;nombre&quot; : &quot;Academia Central&quot;
+      },
+      &quot;academia_id&quot; : 2,
+      &quot;descripcion&quot; : &quot;Tarifa 3&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-27T09:59:13&quot;,
+      &quot;fecha_baja&quot; : &quot;2025-10-27T09:59:15&quot;,
+      &quot;fecha_ultima_modificacion&quot; : &quot;2025-10-27T09:59:14&quot;,
+      &quot;id&quot; : 14,
+      &quot;precio_base&quot; : 70.0
+    }, {
+      &quot;academia&quot; : {
+        &quot;id&quot; : 2,
+        &quot;nombre&quot; : &quot;Academia Central&quot;
+      },
+      &quot;academia_id&quot; : 2,
+      &quot;descripcion&quot; : &quot;Tarifa mensual básica&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-10-27T11:10:38&quot;,
+      &quot;fecha_baja&quot; : null,
+      &quot;fecha_ultima_modificacion&quot; : &quot;2025-10-27T11:10:38&quot;,
+      &quot;id&quot; : 17,
+      &quot;precio_base&quot; : 50.0
+    }, {
+      &quot;academia&quot; : {
+        &quot;id&quot; : 2,
+        &quot;nombre&quot; : &quot;Academia Central&quot;
+      },
+      &quot;academia_id&quot; : 2,
+      &quot;descripcion&quot; : &quot;tarifa infantil&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-11-05T19:14:03&quot;,
+      &quot;fecha_baja&quot; : null,
+      &quot;fecha_ultima_modificacion&quot; : &quot;2025-11-05T19:14:03&quot;,
+      &quot;id&quot; : 18,
+      &quot;precio_base&quot; : 50.0
+    }, {
+      &quot;academia&quot; : {
+        &quot;id&quot; : 2,
+        &quot;nombre&quot; : &quot;Academia Central&quot;
+      },
+      &quot;academia_id&quot; : 2,
+      &quot;descripcion&quot; : &quot;tarifa senior&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-11-07T13:03:45&quot;,
+      &quot;fecha_baja&quot; : null,
+      &quot;fecha_ultima_modificacion&quot; : &quot;2025-11-07T13:03:45&quot;,
+      &quot;id&quot; : 19,
+      &quot;precio_base&quot; : 48.0
+    }, {
+      &quot;academia&quot; : {
+        &quot;id&quot; : 2,
+        &quot;nombre&quot; : &quot;Academia Central&quot;
+      },
+      &quot;academia_id&quot; : 2,
+      &quot;descripcion&quot; : &quot;Nueva Tarifa grado superior&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-11-07T15:09:32&quot;,
+      &quot;fecha_baja&quot; : null,
+      &quot;fecha_ultima_modificacion&quot; : &quot;2025-11-07T15:09:32&quot;,
+      &quot;id&quot; : 20,
+      &quot;precio_base&quot; : 66.0
+    }, {
+      &quot;academia&quot; : {
+        &quot;id&quot; : 2,
+        &quot;nombre&quot; : &quot;Academia Central&quot;
+      },
+      &quot;academia_id&quot; : 2,
+      &quot;descripcion&quot; : &quot;Tarifa 1:30 sábados&quot;,
+      &quot;fecha_alta&quot; : &quot;2025-11-07T20:28:00&quot;,
+      &quot;fecha_baja&quot; : null,
+      &quot;fecha_ultima_modificacion&quot; : &quot;2025-11-07T20:28:00&quot;,
+      &quot;id&quot; : 21,
+      &quot;precio_base&quot; : 65.0
+    } ],
+    &quot;pagination&quot; : {
+      &quot;page&quot; : 1,
+      &quot;size&quot; : 50,
+      &quot;returned&quot; : 11,
+      &quot;hasMore&quot; : false
+    },
+    &quot;summaryFields&quot; : [ &quot;descripcion&quot;, &quot;precio_base&quot;, &quot;fecha_alta&quot; ]
+  },
+  &quot;uiSuggestions&quot; : [ {
+    &quot;id&quot; : &quot;sg-r1&quot;,
+    &quot;displayText&quot; : &quot;Editar tarifa&quot;,
+    &quot;type&quot; : &quot;Registro&quot;,
+    &quot;recordAction&quot; : &quot;Modificacion&quot;
+  }, {
+    &quot;id&quot; : &quot;sg-r2&quot;,
+    &quot;displayText&quot; : &quot;Crear nueva tarifa&quot;,
+    &quot;type&quot; : &quot;Registro&quot;,
+    &quot;recordAction&quot; : &quot;Alta&quot;
+  }, {
+    &quot;id&quot; : &quot;sg-g1&quot;,
+    &quot;displayText&quot; : &quot;Buscar por descripción&quot;,
+    &quot;type&quot; : &quot;Generica&quot;
+  } ],
+  &quot;uiSuggestionsVersion&quot; : 1,
+  &quot;messages&quot; : [ ]
+}</td><td class='timestamp'>2025-12-03 08:30:54.824</td></tr>
+<tr class='step'><td>32. ChatController</td><td class='desc'>HTTP listo (server_total_ms=5559, serialize_ms=2, items=11, type=&#39;tarifas&#39;, envelope_chars=4816, envelope_bytes=4822)</td><td class='timestamp'>2025-12-03 08:30:54.825</td></tr>
+</tbody></table>
+</body></html>
